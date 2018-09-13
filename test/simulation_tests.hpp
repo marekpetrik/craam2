@@ -104,24 +104,26 @@ public:
   */
   Counter(double success, int initstate,
           random_device::result_type seed = random_device{}())
-      : gen(seed), d(success), actions_list({1, -1}), initstate(initstate){};
+      : gen(seed), d(success), actions_list({1, -1}), initstate(initstate) {}
 
   int init_state() const { return initstate; }
 
   pair<double, int> transition(int pos, int action) {
     int nextpos = d(gen) ? pos + action : pos;
-    return make_pair((double)pos, nextpos);
+    return make_pair(double(pos), nextpos);
   }
 
   bool end_condition(const int) { return false; }
 
-  int action(State, long index) const { return actions_list[index]; }
+  int action(State, long index) const { return actions_list[size_t(index)]; }
 
   virtual vector<int> get_valid_actions(State state) const {
     return actions_list;
   }
 
-  size_t action_count(State) const { return actions_list.size(); };
+  size_t action_count(State) const { return actions_list.size(); }
+
+  virtual ~Counter() {}
 };
 
 /** A counter that terminates at either end as defined by the end state */
@@ -134,6 +136,8 @@ public:
       : Counter(success, initstate, seed), endstate(endstate){};
 
   bool end_condition(const int state) { return (abs(state) >= endstate); }
+
+  virtual ~CounterTerminal() {}
 };
 
 /** A counter that has bound states */
@@ -158,6 +162,7 @@ public:
     else
       return Counter::get_valid_actions(state);
   }
+  virtual ~CounterBound() {}
 };
 
 // Hash function for the Counter / CounterTerminal EState above

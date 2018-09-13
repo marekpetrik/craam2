@@ -28,6 +28,7 @@
 #include "craam/Simulation.hpp"
 #include "craam/algorithms/values.hpp"
 #include "craam/modeltools.hpp"
+#include "simulation_tests.hpp"
 
 #include <rm/range.hpp>
 

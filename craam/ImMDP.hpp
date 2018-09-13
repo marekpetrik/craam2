@@ -554,7 +554,7 @@ public:
 
     return MDPI::from_csv<MDPI_R>(input_mdp, input_state2obs, input_initial,
                                   headers);
-  };
+  }
 
   /** Loads the class from an set of CSV files. See also from_csv. */
   static unique_ptr<MDPI_R> from_csv_file(const string &input_mdp,
@@ -563,7 +563,7 @@ public:
                                           bool headers = true) {
     return MDPI::from_csv_file<MDPI_R>(input_mdp, input_state2obs,
                                        input_initial, headers);
-  };
+  }
 
 protected:
   /** Robust representation of the MDPI */
@@ -599,13 +599,13 @@ protected:
 
         // copy the original transitions (they are automatically consolidated
         // while being added)
-        for (auto k : range((size_t)0, old_tran.size())) {
+        for (size_t k : range(size_t(0), old_tran.size())) {
           new_tran.add_sample(state2observ[old_tran.get_indices()[k]],
                               old_tran.get_probabilities()[k],
                               old_tran.get_rewards()[k]);
         }
       }
-      state2outcome[state_index] = outcome_count[obs]++;
+      state2outcome[size_t(state_index)] = outcome_count[size_t(obs)]++;
     }
   }
 };
