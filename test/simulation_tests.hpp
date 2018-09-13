@@ -132,7 +132,7 @@ public:
         return actions_list[index];
     }
     
-    vector<int> get_valid_actions(State state) const{
+    virtual vector<int> get_valid_actions(State state) const{
         return actions_list;
     }
 
@@ -152,6 +152,30 @@ public:
         return (abs(state) >= endstate);
     }
 };
+
+
+/** A counter that has bound states */
+class CounterBound : public Counter {
+private:
+    int min_state;
+    int max_state;
+    vector<int> min_state_actions;
+    vector<int> max_state_actions;
+
+public:
+    CounterBound(double success, int init_state, int min_state, int max_state, random_device::result_type seed = random_device{}())
+        : Counter(success, init_state, seed), min_state(min_state), max_state(max_state), min_state_actions({1}), max_state_actions({-1}) {};
+
+    virtual vector<int> get_valid_actions(State state) const{
+        if ( state == min_state )
+            return min_state_actions;
+        else if ( state == max_state )
+            return max_state_actions;
+        else
+            return Counter::get_valid_actions(state);
+    }
+};
+
 // Hash function for the Counter / CounterTerminal EState above
 namespace std{
     template<> struct hash<pair<int,int>>{
@@ -204,7 +228,48 @@ BOOST_AUTO_TEST_CASE(simulation_multiple_counter_si_return ) {
     meanreturn = accumulate(v.begin(), v.end(), 0.0) / prec_t(v.size());
     BOOST_CHECK_CLOSE(meanreturn, 4.73684, 10.0);
 
+    // test stochastic policies
+    CounterBound stochastic_sim(0.9,0,0,2,1);
+    prob_matrix_t prob_matrix;
+    prob_list_t prob_list1;
+    prob_list_t prob_list2;
+    prob_list_t prob_list3;
+    prob_list1.push_back(1);
+    prob_list1.push_back(0);
+    prob_list2.push_back(0.6);
+    prob_list2.push_back(0.4);
+    prob_list3.push_back(0);
+    prob_list3.push_back(1);
+    prob_matrix.push_back(prob_list1);
+    prob_matrix.push_back(prob_list2);
+    prob_matrix.push_back(prob_list3);
+    samples_returns = simulate_return(stochastic_sim,1.0,StochasticPolicy<Counter>(sim,prob_matrix,1),1000,4,0.1,1);
+    v = samples_returns.second;
+    meanreturn = accumulate(v.begin(), v.end(), 0.0) / prec_t(v.size());
+    BOOST_CHECK_EQUAL(meanreturn, 3);
+
 }
+
+BOOST_AUTO_TEST_CASE(cumulative_rewards){
+    // check that the reward is constructed correctly from samples
+    DiscreteSamples samples;
+
+    samples.add_sample(0,0,1,1.0,3.0,0,0);
+    samples.add_sample(0,0,1,2.0,2.0,0,0);
+    samples.add_sample(0,0,1,3.0,1.0,0,0);
+
+    samples.add_sample(0,0,2,7.0,1.0,0,1);
+    samples.add_sample(0,0,3,2.0,1.0,0,1);
+    samples.add_sample(0,0,0,0.0,1.0,0,1);
+
+    samples.add_sample(DiscreteSample(0,0,1,1,1,0,2));
+    samples.add_sample(DiscreteSample(0,0,1,11,1,0,2));
+
+    BOOST_CHECK_EQUAL(samples.get_cumulative_rewards()[2], 6);
+    BOOST_CHECK_EQUAL(samples.get_cumulative_rewards()[5], 9);
+    BOOST_CHECK_EQUAL(samples.get_cumulative_rewards()[7], 12);
+}
+
 BOOST_AUTO_TEST_CASE(sampled_mdp_reward){
     // check that the reward is constructed correctly from samples
     DiscreteSamples samples;
@@ -298,6 +363,8 @@ Model create_test_mdp_sim(){
     return rmdp;
 }
 
+#if __cplusplus >= 201703L
+
 BOOST_AUTO_TEST_CASE(simulate_mdp){
 
     shared_ptr<MDP> m = make_shared<MDP>();
@@ -314,7 +381,6 @@ BOOST_AUTO_TEST_CASE(simulate_mdp){
     //cout << "Number of samples " << samples.size() << endl;
 
     SampledMDP smdp;
-
     smdp.add_samples(samples);
 
     auto newmdp = smdp.get_mdp();
@@ -322,10 +388,10 @@ BOOST_AUTO_TEST_CASE(simulate_mdp){
     auto solution1 = mpi_jac(*m, 0.9);
     auto solution2 = mpi_jac(*newmdp, 0.9);
 
-    BOOST_CHECK_CLOSE(solution1.total_return(initial),8.90971,1e-3);
+    BOOST_CHECK_CLOSE(solution1.total_return(initial),8.90971,1.0);
     //cout << "Return in original MDP " << solution1.total_return(initial) << endl;
 
-    BOOST_CHECK_CLOSE(solution2.total_return(initial),8.90971,1e-3);
+    BOOST_CHECK_CLOSE(solution2.total_return(initial),8.90971,1.0);
     //cout << "Return in sampled MDP " << solution2.total_return(initial) << endl;
 
     // need to remove the terminal state from the samples
@@ -353,61 +419,54 @@ BOOST_AUTO_TEST_CASE(simulate_mdp){
     BOOST_CHECK_CLOSE(randomized_samples.mean_return(0.9), 4.01147, 1e-3);
     //cout << "Return of randomized samples " << randomized_samples.mean_return(0.9) << endl;
 }
+#endif // _cplusplus >= 201703L
 
 BOOST_AUTO_TEST_CASE(inventory_simulator){
-    long horizon = 10;
-    long num_runs = 5;
-    long initial=0, max_inventory=15;
-    int rand_seed=7;
-    double purchase_cost=2, sale_price=3;
-    double prior_mean = 4, prior_std=1, demand_std=1.3;
+    long   horizon = 10, num_runs = 5, initial=0,
+           max_inventory=15;
+    long rand_seed=7;
+    prec_t purchase_cost=2, sale_price=3, prior_mean = 4, prior_std=1, demand_std=1.3;
 
     InventorySimulator simulator(initial, prior_mean, prior_std, demand_std, purchase_cost, sale_price,
                                  max_inventory, rand_seed);
     ModelInventoryPolicy rp(simulator, max_inventory, rand_seed);
 
     auto samples = simulate(simulator, rp, horizon, num_runs, -1, 0.0, rand_seed);
-
     BOOST_CHECK_EQUAL(samples.size(), 50); //horizon*num_runs
 
     SampledMDP smdp;
-
     smdp.add_samples(samples);
-
-    auto newmdp = smdp.get_mdp();
-
-    auto solution = mpi_jac(*newmdp, 0.9);
+    // get a copy
+    MDP newmdp = *smdp.get_mdp();
+    newmdp.pack_actions();
+    auto solution = mpi_jac(newmdp, 0.9);
     Transition init({initial},{1.0});
-    //The actual return for the mdp is not calculated to be 49.52, it's just picked to pass the test.
+
     //Need to know what the exact return should be to make the below test meaningful.
     BOOST_CHECK_CLOSE(solution.total_return(init),29.5768,1e-2);
 }
 
 BOOST_AUTO_TEST_CASE(invasive_species_simulator){
-    long horizon = 10;
-    long num_runs = 5;
-    long initial_population=30, carrying_capacity=1000;
+    long horizon = 10, num_runs = 5, initial_population=30, carrying_capacity=1000;
     int rand_seed=7;
     long n_hat = 300, threshold_control = 0;
-    prec_t mean_lambda=1.02, sigma2_lambda=0.02, sigma2_y=20, beta_1=0.001, beta_2=-0.0000021, prob_control = 0.5;
+    prec_t mean_lambda=1.02, sigma2_lambda=0.02, sigma2_y=20, beta_1=0.001,
+            beta_2=-0.0000021, prob_control = 0.5;
 
     InvasiveSpeciesSimulator simulator(initial_population, carrying_capacity, mean_lambda, sigma2_lambda, sigma2_y,
                                        beta_1, beta_2, n_hat, rand_seed);
     ModelInvasiveSpeciesPolicy rp(simulator, threshold_control, prob_control, rand_seed);
 
     auto samples = simulate(simulator, rp, horizon, num_runs, -1, 0.0, rand_seed);
-
     BOOST_CHECK_EQUAL(samples.size(), 50); //horizon*num_runs
 
     SampledMDP smdp;
-
     smdp.add_samples(samples);
-
-    auto newmdp = smdp.get_mdp();
-
-    auto solution = mpi_jac(*newmdp, 0.9);
+    MDP newmdp = *smdp.get_mdp();
+    newmdp.pack_actions();
+    auto solution = mpi_jac(newmdp, 0.9);
     Transition init({initial_population},{1.0});
-    //The actual return for the mdp is not calculated to be 49.52, it's just picked to pass the test.
+
     //Need to know what the exact return should be to make the below test meaningful.
     //BOOST_CHECK_CLOSE(solution.total_return(init),-0.4245,1e-2);
 }

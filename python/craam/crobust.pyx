@@ -13,7 +13,8 @@ The main functionality is provided by the individual classes below:
 - Construct MDPs from samples: :py:class:`craam.SampledMDP`, :py:class:`craam.DiscreteSamples`
 - Solve interpretable MDPs: :py:class:`craam.MDPIR`
 
-This library is a thin Python wrapper around a C++ implementation.
+
+    passhis library is a thin Python wrapper around a C++ implementation.
 
 References
 ----------
@@ -42,13 +43,18 @@ from libcpp.memory cimport make_shared
 #    shared_ptr[T] make_shared[T](...) except +
 #    unique_ptr[T] make_unique[T](...) # except +
 
+cdef extern from "craam/definitions.hpp" namespace 'craam' nogil:
 
-cdef extern from "craam/RMDP.hpp" namespace 'craam' nogil:
-                                            
     ctypedef double prec_t
     ctypedef vector[double] numvec
     ctypedef vector[long] indvec
     ctypedef unsigned long size_t
+    ctypedef vector[prec_t] prob_list_t
+    ctypedef vector[prob_list_t] prob_matrix_t
+
+    pair[indvec,vector[numvec]] unzip(vector[pair[long,numvec]] zipped)
+
+cdef extern from "craam/RMDP.hpp" namespace 'craam' nogil:
                                             
     cdef cppclass CTransition "craam::Transition":
         CTransition() 
@@ -65,6 +71,7 @@ cdef extern from "craam/RMDP.hpp" namespace 'craam' nogil:
         numvec& get_probabilities()
         numvec& get_rewards() 
         size_t size() 
+        void normalize()
 
     cdef cppclass CRegularAction "craam::RegularAction":
         CTransition& get_outcome(long outcomeid)
@@ -87,20 +94,20 @@ cdef extern from "craam/RMDP.hpp" namespace 'craam' nogil:
 
 cdef extern from "craam/algorithms/values.hpp" namespace "craam::algorithms" nogil:
 
-    cdef cppclass Solution:
+    cdef cppclass DeterministicSolution:
         numvec valuefunction
         indvec policy
         indvec outcomes
         prec_t residual
         long iterations
 
-    Solution csolve_vi_mdp "craam::algorithms::solve_vi"(const CMDP& mdp, prec_t discount,
+    DeterministicSolution csolve_vi_mdp "craam::algorithms::solve_vi"(const CMDP& mdp, prec_t discount,
                     const numvec& valuefunction,
                     const indvec& policy,
                     unsigned long iterations,
                     prec_t maxresidual) except +;
 
-    Solution csolve_mpi_mdp "craam::algorithms::solve_mpi"(const CMDP& mdp, prec_t discount,
+    DeterministicSolution csolve_mpi_mdp "craam::algorithms::solve_mpi"(const CMDP& mdp, prec_t discount,
                     const numvec& valuefunction,
                     const indvec& policy,
                     unsigned long iterations_pi,
@@ -113,34 +120,32 @@ SolutionRobustTuple = namedtuple("Solution", ("valuefunction", "policy", "residu
 
 cdef extern from "craam/algorithms/robust_values.hpp" namespace 'craam::algorithms' nogil:
 
-    cdef cppclass SolutionRobust:
+    cdef cppclass SARobustSolution:
         numvec valuefunction
-        indvec policy
-        vector[numvec] natpolicy
+        vector[pair[long,numvec]] policy
         prec_t residual
         long iterations
 
     ctypedef pair[numvec, prec_t] vec_scal_t 
-    ctypedef vec_scal_t (*NatureResponse)(const numvec& v, const numvec& p, prec_t threshold)
 
-    cdef NatureResponse string_to_nature(string s);
+
+cdef extern from "craam/algorithms/nature_response.hpp" namespace 'craam::algorithms::nats' nogil:
+    pass
 
 cdef extern from "craam/algorithms/robust_values.hpp" namespace 'craam::algorithms' nogil:
 
-    vector[vector[double]] pack_thresholds(indvec states, indvec actions, numvec values) except +
 
-
-    SolutionRobust crsolve_vi_mdp "craam::algorithms::rsolve_vi"(CMDP& mdp, prec_t discount,
-                    NatureResponse nature, const vector[vector[double]]& thresholds,
+    SARobustSolution crsolve_vi_mdp "craam::algorithms::rsolve_vi"(CMDP& mdp, prec_t discount,
+                    const SANature& nature, 
                     const numvec& valuefunction,
                     const indvec& policy,
                     unsigned long iterations,
                     prec_t maxresidual) except +
 
 
-    SolutionRobust crsolve_mpi_mdp "craam::algorithms::rsolve_mpi"(
+    SARobustSolution crsolve_mpi_mdp "craam::algorithms::rsolve_mpi"(
                     CMDP& mdp, prec_t discount,
-                    NatureResponse nature, const vector[vector[double]]& thresholds,
+                    const SANature& nature,
                     const numvec& valuefunction,
                     const indvec& policy,
                     unsigned long iterations_pi,
@@ -159,6 +164,7 @@ cdef extern from "craam/algorithms/occupancies.hpp" namespace 'craam::algorithms
                     const indvec& policies) except +
 
 cdef extern from "craam/modeltools.hpp" namespace 'craam' nogil:
+    void to_csv_file(const CMDP& mdp, const string& filename, bool header)
     void add_transition[Model](Model& mdp, 
                     long fromid, 
                     long actionid, 
@@ -448,15 +454,42 @@ cdef class MDP:
             Any transition probability less than the threshold is ignored leading to 
             sparse representations. If not provided, no transitions are ignored
         """
+        self.from_matrices_with_reward_targets(transitions, np.expand_dims(rewards, 1).repeat(rewards.shape[0], 1), ignorethreshold)
+        
+
+    cpdef from_matrices_with_reward_targets(self, np.ndarray[double,ndim=3] transitions, np.ndarray[double,ndim=3] rewards, \
+        double ignorethreshold = 1e-10):
+        """
+        Constructs an MDP from transition matrices, with uniform
+        number of actions for each state. 
+        
+        The function replaces the current value of the object.
+        
+        Parameters
+        ----------
+        transitions : np.ndarray[double,double,double] (n x n x m)
+            The last dimension represents the actions as defined by
+            the parameter `action`. The first dimension represents
+            the originating state in a transition and the second dimension represents
+            the target state.
+        rewards : np.ndarray[double, double, double] (n x n x m)
+            The rewards for each state, target state, and action
+            ie rewards[3][2][5] is the reward for transitioning from state 3 to state 2 using action 5
+        ignorethreshold : double, optional
+            Any transition probability less than the threshold is ignored leading to 
+            sparse representations. If not provided, no transitions are ignored
+        """
+
         cdef long actioncount = transitions.shape[2]
         cdef long statecount = transitions.shape[0]
 
         # erase the current MDP object
         self.thisptr = make_shared[CMDP](statecount)
 
-        if actioncount != rewards.shape[1]:
-            raise ValueError('The number of actions must match 2nd dimension of rewards.')
-        if statecount != transitions.shape[1] or statecount != rewards.shape[0]:
+        if actioncount != rewards.shape[2]:
+            raise ValueError('The number of actions must match the last dimension of rewards.')
+        if statecount != transitions.shape[1] or statecount != rewards.shape[0] or \
+           statecount != rewards.shape[1]:
             raise ValueError('The number of states in transitions and rewards is inconsistent.')
 
         cdef long aoindex, fromid, toid
@@ -470,7 +503,7 @@ cdef class MDP:
                     transitionprob = transitions[fromid,toid,aoindex]
                     if transitionprob <= ignorethreshold:
                         continue
-                    rewardval = rewards[fromid,aoindex]
+                    rewardval = rewards[fromid,toid,aoindex]
                     self.add_transition(fromid,actionid,toid,transitionprob,rewardval)
 
     cpdef to_matrices(self):
@@ -573,7 +606,7 @@ cdef class MDP:
         self._check_value(valuefunction)
         self._check_policy(policy)
 
-        cdef Solution sol = csolve_vi_mdp(dereference(self.thisptr), self.discount,\
+        cdef DeterministicSolution sol = csolve_vi_mdp(dereference(self.thisptr), self.discount,\
                     valuefunction,policy,iterations,maxresidual)
 
         return SolutionTuple(np.array(sol.valuefunction), np.array(sol.policy), sol.residual, \
@@ -628,7 +661,7 @@ cdef class MDP:
         if valiterations <= 0: valiterations = iterations
         if valresidual < 0: valresidual = maxresidual / 2
 
-        cdef Solution sol = csolve_mpi_mdp(dereference(self.thisptr),self.discount,\
+        cdef DeterministicSolution sol = csolve_mpi_mdp(dereference(self.thisptr),self.discount,\
                         valuefunction,policy,iterations,maxresidual,valiterations,\
                         valresidual,show_progress)
 
@@ -683,12 +716,14 @@ cdef class MDP:
         self._check_value(valuefunction)
         self._check_policy(policy)
 
-        cdef SolutionRobust sol = crsolve_vi_mdp(dereference(self.thisptr), self.discount,\
+        cdef SARobustSolution sol = crsolve_vi_mdp(dereference(self.thisptr), self.discount,\
                         string_to_nature(nature), pack_thresholds(thresholds[0], thresholds[1], thresholds[2]),
                         valuefunction,policy,iterations,maxresidual)
 
-        return SolutionRobustTuple(np.array(sol.valuefunction), np.array(sol.policy), sol.residual, \
-                sol.iterations,sol.natpolicy)
+        cdef pair[indvec,vector[numvec]] policies = unzip(sol.policy)
+
+        return SolutionRobustTuple(np.array(sol.valuefunction), np.array(policies.first), sol.residual, \
+                sol.iterations, policies.second)
 
 
     cpdef rsolve_mpi(self, nature, thresholds, long iterations=DEFAULT_ITERS, valuefunction = np.empty(0),
@@ -748,13 +783,23 @@ cdef class MDP:
         if valiterations <= 0: valiterations = iterations
         if valresidual < 0: valresidual = maxresidual / 2
 
-        cdef SolutionRobust sol = crsolve_mpi_mdp(dereference(self.thisptr),self.discount,\
+        cdef SARobustSolution sol = crsolve_mpi_mdp(dereference(self.thisptr),self.discount,\
                         string_to_nature(nature), pack_thresholds(thresholds[0], thresholds[1], thresholds[2]),
                         valuefunction,policy,iterations,maxresidual,valiterations,\
                         valresidual,show_progress)
 
+        cdef pair[indvec,vector[numvec]] policies = unzip(sol.policy)
+
         return SolutionRobustTuple(np.array(sol.valuefunction), np.array(sol.policy), sol.residual, \
-                sol.iterations, sol.natpolicy)
+                sol.iterations, policies.second)
+
+
+    def to_csv(self,filename):
+        """
+        Saves the MDP definition to a CSV file
+        """
+        to_csv_file(dereference(self.thisptr), filename, True)
+
 cdef extern from "craam/Samples.hpp" namespace 'craam::msen':
     
     cdef cppclass CDiscreteSamples "craam::msen::DiscreteSamples":
@@ -769,6 +814,7 @@ cdef extern from "craam/Samples.hpp" namespace 'craam::msen':
         const vector[long]& get_actions() const;
         const vector[long]& get_states_to() const;
         const vector[double]& get_rewards() const;
+        const vector[double]& get_cumulative_rewards() const;
         const vector[double]& get_weights() const;
         const vector[long]& get_runs() const;
         const vector[long]& get_steps() const;
@@ -858,6 +904,10 @@ cdef class DiscreteSamples:
         """ Returns a list of all rewards (one for every sample)"""
         return dereference(self._thisptr).get_rewards()
 
+    def get_cumulative_rewards(self):
+        """ Returns a list of cumulative rewards for the corresponding run """
+        return dereference(self._thisptr).get_cumulative_rewards()
+
     def get_weights(self):
         """ Returns a list of all sample weights (one for every sample)"""
         return dereference(self._thisptr).get_weights()
@@ -887,6 +937,9 @@ cdef extern from "craam/Simulation.hpp" namespace 'craam::msen' nogil:
 
     cdef cppclass ModelDeterministicPolicy(Policy):
         ModelDeterministicPolicy(const ModelSimulator& sim, const indvec& actions);
+
+    cdef cppclass ModelStochasticPolicy(Policy):
+        ModelStochasticPolicy(const ModelSimulator& sim, const prob_matrix_t& actions_matrix);
 
     CDiscreteSamples simulate[Model](Model& sim, Policy pol, long horizon, long runs, long tran_limit, double prob_term, long seed);
     CDiscreteSamples simulate[Model](Model& sim, Policy pol, long horizon, long runs, long tran_limit, double prob_term);
@@ -1046,6 +1099,49 @@ cdef class SimulatorMDP:
         finally:
             del rp
 
+    def simulate_stochastic_policy(self, np.ndarray[double, ndim=2] policy, horizon, runs, tran_limit=0, prob_term=0.0):
+        """
+        Simulates a policy
+
+        Parameters
+        ----------
+        policy : np.ndarray[double, ndim=2]
+            Policy used for the simulation. Must be as long as
+            the number of states and as wide as the number of actions.
+            Each entry marks the probability to take the action given a state.
+            All probabilities for a given state should add up to zero or one (zero for terminal state)
+            policy[1,0] is the probability to select action 0 given state 1
+        horizon : int 
+            Simulation horizon
+        runs : int
+            Number of simulation runs
+        tran_limit : int, optional 
+            Limit on the total number of transitions generated
+            across all the runs. The simulation stops once 
+            this number is reached.
+        prob_term : double, optional
+            Probability of terminating after each transitions. Used
+            to simulate the discount factor.
+
+        Returns
+        -------
+        out : DiscreteSamples
+        """
+
+        if policy.shape[0] != self._state_count:
+            raise ValueError("Policy length must match the number of states " + str(self._state_count))
+
+        cdef ModelStochasticPolicy * rp = \
+                new ModelStochasticPolicy(dereference(self._thisptr), policy)
+        
+        try:
+            newsamples = DiscreteSamples()
+            newsamples._thisptr[0] = simulate[ModelSimulator](dereference(self._thisptr), dereference(rp), horizon, runs, tran_limit, prob_term);
+            return newsamples
+        finally:
+            del rp
+        pass
+        
 cdef extern from "craam/simulators/inventory_simulation.hpp" namespace 'craam::msen' nogil:
 
     cdef cppclass CInventorySimulator "craam::msen::InventorySimulator":
@@ -1298,7 +1394,7 @@ cdef class SampledMDP:
         return np.array(t.probabilities_vector(state_count))
             
   
-cdef extern from "craam/fastopt.hpp" namespace 'craam' nogil:
+cdef extern from "craam/optimization/optimization.hpp" namespace 'craam' nogil:
     pair[numvec,double] c_worstcase_l1 "craam::worstcase_l1" (const vector[double] & z, \
                         const vector[double] & q, double t)
 
@@ -1369,13 +1465,13 @@ def worstcase_l1_dst(np.ndarray[double] z, np.ndarray[double] q, double t):
 
 cdef extern from "craam/algorithms/values.hpp" namespace 'craam::algorithms' nogil:
 
-    Solution csolve_vi_rmdp "craam::algorithms::solve_vi"(CRMDP& mdp, prec_t discount,
+    DeterministicSolution csolve_vi_rmdp "craam::algorithms::solve_vi"(CRMDP& mdp, prec_t discount,
                     const numvec& valuefunction,
                     const indvec& policy,
                     unsigned long iterations,
                     prec_t maxresidual) except +;
 
-    Solution csolve_mpi_rmdp "craam::algorithms::solve_mpi"(CRMDP& mdp, prec_t discount,
+    DeterministicSolution csolve_mpi_rmdp "craam::algorithms::solve_mpi"(CRMDP& mdp, prec_t discount,
                     const numvec& valuefunction,
                     const indvec& policy,
                     unsigned long iterations_pi,
@@ -1385,17 +1481,17 @@ cdef extern from "craam/algorithms/values.hpp" namespace 'craam::algorithms' nog
                     bool show_progress) except +;
 
 cdef extern from "craam/algorithms/robust_values.hpp" namespace 'craam::algorithms' nogil:
-    SolutionRobust crsolve_vi "craam::algorithms::rsolve_vi"(CRMDP& mdp, prec_t discount,
-                    NatureResponse nature, const vector[vector[double]]& thresholds,
+    SARobustSolution crsolve_vi "craam::algorithms::rsolve_vi"(CRMDP& mdp, prec_t discount,
+                    const SANature& nature,
                     const numvec& valuefunction,
                     const indvec& policy,
                     unsigned long iterations,
                     prec_t maxresidual) except +
 
 
-    SolutionRobust crsolve_mpi "craam::algorithms::rsolve_mpi"(
+    SARobustSolution crsolve_mpi "craam::algorithms::rsolve_mpi"(
                     CRMDP& mdp, prec_t discount,
-                    NatureResponse nature, const vector[vector[double]]& thresholds,
+                    const SANature& nature,
                     const numvec& valuefunction,
                     const indvec& policy,
                     unsigned long iterations_pi,
@@ -1764,12 +1860,43 @@ cdef class RMDP:
             Any transition probability less than the threshold is ignored leading to 
             sparse representations. If not provided, no transitions are ignored
         """
+        self.from_matrices_with_reward_targets(transitions, np.expand_dims(rewards, 1).repeat(rewards.shape[0], 1), actions, outcomes, ignorethreshold)
+    
+    cpdef from_matrices_with_reward_targets(self, np.ndarray[double,ndim=3] transitions, np.ndarray[double,ndim=3] rewards, \
+        np.ndarray[long] actions, np.ndarray[long] outcomes, double ignorethreshold = 1e-10):
+        """
+        Constructs an MDP from transition matrices. The function is meant to be
+        called only once and cannot be used to re-initialize the transition 
+        probabilities.
+        
+        Number of states is ``n = |states|``. The number of available action-outcome
+        pairs is ``m``.
+        
+        Parameters
+        ----------
+        transitions : np.ndarray[double,double,double] (n x n x m)
+            The last dimension represents the actions as defined by
+            the parameter `action`. The first dimension represents
+            the originating state in a transition and the second dimension represents
+            the target state.
+        rewards : np.ndarray[double, double] (n x n x m)
+            The rewards for each state, target state, and action
+            ie rewards[3][2][5] is the reward for transitioning from state 3 to state 2 using action 5
+        actions : np.ndarray[long] (m)
+            The id of the action for the state
+        outcomes : np.ndarray[long] (m)
+            The id of the outcome for the state
+        ignorethreshold : double, optional
+            Any transition probability less than the threshold is ignored leading to 
+            sparse representations. If not provided, no transitions are ignored
+        """
+    
         cdef long actioncount = len(actions) # really the number of action
         cdef long statecount = transitions.shape[0]
 
-        if actioncount != transitions.shape[2] or actioncount != rewards.shape[1]:
-            raise ValueError('The number of actions must match the 3rd dimension of transitions and the 2nd dimension of rewards.')
-        if statecount != transitions.shape[1] or statecount != rewards.shape[0]:
+        if actioncount != transitions.shape[2] or actioncount != rewards.shape[2]:
+            raise ValueError('The number of actions must match the 3rd dimension of transitions and the last dimension of rewards.')
+        if statecount != transitions.shape[1] or statecount != rewards.shape[0] or statecount != rewards.shape[1]:
             raise ValueError('The number of states in transitions and rewards is inconsistent.')
         if len(set(actions)) != actioncount:
             raise ValueError('The actions must be unique.')
@@ -1786,7 +1913,7 @@ cdef class RMDP:
                     transitionprob = transitions[fromid,toid,aoindex]
                     if transitionprob <= ignorethreshold:
                         continue
-                    rewardval = rewards[fromid,aoindex]
+                    rewardval = rewards[fromid, toid, aoindex]
                     self.add_transition(fromid, actionid, outcomeid, toid, transitionprob, rewardval)
 
     cpdef to_json(self):
@@ -1835,7 +1962,7 @@ cdef class RMDP:
         self._check_value(valuefunction)
         self._check_policy(policy)
 
-        cdef Solution sol = csolve_vi_rmdp(dereference(self.thisptr), self.discount,\
+        cdef DeterministicSolution sol = csolve_vi_rmdp(dereference(self.thisptr), self.discount,\
                     valuefunction,policy,iterations,maxresidual)
 
         return SolutionTuple(np.array(sol.valuefunction), np.array(sol.policy), sol.residual, \
@@ -1890,7 +2017,7 @@ cdef class RMDP:
         if valiterations <= 0: valiterations = iterations
         if valresidual < 0: valresidual = maxresidual / 2
 
-        cdef Solution sol = csolve_mpi_rmdp(dereference(self.thisptr),self.discount,\
+        cdef DeterministicSolution sol = csolve_mpi_rmdp(dereference(self.thisptr),self.discount,\
                         valuefunction,policy,iterations,maxresidual,valiterations,\
                         valresidual,show_progress)
 
@@ -1913,7 +2040,7 @@ cdef class RMDP:
         ----------
         nature : string
             Type of response of nature. See choose_nature for supported values.
-        thresholds : (stateids, actionids, thresholds values)
+        thresholds : (stateids, actionids, threshold values)
             Each entry represents the threshold for each state and action. The threshold
             should be provided for each state and action value; the ones that are not 
             specified are undefined.
@@ -1945,12 +2072,13 @@ cdef class RMDP:
         self._check_value(valuefunction)
         self._check_policy(policy)
 
-        cdef SolutionRobust sol = crsolve_vi(dereference(self.thisptr), self.discount,\
+        cdef SARobustSolution sol = crsolve_vi(dereference(self.thisptr), self.discount,\
                         string_to_nature(nature), pack_thresholds(thresholds[0], thresholds[1], thresholds[2]),
                         valuefunction,policy,iterations,maxresidual)
 
-        return SolutionRobustTuple(np.array(sol.valuefunction), np.array(sol.policy), sol.residual, \
-                sol.iterations,sol.natpolicy)
+        cdef pair[indvec,vector[numvec]] policies = unzip(sol.policy)
+        return SolutionRobustTuple(np.array(sol.valuefunction), np.array(policies.first), sol.residual, \
+                sol.iterations, policies.second)
 
 
     cpdef rsolve_mpi(self, nature, thresholds, long iterations=DEFAULT_ITERS, valuefunction = np.empty(0),
@@ -2010,13 +2138,14 @@ cdef class RMDP:
         if valiterations <= 0: valiterations = iterations
         if valresidual < 0: valresidual = maxresidual / 2
 
-        cdef SolutionRobust sol = crsolve_mpi(dereference(self.thisptr),self.discount,\
+        cdef SARobustSolution sol = crsolve_mpi(dereference(self.thisptr),self.discount,\
                         string_to_nature(nature), pack_thresholds(thresholds[0], thresholds[1], thresholds[2]),
                         valuefunction,policy,iterations,maxresidual,valiterations,\
                         valresidual,show_progress)
 
-        return SolutionRobustTuple(np.array(sol.valuefunction), np.array(sol.policy), sol.residual, \
-                sol.iterations, sol.natpolicy)
+        cdef pair[indvec,vector[numvec]] policies = unzip(sol.policy)
+        return SolutionRobustTuple(np.array(sol.valuefunction), np.array(policies.first), sol.residual, \
+                sol.iterations, policies.second)
 
 
 
