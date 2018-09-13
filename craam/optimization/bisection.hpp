@@ -332,11 +332,12 @@ solve_srect_bisection(const vector<numvec>& z, const vector<numvec>& pbar, const
         assert(knots[a].size() == values[a].size());
 
         if(index == 0){
+            #ifndef NDEBUG
             cout << "z[a] = " << z[a] << endl;
             cout << "pbar[a] = " << pbar[a] << endl;
             cout << "knots = " << knots[a] << endl;
             cout << "values = " << values[a] << endl;
-
+            #endif
             // TODO: Can this ever happen?
 
             throw runtime_error("This should not happen (can happen when z's are all the same); index = 0 should be handled by the special case with u_lower feasible. u_lower = " +
