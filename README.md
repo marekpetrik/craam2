@@ -121,6 +121,8 @@ Note that Boost must be present in order to build the tests in the first place.
 
 ## Installing Python Interface ##
 
+**Thy python interface is currently BROKEN! and will probably be rewritten from scratch**
+
 A python interface is provided by package `craam`. Most of the classes and methods are contained in `craam.crobust`.
 
 ### Requirements ###

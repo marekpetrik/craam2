@@ -127,9 +127,7 @@ cdef extern from "craam/algorithms/robust_values.hpp" namespace 'craam::algorith
         long iterations
 
     ctypedef pair[numvec, prec_t] vec_scal_t 
-    ctypedef vec_scal_t (*NatureResponse)(const numvec& v, const numvec& p, prec_t threshold)
 
-    cdef NatureResponse string_to_nature(string s);
 
 cdef extern from "craam/algorithms/nature_response.hpp" namespace 'craam::algorithms::nats' nogil:
     pass
@@ -2042,7 +2040,7 @@ cdef class RMDP:
         ----------
         nature : string
             Type of response of nature. See choose_nature for supported values.
-        thresholds : (stateids, actionids, thresholds values)
+        thresholds : (stateids, actionids, threshold values)
             Each entry represents the threshold for each state and action. The threshold
             should be provided for each state and action value; the ones that are not 
             specified are undefined.
