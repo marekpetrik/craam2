@@ -43,23 +43,23 @@ namespace nats {
  * @see rsolve_mpi, rsolve_vi
  */
 class robust_l1 {
-protected:
-  vector<numvec> budgets;
+  protected:
+    vector<numvec> budgets;
 
-public:
-  robust_l1(vector<numvec> budgets) : budgets(move(budgets)) {}
+  public:
+    robust_l1(vector<numvec> budgets) : budgets(move(budgets)) {}
 
-  /**
+    /**
    * @brief Implements SANature interface
    */
-  pair<numvec, prec_t> operator()(long stateid, long actionid,
-                                  const numvec &nominalprob,
-                                  const numvec &zfunction) const {
-    assert(stateid > 0 && stateid < long(budgets.size()));
-    assert(actionid > 0 && actionid < long(budgets[stateid].size()));
+    pair<numvec, prec_t> operator()(long stateid, long actionid,
+                                    const numvec &nominalprob,
+                                    const numvec &zfunction) const {
+        assert(stateid > 0 && stateid < long(budgets.size()));
+        assert(actionid > 0 && actionid < long(budgets[stateid].size()));
 
-    return worstcase_l1(zfunction, nominalprob, budgets[stateid][actionid]);
-  }
+        return worstcase_l1(zfunction, nominalprob, budgets[stateid][actionid]);
+    }
 };
 
 /**
@@ -70,34 +70,35 @@ public:
  * @see rsolve_mpi, rsolve_vi
  */
 class robust_l1w {
-protected:
-  vector<numvec> budgets;
-  /// The weights are optional, if empty then uniform weights are used.
-  /// The elements are over states, actions, and then next state values
-  vector<vector<numvec>> weights;
+  protected:
+    vector<numvec> budgets;
+    /// The weights are optional, if empty then uniform weights are used.
+    /// The elements are over states, actions, and then next state values
+    vector<vector<numvec>> weights;
 
-public:
-  /**
+  public:
+    /**
    * @param budgets One value for each state and action
    * @param weights State weights used in the L1 norm. One set of vectors for
    * each state and action. Use and empty vector to specify uniform weights.
    */
-  robust_l1w(vector<numvec> budgets, vector<vector<numvec>> weights)
-      : budgets(move(budgets)), weights(weights) {}
+    robust_l1w(vector<numvec> budgets, vector<vector<numvec>> weights)
+        : budgets(move(budgets)), weights(weights) {}
 
-  /**
+    /**
    * @brief Implements SANature interface
    */
-  pair<numvec, prec_t> operator()(long stateid, long actionid,
-                                  const numvec &nominalprob,
-                                  const numvec &zfunction) const {
-    assert(stateid > 0 && stateid < long(budgets.size()));
-    assert(actionid > 0 && actionid < long(budgets[stateid].size()));
-    assert(zfunction.size() == weights[stateid][actionid].size());
+    pair<numvec, prec_t> operator()(long stateid, long actionid,
+                                    const numvec &nominalprob,
+                                    const numvec &zfunction) const {
+        assert(stateid > 0 && stateid < long(budgets.size()));
+        assert(actionid > 0 && actionid < long(budgets[stateid].size()));
+        assert(zfunction.size() == weights[stateid][actionid].size());
 
-    return worstcase_l1_w(zfunction, nominalprob, weights[stateid][actionid],
-                          budgets[stateid][actionid]);
-  }
+        return worstcase_l1_w(zfunction, nominalprob,
+                              weights[stateid][actionid],
+                              budgets[stateid][actionid]);
+    }
 };
 
 /**
@@ -106,20 +107,19 @@ public:
  * @see rsolve_mpi, rsolve_vi
  */
 class robust_l1u {
-protected:
-  prec_t budget;
+  protected:
+    prec_t budget;
 
-public:
-  robust_l1u(prec_t budget) : budget(move(budget)) {}
+  public:
+    robust_l1u(prec_t budget) : budget(move(budget)) {}
 
-  /**
+    /**
    * @brief Implements SANature interface
    */
-  pair<numvec, prec_t> operator()(long, long, const numvec &nominalprob,
-                                  const numvec &zfunction) const {
-
-    return worstcase_l1(zfunction, nominalprob, budget);
-  }
+    pair<numvec, prec_t> operator()(long, long, const numvec &nominalprob,
+                                    const numvec &zfunction) const {
+        return worstcase_l1(zfunction, nominalprob, budget);
+    }
 };
 
 /**
@@ -128,29 +128,29 @@ public:
  * @see rsolve_mpi, rsolve_vi
  */
 class optimistic_l1 {
-protected:
-  vector<numvec> budgets;
+  protected:
+    vector<numvec> budgets;
 
-public:
-  optimistic_l1(vector<numvec> budgets) : budgets(move(budgets)) {}
+  public:
+    optimistic_l1(vector<numvec> budgets) : budgets(move(budgets)) {}
 
-  /**
+    /**
    * @brief Implements SANature interface
    */
-  pair<numvec, prec_t> operator()(long stateid, long actionid,
-                                  const numvec &nominalprob,
-                                  const numvec &zfunction) const {
-    assert(stateid > 0 && stateid < long(budgets.size()));
-    assert(actionid > 0 && actionid < long(budgets[stateid].size()));
-    assert(nominalprob.size() == zfunction.size());
+    pair<numvec, prec_t> operator()(long stateid, long actionid,
+                                    const numvec &nominalprob,
+                                    const numvec &zfunction) const {
+        assert(stateid > 0 && stateid < long(budgets.size()));
+        assert(actionid > 0 && actionid < long(budgets[stateid].size()));
+        assert(nominalprob.size() == zfunction.size());
 
-    numvec minusv(zfunction.size());
-    transform(begin(zfunction), end(zfunction), begin(minusv),
-              negate<prec_t>());
-    auto &&result =
-        worstcase_l1(minusv, nominalprob, budgets[stateid][actionid]);
-    return make_pair(result.first, -result.second);
-  }
+        numvec minusv(zfunction.size());
+        transform(begin(zfunction), end(zfunction), begin(minusv),
+                  negate<prec_t>());
+        auto &&result =
+            worstcase_l1(minusv, nominalprob, budgets[stateid][actionid]);
+        return make_pair(result.first, -result.second);
+    }
 };
 
 /**
@@ -159,60 +159,57 @@ public:
  * @see rsolve_mpi, rsolve_vi
  */
 class optimistic_l1u {
-protected:
-  prec_t budget;
+  protected:
+    prec_t budget;
 
-public:
-  optimistic_l1u(prec_t budget) : budget(move(budget)){};
+  public:
+    optimistic_l1u(prec_t budget) : budget(move(budget)){};
 
-  /**
+    /**
    * @brief Implements SANature interface
    */
-  pair<numvec, prec_t> operator()(long, long, const numvec &nominalprob,
-                                  const numvec &zfunction) const {
+    pair<numvec, prec_t> operator()(long, long, const numvec &nominalprob,
+                                    const numvec &zfunction) const {
+        assert(nominalprob.size() == zfunction.size());
 
-    assert(nominalprob.size() == zfunction.size());
-
-    numvec minusv(zfunction.size());
-    transform(begin(zfunction), end(zfunction), begin(minusv),
-              negate<prec_t>());
-    auto &&result = worstcase_l1(minusv, nominalprob, budget);
-    return make_pair(result.first, -result.second);
-  }
+        numvec minusv(zfunction.size());
+        transform(begin(zfunction), end(zfunction), begin(minusv),
+                  negate<prec_t>());
+        auto &&result = worstcase_l1(minusv, nominalprob, budget);
+        return make_pair(result.first, -result.second);
+    }
 };
 
 /// Absolutely worst outcome
 struct robust_unbounded {
-  /**
+    /**
    * @brief Implements SANature interface
    */
-  pair<numvec, prec_t> operator()(long, long, const numvec &,
-                                  const numvec &zfunction) const {
-
-    // assert(v.size() == p.size());
-    numvec dist(zfunction.size(), 0.0);
-    size_t index = size_t(min_element(begin(zfunction), end(zfunction)) -
-                          begin(zfunction));
-    dist[index] = 1;
-    return make_pair(dist, zfunction[index]);
-  }
+    pair<numvec, prec_t> operator()(long, long, const numvec &,
+                                    const numvec &zfunction) const {
+        // assert(v.size() == p.size());
+        numvec dist(zfunction.size(), 0.0);
+        size_t index = size_t(min_element(begin(zfunction), end(zfunction)) -
+                              begin(zfunction));
+        dist[index] = 1;
+        return make_pair(dist, zfunction[index]);
+    }
 };
 
 /// Absolutely best outcome
 struct optimistic_unbounded {
-  /**
+    /**
    * @brief Implements SANature interface
    */
-  pair<numvec, prec_t> operator()(long, long, const numvec &,
-                                  const numvec &zfunction) const {
-
-    // assert(v.size() == p.size());
-    numvec dist(zfunction.size(), 0.0);
-    size_t index = size_t(max_element(begin(zfunction), end(zfunction)) -
-                          begin(zfunction));
-    dist[index] = 1;
-    return make_pair(dist, zfunction[index]);
-  }
+    pair<numvec, prec_t> operator()(long, long, const numvec &,
+                                    const numvec &zfunction) const {
+        // assert(v.size() == p.size());
+        numvec dist(zfunction.size(), 0.0);
+        size_t index = size_t(max_element(begin(zfunction), end(zfunction)) -
+                              begin(zfunction));
+        dist[index] = 1;
+        return make_pair(dist, zfunction[index]);
+    }
 };
 
 // --------------- GUROBI START
@@ -227,77 +224,75 @@ struct optimistic_unbounded {
  *
  */
 class robust_l1w_gurobi {
-protected:
-  vector<numvec> budgets;
-  /// The weights are optional, if empty then uniform weights are used.
-  /// The elements are over states, actions, and then next state values
-  vector<vector<numvec>> weights;
-  shared_ptr<GRBEnv> env;
+  protected:
+    vector<numvec> budgets;
+    /// The weights are optional, if empty then uniform weights are used.
+    /// The elements are over states, actions, and then next state values
+    vector<vector<numvec>> weights;
+    shared_ptr<GRBEnv> env;
 
-public:
-  /**
+  public:
+    /**
    * Automatically constructs a gurobi environment object. Weights are uniform
    * when not provided
    * @param budgets Budgets, with a single value for each MDP state and action
    */
-  robust_l1w_gurobi(vector<numvec> budgets)
-      : budgets(move(budgets)), weights(0) {
-    env = make_shared<GRBEnv>();
-    // make sure it is run in a single thread so it can be parallelized
-    env->set(GRB_IntParam_OutputFlag, 0);
-    env->set(GRB_IntParam_Threads, 1);
-  };
+    robust_l1w_gurobi(vector<numvec> budgets)
+        : budgets(move(budgets)), weights(0) {
+        env = make_shared<GRBEnv>();
+        // make sure it is run in a single thread so it can be parallelized
+        env->set(GRB_IntParam_OutputFlag, 0);
+        env->set(GRB_IntParam_Threads, 1);
+    };
 
-  /**
+    /**
    * Automatically constructs a gurobi environment object. Weights are
    * considered to be uniform.
    * @param budgets Budgets, with a single value for each MDP state and action
    * @param weights State weights used in the L1 norm. One set of vectors for
    * each state and action. Use and empty vector to specify uniform weights.
    */
-  robust_l1w_gurobi(vector<numvec> budgets, vector<vector<numvec>> weights)
-      : budgets(move(budgets)), weights(move(weights)) {
+    robust_l1w_gurobi(vector<numvec> budgets, vector<vector<numvec>> weights)
+        : budgets(move(budgets)), weights(move(weights)) {
+        env = make_shared<GRBEnv>();
+        // make sure it is run in a single thread so it can be parallelized
+        env->set(GRB_IntParam_OutputFlag, 0);
+        env->set(GRB_IntParam_Threads, 1);
+    };
 
-    env = make_shared<GRBEnv>();
-    // make sure it is run in a single thread so it can be parallelized
-    env->set(GRB_IntParam_OutputFlag, 0);
-    env->set(GRB_IntParam_Threads, 1);
-  };
-
-  /**
+    /**
    * @param budgets Budgets, with a single value for each MDP state and action
    * @param grbenv Gurobi environment that will be used. Should be
    * single-threaded and probably disable printout. This environment is NOT
    *                thread-safe.
    */
-  robust_l1w_gurobi(vector<numvec> budgets, vector<vector<numvec>> weights,
-                    const shared_ptr<GRBEnv> &grbenv)
-      : budgets(move(budgets)), weights(move(weights)), env(grbenv){};
+    robust_l1w_gurobi(vector<numvec> budgets, vector<vector<numvec>> weights,
+                      const shared_ptr<GRBEnv> &grbenv)
+        : budgets(move(budgets)), weights(move(weights)), env(grbenv){};
 
-  /**
+    /**
    * Implements the SANature interface
    */
-  pair<numvec, prec_t> operator()(long stateid, long actionid,
-                                  const numvec &nominalprob,
-                                  const numvec &zfunction) const {
-    assert(stateid > 0 && stateid < long(budgets.size()));
-    assert(actionid > 0 && actionid < long(budgets[stateid].size()));
+    pair<numvec, prec_t> operator()(long stateid, long actionid,
+                                    const numvec &nominalprob,
+                                    const numvec &zfunction) const {
+        assert(stateid > 0 && stateid < long(budgets.size()));
+        assert(actionid > 0 && actionid < long(budgets[stateid].size()));
 
-    // check for whether weights are being used
-    if (weights.empty()) {
-      return worstcase_l1_w_gurobi(*env, zfunction, nominalprob, numvec(0),
-                                   budgets[stateid][actionid]);
-    } else {
-      return worstcase_l1_w_gurobi(*env, zfunction, nominalprob,
-                                   weights[stateid][actionid],
-                                   budgets[stateid][actionid]);
+        // check for whether weights are being used
+        if (weights.empty()) {
+            return worstcase_l1_w_gurobi(*env, zfunction, nominalprob,
+                                         numvec(0), budgets[stateid][actionid]);
+        } else {
+            return worstcase_l1_w_gurobi(*env, zfunction, nominalprob,
+                                         weights[stateid][actionid],
+                                         budgets[stateid][actionid]);
+        }
     }
-  }
 };
 
 #endif
-// --------------- GUROBI END
-// --------------------------------------------------------
+// --------------- GUROBI END ----------------------------
 
 // *******************************************************
 // S Nature definitions
@@ -311,56 +306,55 @@ public:
  *
  */
 class robust_s_l1 {
+  protected:
+    numvec budgets;
+    vector<numvec> weights_a;
 
-protected:
-  numvec budgets;
-  vector<numvec> weights_a;
+  public:
+    robust_s_l1(numvec budgets) : budgets(move(budgets)), weights_a(0) {}
 
-public:
-  robust_s_l1(numvec budgets) : budgets(move(budgets)), weights_a(0) {}
+    robust_s_l1(numvec budgets, vector<numvec> weights_a)
+        : budgets(move(budgets)), weights_a(move(weights_a)) {}
 
-  robust_s_l1(numvec budgets, vector<numvec> weights_a)
-      : budgets(move(budgets)), weights_a(move(weights_a)) {}
-
-  /**
+    /**
    * Implements SNature interface
    */
-  tuple<numvec, vector<numvec>, prec_t>
-  operator()(long stateid, const vector<numvec> &nominalprobs,
-             const vector<numvec> &zvalues) const {
+    tuple<numvec, vector<numvec>, prec_t>
+    operator()(long stateid, const vector<numvec> &nominalprobs,
+               const vector<numvec> &zvalues) const {
+        assert(stateid >= 0 && stateid < long(budgets.size()));
+        assert(nominalprobs.size() == zvalues.size());
 
-    assert(stateid >= 0 && stateid < long(budgets.size()));
-    assert(nominalprobs.size() == zvalues.size());
+        prec_t outcome;
+        numvec actiondist;
+        numvec sa_budgets;
 
-    prec_t outcome;
-    numvec actiondist;
-    numvec sa_budgets;
+        // compute the distribution of actions and the optimal budgets
+        if (!weights_a.empty()) {
+            tie(outcome, actiondist, sa_budgets) = solve_srect_bisection(
+                zvalues, nominalprobs, budgets[stateid], weights_a[stateid]);
+        } else {
+            tie(outcome, actiondist, sa_budgets) =
+                solve_srect_bisection(zvalues, nominalprobs, budgets[stateid]);
+        }
+        assert(actiondist.size() == zvalues.size());
+        assert(sa_budgets.size() == actiondist.size());
 
-    // compute the distribution of actions and the optimal budgets
-    if (!weights_a.empty()) {
-      tie(outcome, actiondist, sa_budgets) = solve_srect_bisection(
-          zvalues, nominalprobs, budgets[stateid], weights_a[stateid]);
-    } else {
-      tie(outcome, actiondist, sa_budgets) =
-          solve_srect_bisection(zvalues, nominalprobs, budgets[stateid]);
+        // compute actual worst-case responses for all actions
+        // and aggregate them in a sparse transition probability
+        vector<numvec> new_probability;
+        new_probability.reserve(actiondist.size());
+        for (size_t a = 0; a < nominalprobs.size(); a++) {
+            // skip the ones that have not transition probability
+            if (actiondist[a] > EPSILON)
+                new_probability.push_back(
+                    worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a])
+                        .first);
+            else
+                new_probability.push_back(numvec(0));
+        }
+        return make_tuple(move(actiondist), move(new_probability), outcome);
     }
-    assert(actiondist.size() == zvalues.size());
-    assert(sa_budgets.size() == actiondist.size());
-
-    // compute actual worst-case responses for all actions
-    // and aggregate them in a sparse transition probability
-    vector<numvec> new_probability;
-    new_probability.reserve(actiondist.size());
-    for (size_t a = 0; a < nominalprobs.size(); a++) {
-      // skip the ones that have not transition probability
-      if (actiondist[a] > EPSILON)
-        new_probability.push_back(
-            worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
-      else
-        new_probability.push_back(numvec(0));
-    }
-    return make_tuple(move(actiondist), move(new_probability), outcome);
-  }
 };
 
 #ifdef GUROBI_USE
@@ -375,55 +369,53 @@ public:
  * therefore fail when used in modified policy iteration
  */
 class robust_s_l1_gurobi {
+  protected:
+    // a budget for every state
+    numvec budgets;
+    shared_ptr<GRBEnv> env;
 
-protected:
-  // a budget for every state
-  numvec budgets;
-  shared_ptr<GRBEnv> env;
-
-public:
-  /**
+  public:
+    /**
    * Automatically constructs a gurobi environment object. Weights are uniform
    * when not provided
    * @param budgets Budgets, with a single value for each MDP state
    */
-  robust_s_l1_gurobi(numvec budgets) : budgets(move(budgets)) {
-    env = make_shared<GRBEnv>();
-    // make sure it is run in a single thread so it can be parallelized
-    env->set(GRB_IntParam_OutputFlag, 0);
-    env->set(GRB_IntParam_Threads, 1);
-  };
+    robust_s_l1_gurobi(numvec budgets) : budgets(move(budgets)) {
+        env = make_shared<GRBEnv>();
+        // make sure it is run in a single thread so it can be parallelized
+        env->set(GRB_IntParam_OutputFlag, 0);
+        env->set(GRB_IntParam_Threads, 1);
+    };
 
-  /**
+    /**
    * @param env Gurobi environment to use
    * @param budgets Budgets, with a single value for each MDP state
    */
-  robust_s_l1_gurobi(const shared_ptr<GRBEnv> &env, numvec budgets)
-      : budgets(move(budgets)), env(env){};
+    robust_s_l1_gurobi(const shared_ptr<GRBEnv> &env, numvec budgets)
+        : budgets(move(budgets)), env(env){};
 
-  /**
+    /**
    * Implements SNature interface
    */
-  tuple<numvec, vector<numvec>, prec_t>
-  operator()(long stateid, const vector<numvec> &nominalprobs,
-             const vector<numvec> &zvalues) const {
+    tuple<numvec, vector<numvec>, prec_t>
+    operator()(long stateid, const vector<numvec> &nominalprobs,
+               const vector<numvec> &zvalues) const {
+        assert(stateid >= 0 && stateid < long(budgets.size()));
+        assert(nominalprobs.size() == zvalues.size());
 
-    assert(stateid >= 0 && stateid < long(budgets.size()));
-    assert(nominalprobs.size() == zvalues.size());
+        prec_t outcome;
+        numvec actiondist;
 
-    prec_t outcome;
-    numvec actiondist;
+        // compute the distribution of actions and the optimal budgets
 
-    // compute the distribution of actions and the optimal budgets
+        tie(actiondist, outcome) =
+            srect_solve_gurobi(*env, zvalues, nominalprobs, budgets[stateid]);
 
-    tie(actiondist, outcome) =
-        srect_solve_gurobi(*env, zvalues, nominalprobs, budgets[stateid]);
+        assert(actiondist.size() == zvalues.size());
 
-    assert(actiondist.size() == zvalues.size());
-
-    vector<numvec> new_probability(actiondist.size());
-    return make_tuple(move(actiondist), move(new_probability), outcome);
-  }
+        vector<numvec> new_probability(actiondist.size());
+        return make_tuple(move(actiondist), move(new_probability), outcome);
+    }
 };
 
 #endif

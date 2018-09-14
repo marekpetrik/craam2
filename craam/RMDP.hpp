@@ -244,13 +244,12 @@ but assumes 0 return for regular models.
 \tparam SType Type of state, determines s-rectangularity or s,a-rectangularity
 and also the type of the outcome and action constraints
  */
-template <class SType>
-class GRMDP {
-protected:
+template <class SType> class GRMDP {
+  protected:
     /** Internal list of states */
     vector<SType> states;
 
-public:
+  public:
     /// Type of the state
     using state_type = SType;
 
@@ -260,26 +259,22 @@ public:
     typedef vector<numvec> policy_rand;
 
     /**
-  Constructs the RMDP with a pre-allocated number of states. All
-  states are initially terminal.
-  \param state_count The initial number of states, which dynamically
-                      increases as more transitions are added. All initial
-                      states are terminal.
-  */
-    GRMDP(long state_count)
-        : states(state_count){};
+      Constructs the RMDP with a pre-allocated number of states. All
+      states are initially terminal.
+      @param state_count The initial number of states, which dynamically
+                          increases as more transitions are added. All initial states are terminal.
+      */
+    GRMDP(long state_count) : states(state_count){};
 
     /** Constructs an empty RMDP. */
-    GRMDP()
-        : states(){};
+    GRMDP() : states(){};
 
     /**
       Assures that the MDP state exists and if it does not, then it is created.
       States with intermediate ids are also created
       \return The new state
     */
-    SType& create_state(long stateid)
-    {
+    SType &create_state(long stateid) {
         assert(stateid >= 0);
         if (stateid >= (long)states.size())
             states.resize(stateid + 1);
@@ -290,7 +285,7 @@ public:
       Creates a new state at the end of the states
       \return The new state
     */
-    SType& create_state() { return create_state(states.size()); };
+    SType &create_state() { return create_state(states.size()); };
 
     /** Number of states */
     size_t state_count() const { return states.size(); };
@@ -299,27 +294,25 @@ public:
     size_t size() const { return state_count(); };
 
     /** Retrieves an existing state */
-    const SType& get_state(long stateid) const
-    {
+    const SType &get_state(long stateid) const {
         assert(stateid >= 0 && size_t(stateid) < state_count());
         return states[stateid];
     };
 
     /** Retrieves an existing state */
-    const SType& operator[](long stateid) const { return get_state(stateid); };
+    const SType &operator[](long stateid) const { return get_state(stateid); };
 
     /** Retrieves an existing state */
-    SType& get_state(long stateid)
-    {
+    SType &get_state(long stateid) {
         assert(stateid >= 0 && size_t(stateid) < state_count());
         return states[stateid];
     };
 
     /** Retrieves an existing state */
-    SType& operator[](long stateid) { return get_state(stateid); };
+    SType &operator[](long stateid) { return get_state(stateid); };
 
     /** \returns list of all states */
-    const vector<SType>& get_states() const { return states; };
+    const vector<SType> &get_states() const { return states; };
 
     /**
       Check if all transitions in the process sum to one.
@@ -327,11 +320,10 @@ public:
       the RMDP still may be normalized.
       \return True if and only if all transitions are normalized.
        */
-    bool is_normalized() const
-    {
-        for (auto const& s : states) {
-            for (auto const& a : s.get_actions()) {
-                for (auto const& t : a.get_outcomes()) {
+    bool is_normalized() const {
+        for (auto const &s : states) {
+            for (auto const &a : s.get_actions()) {
+                for (auto const &t : a.get_outcomes()) {
                     if (!t.is_normalized())
                         return false;
                 }
@@ -341,9 +333,8 @@ public:
     }
 
     /// Normalize all transitions to sum to one for all states, actions, outcomes.
-    void normalize()
-    {
-        for (SType& s : states)
+    void normalize() {
+        for (SType &s : states)
             s.normalize();
     }
 
@@ -361,8 +352,7 @@ public:
               action and outcome. Otherwise the function return -1.
       */
     template <typename Policy>
-    long is_policy_correct(const Policy& policies) const
-    {
+    long is_policy_correct(const Policy &policies) const {
         for (auto si : indices(states)) {
             // ignore terminal states
             if (states[si].is_terminal())
@@ -384,12 +374,11 @@ public:
   Returns a brief string representation of the RMDP.
   This method is suitable for analyzing small RMDPs.
   */
-    string to_string() const
-    {
+    string to_string() const {
         string result;
 
         for (size_t si : indices(states)) {
-            const auto& s = get_state(si);
+            const auto &s = get_state(si);
             result += (std::to_string(si));
             result += (" : ");
             result += (std::to_string(s.action_count()));
@@ -398,7 +387,7 @@ public:
                 result += ("    ");
                 result += (std::to_string(ai));
                 result += (" : ");
-                const auto& a = s.get_action(ai);
+                const auto &a = s.get_action(ai);
                 a.to_string(result);
                 result += ("\n");
             }
@@ -410,11 +399,10 @@ public:
   Returns a json representation of the RMDP.
   This method is suitable to analyzing small RMDPs.
   */
-    string to_json() const
-    {
-        string result{ "{\"states\" : [" };
+    string to_json() const {
+        string result{"{\"states\" : ["};
         for (auto si : indices(states)) {
-            const auto& s = states[si];
+            const auto &s = states[si];
             result += s.to_json(si);
             result += ",";
         }
@@ -429,8 +417,7 @@ public:
    * @return List of (state, action) pairs. An empty vector when all states and
    *          actions are valid
    */
-    vector<pair<long, long>> invalid_state_actions() const
-    {
+    vector<pair<long, long>> invalid_state_actions() const {
         vector<pair<long, long>> invalid(0);
         for (size_t s = 0; s < states.size(); s++) {
             indvec invalid_a = states[s].invalid_actions();
@@ -445,12 +432,11 @@ public:
    * Removes invalid actions, and reindexes the remaining ones accordingly.
    * @returns List of original action ids for each state
    */
-    vector<indvec> pack_actions()
-    {
+    vector<indvec> pack_actions() {
         vector<indvec> result;
         result.reserve(size());
 
-        for (SType& state : states) {
+        for (SType &state : states) {
             result.push_back(state.pack_actions());
         }
         return result;
