@@ -578,7 +578,7 @@ protected:
     auto obs_count = *max_element(state2observ.begin(), state2observ.end()) + 1;
 
     // keep track of the number of outcomes for each
-    indvec outcome_count(obs_count, 0);
+    indvec outcome_count(size_t(obs_count), 0);
 
     for (size_t state_index : indices(*mdp)) {
       auto obs = state2observ[state_index];

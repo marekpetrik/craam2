@@ -52,9 +52,10 @@ Computes the average value of the action.
 @param discount Discount factor
 @return Action value
 */
-inline prec_t value_action(const RegularAction &action,
-                           const numvec &valuefunction, prec_t discount) {
-  return action.get_outcome().value(valuefunction, discount);
+inline prec_t value_action(const RegularAction& action,
+    const numvec& valuefunction, prec_t discount)
+{
+    return action.get_outcome().value(valuefunction, discount);
 }
 
 /**
@@ -73,10 +74,11 @@ distribution is not zero.
 greater than 0. The order of states is the same as in the underlying transition.
 @return Action value
 */
-inline prec_t value_action(const RegularAction &action,
-                           const numvec &valuefunction, prec_t discount,
-                           numvec distribution) {
-  return action.get_outcome().value(valuefunction, discount, distribution);
+inline prec_t value_action(const RegularAction& action,
+    const numvec& valuefunction, prec_t discount,
+    numvec distribution)
+{
+    return action.get_outcome().value(valuefunction, discount, distribution);
 }
 
 // *******************************************************
@@ -91,18 +93,19 @@ Computes the average outcome using the provided distribution.
 @param discount Discount factor
 @return Mean value of the action
  */
-inline prec_t value_action(const WeightedOutcomeAction &action,
-                           numvec const &valuefunction, prec_t discount) {
-  assert(action.get_distribution().size() == action.get_outcomes().size());
+inline prec_t value_action(const WeightedOutcomeAction& action,
+    numvec const& valuefunction, prec_t discount)
+{
+    assert(action.get_distribution().size() == action.get_outcomes().size());
 
-  if (action.get_outcomes().empty())
-    throw invalid_argument("WeightedOutcomeAction with no outcomes");
+    if (action.get_outcomes().empty())
+        throw invalid_argument("WeightedOutcomeAction with no outcomes");
 
-  prec_t averagevalue = 0.0;
-  const numvec &distribution = action.get_distribution();
-  for (size_t i = 0; i < action.get_outcomes().size(); i++)
-    averagevalue += distribution[i] * action[i].value(valuefunction, discount);
-  return averagevalue;
+    prec_t averagevalue = 0.0;
+    const numvec& distribution = action.get_distribution();
+    for (size_t i = 0; i < action.get_outcomes().size(); i++)
+        averagevalue += distribution[i] * action[i].value(valuefunction, discount);
+    return averagevalue;
 }
 
 /**
@@ -114,19 +117,20 @@ Computes the action value for a fixed index outcome.
 @param distribution Custom distribution that is selected by nature.
 @return Value of the action
  */
-inline prec_t value_action(const WeightedOutcomeAction &action,
-                           numvec const &valuefunction, prec_t discount,
-                           const numvec &distribution) {
+inline prec_t value_action(const WeightedOutcomeAction& action,
+    numvec const& valuefunction, prec_t discount,
+    const numvec& distribution)
+{
 
-  assert(distribution.size() == action.get_outcomes().size());
-  if (action.get_outcomes().empty())
-    throw invalid_argument("WeightedOutcomeAction with no outcomes");
+    assert(distribution.size() == action.get_outcomes().size());
+    if (action.get_outcomes().empty())
+        throw invalid_argument("WeightedOutcomeAction with no outcomes");
 
-  prec_t averagevalue = 0.0;
-  // TODO: simd?
-  for (size_t i = 0; i < action.get_outcomes().size(); i++)
-    averagevalue += distribution[i] * action[i].value(valuefunction, discount);
-  return averagevalue;
+    prec_t averagevalue = 0.0;
+    // TODO: simd?
+    for (size_t i = 0; i < action.get_outcomes().size(); i++)
+        averagevalue += distribution[i] * action[i].value(valuefunction, discount);
+    return averagevalue;
 }
 
 // *******************************************************
@@ -144,34 +148,35 @@ actions. Such state is assumed to be terminal.
 @return (Index of best action, value), returns 0 if the state is terminal.
 */
 template <class AType>
-inline pair<long, prec_t> value_max_state(const SAState<AType> &state,
-                                          const numvec &valuefunction,
-                                          prec_t discount) {
-  if (state.is_terminal())
-    return make_pair(-1, 0.0);
-  // skip invalid state.get_actions()
+inline pair<long, prec_t> value_max_state(const SAState<AType>& state,
+    const numvec& valuefunction,
+    prec_t discount)
+{
+    if (state.is_terminal())
+        return make_pair(-1, 0.0);
+    // skip invalid state.get_actions()
 
-  prec_t maxvalue = -numeric_limits<prec_t>::infinity();
-  long result = -1l;
+    prec_t maxvalue = -numeric_limits<prec_t>::infinity();
+    long result = -1l;
 
-  for (size_t i = 0; i < state.size(); i++) {
-    auto const &action = state[i];
+    for (size_t i = 0; i < state.size(); i++) {
+        auto const& action = state[i];
 
-    if (!state.is_valid(i))
-      throw invalid_argument("cannot have an invalid state and action");
+        if (!state.is_valid(i))
+            throw invalid_argument("cannot have an invalid state and action");
 
-    auto value = value_action(action, valuefunction, discount);
-    if (value >= maxvalue) {
-      maxvalue = value;
-      result = i;
+        auto value = value_action(action, valuefunction, discount);
+        if (value >= maxvalue) {
+            maxvalue = value;
+            result = i;
+        }
     }
-  }
 
-  // if the result has not been changed, that means that all actions are invalid
-  if (result == -1)
-    throw invalid_argument("all actions are invalid.");
+    // if the result has not been changed, that means that all actions are invalid
+    if (result == -1)
+        throw invalid_argument("all actions are invalid.");
 
-  return make_pair(result, maxvalue);
+    return make_pair(result, maxvalue);
 }
 
 /**
@@ -184,23 +189,23 @@ Computes the value of a fixed (and valid) action. Performs validity checks.
 @return Value of state, 0 if it's terminal regardless of the action index
 */
 template <class AType>
-inline prec_t value_fix_state(const SAState<AType> &state,
-                              numvec const &valuefunction, prec_t discount,
-                              long actionid) {
-  // this is the terminal state, return 0
-  if (state.is_terminal())
-    return 0;
-  if (actionid < 0 || actionid >= (long)state.get_actions().size())
-    throw range_error(
-        "invalid actionid: " + to_string(actionid) +
-        " for action count: " + to_string(state.get_actions().size()));
+inline prec_t value_fix_state(const SAState<AType>& state,
+    numvec const& valuefunction, prec_t discount,
+    long actionid)
+{
+    // this is the terminal state, return 0
+    if (state.is_terminal())
+        return 0;
+    if (actionid < 0 || actionid >= (long)state.get_actions().size())
+        throw range_error(
+            "invalid actionid: " + to_string(actionid) + " for action count: " + to_string(state.get_actions().size()));
 
-  const auto &action = state[actionid];
-  // cannot assume invalid state.get_actions()
-  if (!state.is_valid(actionid))
-    throw invalid_argument("Cannot take an invalid action");
+    const auto& action = state[actionid];
+    // cannot assume invalid state.get_actions()
+    if (!state.is_valid(actionid))
+        throw invalid_argument("Cannot take an invalid action");
 
-  return value_action(action, valuefunction, discount);
+    return value_action(action, valuefunction, discount);
 }
 
 /**
@@ -216,23 +221,24 @@ probabilities
 @return Value of state, 0 if it's terminal regardless of the action index
 */
 template <class AType>
-inline prec_t value_fix_state(const SAState<AType> &state,
-                              numvec const &valuefunction, prec_t discount,
-                              long actionid, numvec distribution) {
-  // this is the terminal state, return 0
-  if (state.is_terminal())
-    return 0;
+inline prec_t value_fix_state(const SAState<AType>& state,
+    numvec const& valuefunction, prec_t discount,
+    long actionid, numvec distribution)
+{
+    // this is the terminal state, return 0
+    if (state.is_terminal())
+        return 0;
 
-  assert(actionid >= 0 && actionid < long(state.size()));
+    assert(actionid >= 0 && actionid < long(state.size()));
 
-  // if(actionid < 0 || actionid >= long(state.size())) throw
-  // range_error("invalid actionid: "
-  //    + to_string(actionid) + " for action count: " +
-  //    to_string(state.get_actions().size()) );
+    // if(actionid < 0 || actionid >= long(state.size())) throw
+    // range_error("invalid actionid: "
+    //    + to_string(actionid) + " for action count: " +
+    //    to_string(state.get_actions().size()) );
 
-  const auto &action = state[actionid];
+    const auto& action = state[actionid];
 
-  return value_action(action, valuefunction, discount, distribution);
+    return value_action(action, valuefunction, discount, distribution);
 }
 
 /**
@@ -248,28 +254,27 @@ probabilities
 @return Value of state, 0 if it's terminal regardless of the action index
 */
 template <class AType>
-inline prec_t value_fix_state(const SAState<AType> &state,
-                              numvec const &valuefunction, prec_t discount,
-                              numvec actiondist, numvec distribution) {
-  // this is the terminal state, return 0
-  if (state.is_terminal())
-    return 0;
+inline prec_t value_fix_state(const SAState<AType>& state,
+    numvec const& valuefunction, prec_t discount,
+    numvec actiondist, numvec distribution)
+{
+    // this is the terminal state, return 0
+    if (state.is_terminal())
+        return 0;
 
-  assert(actiondist.size() == state.size());
-  assert((1.0 - accumulate(actiondist.cbegin(), actiondist.cend(), 0.0) - 1.0) <
-         1e-5);
+    assert(actiondist.size() == state.size());
+    assert((1.0 - accumulate(actiondist.cbegin(), actiondist.cend(), 0.0) - 1.0) < 1e-5);
 
-  prec_t result = 0.0;
-  for (size_t actionid = 0; actionid < state.size(); actionid++) {
-    const auto &action = state[actionid];
-    // cannot assume that the action is valid
-    if (!state.is_valid(actionid))
-      throw invalid_argument("Cannot take an invalid action");
+    prec_t result = 0.0;
+    for (size_t actionid = 0; actionid < state.size(); actionid++) {
+        const auto& action = state[actionid];
+        // cannot assume that the action is valid
+        if (!state.is_valid(actionid))
+            throw invalid_argument("Cannot take an invalid action");
 
-    result += actiondist[actionid] *
-              value_action(action, valuefunction, discount, distribution);
-  }
-  return result;
+        result += actiondist[actionid] * value_action(action, valuefunction, discount, distribution);
+    }
+    return result;
 }
 
 /**
@@ -285,33 +290,31 @@ probabilities and for actions that have a positive actiondist probability
 @return Value of state, 0 if it's terminal regardless of the action index
 */
 template <class AType>
-inline prec_t value_fix_state(const SAState<AType> &state,
-                              numvec const &valuefunction, prec_t discount,
-                              numvec actiondist, vector<numvec> distributions) {
-  // this is the terminal state, return 0
-  if (state.is_terminal())
-    return 0;
+inline prec_t value_fix_state(const SAState<AType>& state,
+    numvec const& valuefunction, prec_t discount,
+    numvec actiondist, vector<numvec> distributions)
+{
+    // this is the terminal state, return 0
+    if (state.is_terminal())
+        return 0;
 
-  assert(actiondist.size() == state.size());
-  assert((1.0 - accumulate(actiondist.cbegin(), actiondist.cend(), 0.0) - 1.0) <
-         1e-5);
-  assert(distributions.size() == actiondist.size());
+    assert(actiondist.size() == state.size());
+    assert((1.0 - accumulate(actiondist.cbegin(), actiondist.cend(), 0.0) - 1.0) < 1e-5);
+    assert(distributions.size() == actiondist.size());
 
-  prec_t result = 0.0;
-  for (size_t actionid = 0; actionid < state.size(); actionid++) {
-    const auto &action = state[actionid];
-    // cannot assume that the action is valid
-    if (!state.is_valid(actionid))
-      throw invalid_argument("Cannot take an invalid action");
+    prec_t result = 0.0;
+    for (size_t actionid = 0; actionid < state.size(); actionid++) {
+        const auto& action = state[actionid];
+        // cannot assume that the action is valid
+        if (!state.is_valid(actionid))
+            throw invalid_argument("Cannot take an invalid action");
 
-    if (actiondist[actionid] <= EPSILON)
-      continue;
+        if (actiondist[actionid] <= EPSILON)
+            continue;
 
-    result +=
-        actiondist[actionid] *
-        value_action(action, valuefunction, discount, distributions[actionid]);
-  }
-  return result;
+        result += actiondist[actionid] * value_action(action, valuefunction, discount, distributions[actionid]);
+    }
+    return result;
 }
 
 // *******************************************************
@@ -325,43 +328,60 @@ inline prec_t value_fix_state(const SAState<AType> &state,
  * stochastic, but could also have multiple components (such as an action and
  * transition probability) )
  */
-template <class PolicyType> struct Solution {
-  /// Value function
-  numvec valuefunction;
-  /// Policy of the decision maker (and nature if applicable) for each state
-  vector<PolicyType> policy;
-  /// Bellman residual of the computation
-  prec_t residual;
-  /// Number of iterations taken
-  long iterations;
-  /// Time taken to solve the problem
-  prec_t time;
+template <class PolicyType>
+struct Solution {
+    /// Value function
+    numvec valuefunction;
+    /// Policy of the decision maker (and nature if applicable) for each state
+    vector<PolicyType> policy;
+    /// Bellman residual of the computation
+    prec_t residual;
+    /// Number of iterations taken
+    long iterations;
+    /// Time taken to solve the problem
+    prec_t time;
 
-  Solution()
-      : valuefunction(0), policy(0), residual(-1), iterations(-1),
-        time(nan("")) {}
+    Solution()
+        : valuefunction(0)
+        , policy(0)
+        , residual(-1)
+        , iterations(-1)
+        , time(nan(""))
+    {
+    }
 
-  /// Empty solution for a problem with statecount states
-  Solution(size_t statecount)
-      : valuefunction(statecount, 0.0), policy(statecount), residual(-1),
-        iterations(-1), time(nan("")) {}
+    /// Empty solution for a problem with statecount states
+    Solution(size_t statecount)
+        : valuefunction(statecount, 0.0)
+        , policy(statecount)
+        , residual(-1)
+        , iterations(-1)
+        , time(nan(""))
+    {
+    }
 
-  /// Empty solution for a problem with a given value function and policy
-  Solution(numvec valuefunction, vector<PolicyType> policy,
-           prec_t residual = -1, long iterations = -1, double time = nan(""))
-      : valuefunction(move(valuefunction)), policy(move(policy)),
-        residual(residual), iterations(iterations), time(time) {}
+    /// Empty solution for a problem with a given value function and policy
+    Solution(numvec valuefunction, vector<PolicyType> policy,
+        prec_t residual = -1, long iterations = -1, double time = nan(""))
+        : valuefunction(move(valuefunction))
+        , policy(move(policy))
+        , residual(residual)
+        , iterations(iterations)
+        , time(time)
+    {
+    }
 
-  /**
+    /**
   Computes the total return of the solution given the initial
   distribution.
   @param initial The initial distribution
    */
-  prec_t total_return(const Transition &initial) const {
-    if (initial.max_index() >= (long)valuefunction.size())
-      throw invalid_argument("Too many indexes in the initial distribution.");
-    return initial.value(valuefunction);
-  };
+    prec_t total_return(const Transition& initial) const
+    {
+        if (initial.max_index() >= (long)valuefunction.size())
+            throw invalid_argument("Too many indexes in the initial distribution.");
+        return initial.value(valuefunction);
+    };
 };
 
 /// A solution with a deterministic policy
@@ -381,57 +401,71 @@ Many of the methods are parametrized by the type of the state.
 The class also allows to use an initial policy specification. See the
 constructor for the definition.
 */
-template <class SType = RegularState> class PlainBellman {
+template <class SType = RegularState>
+class PlainBellman {
 public:
-  /// Provides the type of policy for each state (int represents a deterministic
-  /// policy)
-  using policy_type = long;
-  using state_type = SType;
-
-  /// Constructs the update with no constraints on the initial policy
-  PlainBellman() : initial_policy(0) {}
-
-  /** A partial policy that can be used to fix some actions
-   *  @param policy policy[s] = -1 means that the action should be optimized in
-   * the state policy of length 0 means that all actions will be optimized
+    /**
+   * Provides the type of policy for each state (int represents a deterministic
+   *  policy)
    */
-  PlainBellman(indvec policy) : initial_policy(move(policy)) {}
+    using policy_type = long;
+    using state_type = SType;
 
-  /**
-   *  Computes the Bellman update and returns the optimal action.
-   *  @returns New value for the state and the policy
-   */
-  pair<prec_t, policy_type> policy_update(const SType &state, long stateid,
-                                          const numvec &valuefunction,
-                                          prec_t discount) const {
-
-    // check whether this state should only be evaluated
-    if (initial_policy.empty() || initial_policy[stateid] < 0) { // optimizing
-      prec_t newvalue;
-      policy_type action;
-
-      tie(action, newvalue) = value_max_state(state, valuefunction, discount);
-      return make_pair(newvalue, action);
-    } else { // fixed-action, do not copy
-      return {value_fix_state(state, valuefunction, discount,
-                              initial_policy[stateid]),
-              initial_policy[stateid]};
+    /// Constructs the update with no constraints on the initial policy
+    PlainBellman()
+        : initial_policy(0)
+    {
     }
-  }
 
-  /**
+    /**
+     * A partial policy that can be used to fix some actions
+     *  @param policy policy[s] = -1 means that the action should be optimized in
+     * the state policy of length 0 means that all actions will be optimized
+     */
+    PlainBellman(indvec policy)
+        : initial_policy(move(policy))
+    {
+    }
+
+    /**
+     *  Computes the Bellman update and returns the optimal action.
+     *  @returns New value for the state and the policy
+     */
+    pair<prec_t, policy_type> policy_update(
+        const SType& state, long stateid,
+        const numvec& valuefunction,
+        prec_t discount) const
+    {
+
+        // check whether this state should only be evaluated
+        if (initial_policy.empty() || initial_policy[stateid] < 0) { // optimizing
+            prec_t newvalue;
+            policy_type action;
+
+            tie(action, newvalue) = value_max_state(state, valuefunction, discount);
+            return make_pair(newvalue, action);
+        } else { // fixed-action, do not copy
+            return { value_fix_state(
+                         state, valuefunction, discount,
+                         initial_policy[stateid]),
+                initial_policy[stateid] };
+        }
+    }
+
+    /**
    *  Computes value function update using the current policy
    * @returns New value for the state
    */
-  prec_t compute_value(const policy_type &action, const SType &state,
-                       const numvec &valuefunction, prec_t discount) const {
-
-    return value_fix_state(state, valuefunction, discount, action);
-  }
+    prec_t compute_value(
+        const policy_type& action, const SType& state, long stateid,
+        const numvec& valuefunction, prec_t discount) const
+    {
+        return value_fix_state(state, valuefunction, discount, action);
+    }
 
 protected:
-  /// Partial policy specification (action -1 is ignored and optimized)
-  const indvec initial_policy;
+    /// Partial policy specification (action -1 is ignored and optimized)
+    const indvec initial_policy;
 };
 
 // **************************************************************************
@@ -467,51 +501,51 @@ policy.
  */
 template <class SType, class ResponseType = PlainBellman<SType>>
 inline Solution<typename ResponseType::policy_type>
-vi_gs(const GRMDP<SType> &mdp, prec_t discount,
-      numvec valuefunction = numvec(0),
-      const ResponseType &response = PlainBellman<SType>(),
-      unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC) {
+vi_gs(const GRMDP<SType>& mdp, prec_t discount,
+    numvec valuefunction = numvec(0),
+    const ResponseType& response = PlainBellman<SType>(),
+    unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC)
+{
 
-  static_assert(
-      std::is_same<SType, typename ResponseType::state_type>::value,
-      "SType in vi_gs and the ResponseType passed to it must be the same");
+    static_assert(
+        std::is_same<SType, typename ResponseType::state_type>::value,
+        "SType in vi_gs and the ResponseType passed to it must be the same");
 
-  // time the computation
-  auto start = chrono::steady_clock::now();
+    // time the computation
+    auto start = chrono::steady_clock::now();
 
-  using policy_type = typename ResponseType::policy_type;
+    using policy_type = typename ResponseType::policy_type;
 
-  const auto &states = mdp.get_states();
-  // just quit if there are no states
-  if (mdp.state_count() == 0)
-    return Solution<policy_type>(0);
-  if (valuefunction.empty()) {
-    valuefunction.resize(mdp.state_count(), 0.0);
-  }
-
-  vector<policy_type> policy(mdp.state_count());
-
-  // initialize values
-  prec_t residual = numeric_limits<prec_t>::infinity();
-  size_t i; // iterations defined outside to make them reportable
-
-  for (i = 0; i < iterations && residual > maxresidual; i++) {
-    residual = 0;
-
-    for (size_t s = 0l; s < states.size(); s++) {
-      prec_t newvalue;
-      tie(newvalue, policy[s]) =
-          response.policy_update(states[s], long(s), valuefunction, discount);
-
-      residual = max(residual, abs(valuefunction[s] - newvalue));
-      valuefunction[s] = newvalue;
+    const auto& states = mdp.get_states();
+    // just quit if there are no states
+    if (mdp.state_count() == 0)
+        return Solution<policy_type>(0);
+    if (valuefunction.empty()) {
+        valuefunction.resize(mdp.state_count(), 0.0);
     }
-  }
 
-  auto finish = chrono::steady_clock::now();
-  chrono::duration<double> duration = finish - start;
-  return Solution<policy_type>(move(valuefunction), move(policy), residual, i,
-                               duration.count());
+    vector<policy_type> policy(mdp.state_count());
+
+    // initialize values
+    prec_t residual = numeric_limits<prec_t>::infinity();
+    size_t i; // iterations defined outside to make them reportable
+
+    for (i = 0; i < iterations && residual > maxresidual; i++) {
+        residual = 0;
+
+        for (size_t s = 0l; s < states.size(); s++) {
+            prec_t newvalue;
+            tie(newvalue, policy[s]) = response.policy_update(states[s], long(s), valuefunction, discount);
+
+            residual = max(residual, abs(valuefunction[s] - newvalue));
+            valuefunction[s] = newvalue;
+        }
+    }
+
+    auto finish = chrono::steady_clock::now();
+    chrono::duration<double> duration = finish - start;
+    return Solution<policy_type>(move(valuefunction), move(policy), residual, i,
+        duration.count());
 }
 
 /**
@@ -546,102 +580,102 @@ be compatible with PlainBellman
  */
 template <class SType, class ResponseType = PlainBellman<SType>>
 inline Solution<typename ResponseType::policy_type>
-mpi_jac(const GRMDP<SType> &mdp, prec_t discount,
-        const numvec &valuefunction = numvec(0),
-        const ResponseType &response = PlainBellman<SType>(),
-        unsigned long iterations_pi = MAXITER, prec_t maxresidual_pi = SOLPREC,
-        unsigned long iterations_vi = MAXITER, prec_t maxresidual_vi_rel = 0.9,
-        bool print_progress = false) {
+mpi_jac(const GRMDP<SType>& mdp, prec_t discount,
+    const numvec& valuefunction = numvec(0),
+    const ResponseType& response = PlainBellman<SType>(),
+    unsigned long iterations_pi = MAXITER, prec_t maxresidual_pi = SOLPREC,
+    unsigned long iterations_vi = MAXITER, prec_t maxresidual_vi_rel = 0.9,
+    bool print_progress = false)
+{
 
-  static_assert(
-      std::is_same<SType, typename ResponseType::state_type>::value,
-      "SType in mpi_jac and the ResponseType passed to it must be the same");
+    static_assert(
+        std::is_same<SType, typename ResponseType::state_type>::value,
+        "SType in mpi_jac and the ResponseType passed to it must be the same");
 
-  // time the computation
-  auto start = chrono::steady_clock::now();
+    // time the computation
+    auto start = chrono::steady_clock::now();
 
-  using policy_type = typename ResponseType::policy_type;
+    using policy_type = typename ResponseType::policy_type;
 
-  const auto &states = mdp.get_states();
+    const auto& states = mdp.get_states();
 
-  // just quit if there are no states
-  if (mdp.state_count() == 0)
-    return Solution<policy_type>(0);
+    // just quit if there are no states
+    if (mdp.state_count() == 0)
+        return Solution<policy_type>(0);
 
-  // intialize the policy
-  vector<policy_type> policy(mdp.state_count());
+    // intialize the policy
+    vector<policy_type> policy(mdp.state_count());
 
-  numvec sourcevalue = valuefunction; // value function to compute the update
-  // resize if the the value function is empty and initialize to 0
-  if (sourcevalue.empty())
-    sourcevalue.resize(mdp.state_count(), 0.0);
-  numvec targetvalue = sourcevalue; // value function to hold the updated values
+    numvec sourcevalue = valuefunction; // value function to compute the update
+    // resize if the the value function is empty and initialize to 0
+    if (sourcevalue.empty())
+        sourcevalue.resize(mdp.state_count(), 0.0);
+    numvec targetvalue = sourcevalue; // value function to hold the updated values
 
-  numvec residuals(states.size());
+    numvec residuals(states.size());
 
-  // residual in the policy iteration part
-  prec_t residual_pi = numeric_limits<prec_t>::infinity();
+    // residual in the policy iteration part
+    prec_t residual_pi = numeric_limits<prec_t>::infinity();
 
-  size_t i; // defined here to be able to report the number of iterations
+    size_t i; // defined here to be able to report the number of iterations
 
-  for (i = 0; i < iterations_pi; i++) {
+    for (i = 0; i < iterations_pi; i++) {
 
-    if (print_progress)
-      cout << "Policy iteration " << i << "/" << iterations_pi << ":" << endl;
+        if (print_progress)
+            cout << "Policy iteration " << i << "/" << iterations_pi << ":" << endl;
 
-    // this should use move semantics and therefore be very efficient
-    swap(targetvalue, sourcevalue);
+        // this should use move semantics and therefore be very efficient
+        swap(targetvalue, sourcevalue);
 
-    prec_t residual_vi = numeric_limits<prec_t>::infinity();
+        prec_t residual_vi = numeric_limits<prec_t>::infinity();
 
-// update policies
+        // update policies
 #pragma omp parallel for
-    for (auto s = 0l; s < long(states.size()); s++) {
-      prec_t newvalue;
-      tie(newvalue, policy[s]) =
-          response.policy_update(states[s], s, sourcevalue, discount);
-      residuals[s] = abs(sourcevalue[s] - newvalue);
-      targetvalue[s] = newvalue;
-    }
-    residual_pi = *max_element(residuals.cbegin(), residuals.cend());
+        for (auto s = 0l; s < long(states.size()); s++) {
+            prec_t newvalue;
+            tie(newvalue, policy[s]) = response.policy_update(states[s], s, sourcevalue, discount);
+            residuals[s] = abs(sourcevalue[s] - newvalue);
+            targetvalue[s] = newvalue;
+        }
+        residual_pi = *max_element(residuals.cbegin(), residuals.cend());
 
-    if (print_progress)
-      cout << "    Bellman residual: " << residual_pi << endl;
+        if (print_progress)
+            cout << "    Bellman residual: " << residual_pi << endl;
 
-    // the residual is sufficiently small
-    if (residual_pi <= maxresidual_pi)
-      break;
+        // the residual is sufficiently small
+        if (residual_pi <= maxresidual_pi)
+            break;
 
-    if (print_progress)
-      cout << "    Value iteration: " << flush;
-    // compute values using value iteration
+        if (print_progress)
+            cout << "    Value iteration: " << flush;
+        // compute values using value iteration
 
-    for (size_t j = 0;
-         j < iterations_vi && residual_vi > maxresidual_vi_rel * residual_pi;
-         j++) {
-      if (print_progress)
-        cout << "." << flush;
+        for (size_t j = 0;
+             j < iterations_vi && residual_vi > maxresidual_vi_rel * residual_pi;
+             j++) {
+            if (print_progress)
+                cout << "." << flush;
 
-      swap(targetvalue, sourcevalue);
+            swap(targetvalue, sourcevalue);
 
 #pragma omp parallel for
-      for (auto s = 0l; s < (long)states.size(); s++) {
-        prec_t newvalue =
-            response.compute_value(policy[s], states[s], sourcevalue, discount);
-        residuals[s] = abs(sourcevalue[s] - newvalue);
-        targetvalue[s] = newvalue;
-      }
-      residual_vi = *max_element(residuals.begin(), residuals.end());
+            for (auto s = 0l; s < long(states.size()); s++) {
+                prec_t newvalue = response.compute_value(policy[s], states[s], s, sourcevalue, discount);
+                residuals[s] = abs(sourcevalue[s] - newvalue);
+                targetvalue[s] = newvalue;
+            }
+            residual_vi = *max_element(residuals.begin(), residuals.end());
+        }
+        if (print_progress) {
+            cout << endl
+                 << "    Residual (fixed policy): " << residual_vi << endl
+                 << endl;
+        }
     }
-    if (print_progress)
-      cout << endl
-           << "    Residual (fixed policy): " << residual_vi << endl
-           << endl;
-  }
-  auto finish = chrono::steady_clock::now();
-  chrono::duration<double> duration = finish - start;
-  return Solution<policy_type>(move(targetvalue), move(policy), residual_pi, i,
-                               duration.count());
+    auto finish = chrono::steady_clock::now();
+    chrono::duration<double> duration = finish - start;
+    return Solution<policy_type>(move(targetvalue), move(policy), residual_pi, i,
+        duration.count());
 }
 
 // **************************************************************************
@@ -671,12 +705,13 @@ policy.
 */
 template <class SType>
 inline DeterministicSolution
-solve_vi(const GRMDP<SType> &mdp, prec_t discount,
-         numvec valuefunction = numvec(0), const indvec &policy = indvec(0),
-         unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC) {
-  return vi_gs<SType, PlainBellman<SType>>(mdp, discount, move(valuefunction),
-                                           PlainBellman<SType>(policy),
-                                           iterations, maxresidual);
+solve_vi(const GRMDP<SType>& mdp, prec_t discount,
+    numvec valuefunction = numvec(0), const indvec& policy = indvec(0),
+    unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC)
+{
+    return vi_gs<SType, PlainBellman<SType>>(mdp, discount, move(valuefunction),
+        PlainBellman<SType>(policy),
+        iterations, maxresidual);
 }
 
 /**
@@ -701,18 +736,19 @@ below maxresidual_vi * last_policy_residual
 @return Computed (approximate) solution
  */
 template <class SType>
-inline DeterministicSolution solve_mpi(const GRMDP<SType> &mdp, prec_t discount,
-                                       const numvec &valuefunction = numvec(0),
-                                       const indvec &policy = indvec(0),
-                                       unsigned long iterations_pi = MAXITER,
-                                       prec_t maxresidual_pi = SOLPREC,
-                                       unsigned long iterations_vi = MAXITER,
-                                       prec_t maxresidual_vi = 0.9,
-                                       bool print_progress = false) {
+inline DeterministicSolution solve_mpi(const GRMDP<SType>& mdp, prec_t discount,
+    const numvec& valuefunction = numvec(0),
+    const indvec& policy = indvec(0),
+    unsigned long iterations_pi = MAXITER,
+    prec_t maxresidual_pi = SOLPREC,
+    unsigned long iterations_vi = MAXITER,
+    prec_t maxresidual_vi = 0.9,
+    bool print_progress = false)
+{
 
-  return mpi_jac<SType, PlainBellman<SType>>(
-      mdp, discount, valuefunction, PlainBellman<SType>(policy), iterations_pi,
-      maxresidual_pi, iterations_vi, maxresidual_vi, print_progress);
+    return mpi_jac<SType, PlainBellman<SType>>(
+        mdp, discount, valuefunction, PlainBellman<SType>(policy), iterations_pi,
+        maxresidual_pi, iterations_vi, maxresidual_vi, print_progress);
 }
 
 } // namespace craam::algorithms
