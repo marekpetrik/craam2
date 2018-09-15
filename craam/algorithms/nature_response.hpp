@@ -30,28 +30,43 @@
 #include "craam/optimization/srect_gurobi.hpp"
 #include <functional>
 
-namespace craam {
-namespace algorithms {
-namespace nats {
+namespace craam { namespace algorithms { namespace nats {
 
 // *******************************************************
 // SA Nature definitions
 // *******************************************************
 
 /**
- * L1 robust response
+ * Average nature response (just compute the average of values).
+ * Implements tha SANature concept.
+ */
+struct average {
+    /// Implements the SANature iterface
+    pair<numvec, prec_t> operator()(long stateid, long actionid,
+                                    const numvec &nominalprob,
+                                    const numvec &zfunction) const {
+        assert(stateid > 0 && stateid < long(budgets.size()));
+        assert(actionid > 0 && actionid < long(budgets[stateid].size()));
+
+        return {nominalprob, std::inner_product(zfunction.cbegin(), zfunction.cend(),
+                                                nominalprob.cbegin(), 0.0)};
+    }
+};
+
+/**
+ * L1 robust response. Implements the SANature concept.
  * @see rsolve_mpi, rsolve_vi
  */
 class robust_l1 {
-  protected:
+protected:
     vector<numvec> budgets;
 
-  public:
+public:
     robust_l1(vector<numvec> budgets) : budgets(move(budgets)) {}
 
     /**
-   * @brief Implements SANature interface
-   */
+    * Implements SANature interface
+    */
     pair<numvec, prec_t> operator()(long stateid, long actionid,
                                     const numvec &nominalprob,
                                     const numvec &zfunction) const {
@@ -70,13 +85,13 @@ class robust_l1 {
  * @see rsolve_mpi, rsolve_vi
  */
 class robust_l1w {
-  protected:
+protected:
     vector<numvec> budgets;
     /// The weights are optional, if empty then uniform weights are used.
     /// The elements are over states, actions, and then next state values
     vector<vector<numvec>> weights;
 
-  public:
+public:
     /**
    * @param budgets One value for each state and action
    * @param weights State weights used in the L1 norm. One set of vectors for
@@ -95,8 +110,7 @@ class robust_l1w {
         assert(actionid > 0 && actionid < long(budgets[stateid].size()));
         assert(zfunction.size() == weights[stateid][actionid].size());
 
-        return worstcase_l1_w(zfunction, nominalprob,
-                              weights[stateid][actionid],
+        return worstcase_l1_w(zfunction, nominalprob, weights[stateid][actionid],
                               budgets[stateid][actionid]);
     }
 };
@@ -107,10 +121,10 @@ class robust_l1w {
  * @see rsolve_mpi, rsolve_vi
  */
 class robust_l1u {
-  protected:
+protected:
     prec_t budget;
 
-  public:
+public:
     robust_l1u(prec_t budget) : budget(move(budget)) {}
 
     /**
@@ -128,10 +142,10 @@ class robust_l1u {
  * @see rsolve_mpi, rsolve_vi
  */
 class optimistic_l1 {
-  protected:
+protected:
     vector<numvec> budgets;
 
-  public:
+public:
     optimistic_l1(vector<numvec> budgets) : budgets(move(budgets)) {}
 
     /**
@@ -145,10 +159,8 @@ class optimistic_l1 {
         assert(nominalprob.size() == zfunction.size());
 
         numvec minusv(zfunction.size());
-        transform(begin(zfunction), end(zfunction), begin(minusv),
-                  negate<prec_t>());
-        auto &&result =
-            worstcase_l1(minusv, nominalprob, budgets[stateid][actionid]);
+        transform(begin(zfunction), end(zfunction), begin(minusv), negate<prec_t>());
+        auto &&result = worstcase_l1(minusv, nominalprob, budgets[stateid][actionid]);
         return make_pair(result.first, -result.second);
     }
 };
@@ -159,10 +171,10 @@ class optimistic_l1 {
  * @see rsolve_mpi, rsolve_vi
  */
 class optimistic_l1u {
-  protected:
+protected:
     prec_t budget;
 
-  public:
+public:
     optimistic_l1u(prec_t budget) : budget(move(budget)){};
 
     /**
@@ -173,8 +185,7 @@ class optimistic_l1u {
         assert(nominalprob.size() == zfunction.size());
 
         numvec minusv(zfunction.size());
-        transform(begin(zfunction), end(zfunction), begin(minusv),
-                  negate<prec_t>());
+        transform(begin(zfunction), end(zfunction), begin(minusv), negate<prec_t>());
         auto &&result = worstcase_l1(minusv, nominalprob, budget);
         return make_pair(result.first, -result.second);
     }
@@ -189,8 +200,8 @@ struct robust_unbounded {
                                     const numvec &zfunction) const {
         // assert(v.size() == p.size());
         numvec dist(zfunction.size(), 0.0);
-        size_t index = size_t(min_element(begin(zfunction), end(zfunction)) -
-                              begin(zfunction));
+        size_t index =
+            size_t(min_element(begin(zfunction), end(zfunction)) - begin(zfunction));
         dist[index] = 1;
         return make_pair(dist, zfunction[index]);
     }
@@ -205,8 +216,8 @@ struct optimistic_unbounded {
                                     const numvec &zfunction) const {
         // assert(v.size() == p.size());
         numvec dist(zfunction.size(), 0.0);
-        size_t index = size_t(max_element(begin(zfunction), end(zfunction)) -
-                              begin(zfunction));
+        size_t index =
+            size_t(max_element(begin(zfunction), end(zfunction)) - begin(zfunction));
         dist[index] = 1;
         return make_pair(dist, zfunction[index]);
     }
@@ -224,21 +235,20 @@ struct optimistic_unbounded {
  *
  */
 class robust_l1w_gurobi {
-  protected:
+protected:
     vector<numvec> budgets;
     /// The weights are optional, if empty then uniform weights are used.
     /// The elements are over states, actions, and then next state values
     vector<vector<numvec>> weights;
     shared_ptr<GRBEnv> env;
 
-  public:
+public:
     /**
    * Automatically constructs a gurobi environment object. Weights are uniform
    * when not provided
    * @param budgets Budgets, with a single value for each MDP state and action
    */
-    robust_l1w_gurobi(vector<numvec> budgets)
-        : budgets(move(budgets)), weights(0) {
+    robust_l1w_gurobi(vector<numvec> budgets) : budgets(move(budgets)), weights(0) {
         env = make_shared<GRBEnv>();
         // make sure it is run in a single thread so it can be parallelized
         env->set(GRB_IntParam_OutputFlag, 0);
@@ -281,8 +291,8 @@ class robust_l1w_gurobi {
 
         // check for whether weights are being used
         if (weights.empty()) {
-            return worstcase_l1_w_gurobi(*env, zfunction, nominalprob,
-                                         numvec(0), budgets[stateid][actionid]);
+            return worstcase_l1_w_gurobi(*env, zfunction, nominalprob, numvec(0),
+                                         budgets[stateid][actionid]);
         } else {
             return worstcase_l1_w_gurobi(*env, zfunction, nominalprob,
                                          weights[stateid][actionid],
@@ -306,11 +316,11 @@ class robust_l1w_gurobi {
  *
  */
 class robust_s_l1 {
-  protected:
+protected:
     numvec budgets;
     vector<numvec> weights_a;
 
-  public:
+public:
     robust_s_l1(numvec budgets) : budgets(move(budgets)), weights_a(0) {}
 
     robust_s_l1(numvec budgets, vector<numvec> weights_a)
@@ -348,8 +358,7 @@ class robust_s_l1 {
             // skip the ones that have not transition probability
             if (actiondist[a] > EPSILON)
                 new_probability.push_back(
-                    worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a])
-                        .first);
+                    worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
             else
                 new_probability.push_back(numvec(0));
         }
@@ -369,12 +378,12 @@ class robust_s_l1 {
  * therefore fail when used in modified policy iteration
  */
 class robust_s_l1_gurobi {
-  protected:
+protected:
     // a budget for every state
     numvec budgets;
     shared_ptr<GRBEnv> env;
 
-  public:
+public:
     /**
    * Automatically constructs a gurobi environment object. Weights are uniform
    * when not provided
@@ -420,6 +429,4 @@ class robust_s_l1_gurobi {
 
 #endif
 
-} // namespace nats
-} // namespace algorithms
-} // namespace craam
+}}} // namespace craam::algorithms::nats

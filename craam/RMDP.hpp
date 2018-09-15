@@ -351,8 +351,7 @@ template <class SType> class GRMDP {
       @return If incorrect, the function returns the first state with an incorrect
               action and outcome. Otherwise the function return -1.
       */
-    template <typename Policy>
-    long is_policy_correct(const Policy &policies) const {
+    template <typename Policy> long is_policy_correct(const Policy &policies) const {
         for (auto si : indices(states)) {
             // ignore terminal states
             if (states[si].is_terminal())
