@@ -245,11 +245,11 @@ but assumes 0 return for regular models.
 and also the type of the outcome and action constraints
  */
 template <class SType> class GRMDP {
-  protected:
+protected:
     /** Internal list of states */
     vector<SType> states;
 
-  public:
+public:
     /// Type of the state
     using state_type = SType;
 
@@ -274,10 +274,9 @@ template <class SType> class GRMDP {
       States with intermediate ids are also created
       \return The new state
     */
-    SType &create_state(long stateid) {
+    SType& create_state(long stateid) {
         assert(stateid >= 0);
-        if (stateid >= (long)states.size())
-            states.resize(stateid + 1);
+        if (stateid >= (long)states.size()) states.resize(stateid + 1);
         return states[stateid];
     }
 
@@ -285,7 +284,7 @@ template <class SType> class GRMDP {
       Creates a new state at the end of the states
       \return The new state
     */
-    SType &create_state() { return create_state(states.size()); };
+    SType& create_state() { return create_state(states.size()); };
 
     /** Number of states */
     size_t state_count() const { return states.size(); };
@@ -294,25 +293,25 @@ template <class SType> class GRMDP {
     size_t size() const { return state_count(); };
 
     /** Retrieves an existing state */
-    const SType &get_state(long stateid) const {
+    const SType& get_state(long stateid) const {
         assert(stateid >= 0 && size_t(stateid) < state_count());
         return states[stateid];
     };
 
     /** Retrieves an existing state */
-    const SType &operator[](long stateid) const { return get_state(stateid); };
+    const SType& operator[](long stateid) const { return get_state(stateid); };
 
     /** Retrieves an existing state */
-    SType &get_state(long stateid) {
+    SType& get_state(long stateid) {
         assert(stateid >= 0 && size_t(stateid) < state_count());
         return states[stateid];
     };
 
     /** Retrieves an existing state */
-    SType &operator[](long stateid) { return get_state(stateid); };
+    SType& operator[](long stateid) { return get_state(stateid); };
 
     /** \returns list of all states */
-    const vector<SType> &get_states() const { return states; };
+    const vector<SType>& get_states() const { return states; };
 
     /**
       Check if all transitions in the process sum to one.
@@ -321,11 +320,10 @@ template <class SType> class GRMDP {
       \return True if and only if all transitions are normalized.
        */
     bool is_normalized() const {
-        for (auto const &s : states) {
-            for (auto const &a : s.get_actions()) {
-                for (auto const &t : a.get_outcomes()) {
-                    if (!t.is_normalized())
-                        return false;
+        for (auto const& s : states) {
+            for (auto const& a : s.get_actions()) {
+                for (auto const& t : a.get_outcomes()) {
+                    if (!t.is_normalized()) return false;
                 }
             }
         }
@@ -334,7 +332,7 @@ template <class SType> class GRMDP {
 
     /// Normalize all transitions to sum to one for all states, actions, outcomes.
     void normalize() {
-        for (SType &s : states)
+        for (SType& s : states)
             s.normalize();
     }
 
@@ -351,15 +349,13 @@ template <class SType> class GRMDP {
       @return If incorrect, the function returns the first state with an incorrect
               action and outcome. Otherwise the function return -1.
       */
-    template <typename Policy> long is_policy_correct(const Policy &policies) const {
+    template <typename Policy> long is_policy_correct(const Policy& policies) const {
         for (auto si : indices(states)) {
             // ignore terminal states
-            if (states[si].is_terminal())
-                continue;
+            if (states[si].is_terminal()) continue;
 
             // call function of the state
-            if (!states[si].is_action_correct(policies))
-                return si;
+            if (!states[si].is_action_correct(policies)) return si;
         }
         return -1;
     }
@@ -370,14 +366,14 @@ template <class SType> class GRMDP {
 
     // string representation
     /**
-  Returns a brief string representation of the RMDP.
-  This method is suitable for analyzing small RMDPs.
-  */
+      Returns a brief string representation of the RMDP.
+      This method is suitable for analyzing small RMDPs.
+      */
     string to_string() const {
         string result;
 
         for (size_t si : indices(states)) {
-            const auto &s = get_state(si);
+            const auto& s = get_state(si);
             result += (std::to_string(si));
             result += (" : ");
             result += (std::to_string(s.action_count()));
@@ -386,7 +382,7 @@ template <class SType> class GRMDP {
                 result += ("    ");
                 result += (std::to_string(ai));
                 result += (" : ");
-                const auto &a = s.get_action(ai);
+                const auto& a = s.get_action(ai);
                 a.to_string(result);
                 result += ("\n");
             }
@@ -395,27 +391,26 @@ template <class SType> class GRMDP {
     }
 
     /**
-  Returns a json representation of the RMDP.
-  This method is suitable to analyzing small RMDPs.
-  */
+      Returns a json representation of the RMDP.
+      This method is suitable to analyzing small RMDPs.
+      */
     string to_json() const {
         string result{"{\"states\" : ["};
         for (auto si : indices(states)) {
-            const auto &s = states[si];
+            const auto& s = states[si];
             result += s.to_json(si);
             result += ",";
         }
-        if (!states.empty())
-            result.pop_back(); // remove last comma
+        if (!states.empty()) result.pop_back(); // remove last comma
         result += "]}";
         return result;
     }
 
     /**
-   * Datermines which states and actions are invalid (have no transitions)
-   * @return List of (state, action) pairs. An empty vector when all states and
-   *          actions are valid
-   */
+      * Determines which states and actions are invalid (have no transitions)
+      * @return List of (state, action) pairs. An empty vector when all states and
+      *          actions are valid
+      */
     vector<pair<long, long>> invalid_state_actions() const {
         vector<pair<long, long>> invalid(0);
         for (size_t s = 0; s < states.size(); s++) {
@@ -435,7 +430,7 @@ template <class SType> class GRMDP {
         vector<indvec> result;
         result.reserve(size());
 
-        for (SType &state : states) {
+        for (SType& state : states) {
             result.push_back(state.pack_actions());
         }
         return result;

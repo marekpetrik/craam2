@@ -43,8 +43,8 @@ namespace craam { namespace algorithms { namespace nats {
 struct average {
     /// Implements the SANature iterface
     pair<numvec, prec_t> operator()(long stateid, long actionid,
-                                    const numvec &nominalprob,
-                                    const numvec &zfunction) const {
+                                    const numvec& nominalprob,
+                                    const numvec& zfunction) const {
         assert(stateid > 0 && stateid < long(budgets.size()));
         assert(actionid > 0 && actionid < long(budgets[stateid].size()));
 
@@ -68,8 +68,8 @@ public:
     * Implements SANature interface
     */
     pair<numvec, prec_t> operator()(long stateid, long actionid,
-                                    const numvec &nominalprob,
-                                    const numvec &zfunction) const {
+                                    const numvec& nominalprob,
+                                    const numvec& zfunction) const {
         assert(stateid > 0 && stateid < long(budgets.size()));
         assert(actionid > 0 && actionid < long(budgets[stateid].size()));
 
@@ -104,8 +104,8 @@ public:
    * @brief Implements SANature interface
    */
     pair<numvec, prec_t> operator()(long stateid, long actionid,
-                                    const numvec &nominalprob,
-                                    const numvec &zfunction) const {
+                                    const numvec& nominalprob,
+                                    const numvec& zfunction) const {
         assert(stateid > 0 && stateid < long(budgets.size()));
         assert(actionid > 0 && actionid < long(budgets[stateid].size()));
         assert(zfunction.size() == weights[stateid][actionid].size());
@@ -130,8 +130,8 @@ public:
     /**
    * @brief Implements SANature interface
    */
-    pair<numvec, prec_t> operator()(long, long, const numvec &nominalprob,
-                                    const numvec &zfunction) const {
+    pair<numvec, prec_t> operator()(long, long, const numvec& nominalprob,
+                                    const numvec& zfunction) const {
         return worstcase_l1(zfunction, nominalprob, budget);
     }
 };
@@ -152,15 +152,15 @@ public:
    * @brief Implements SANature interface
    */
     pair<numvec, prec_t> operator()(long stateid, long actionid,
-                                    const numvec &nominalprob,
-                                    const numvec &zfunction) const {
+                                    const numvec& nominalprob,
+                                    const numvec& zfunction) const {
         assert(stateid > 0 && stateid < long(budgets.size()));
         assert(actionid > 0 && actionid < long(budgets[stateid].size()));
         assert(nominalprob.size() == zfunction.size());
 
         numvec minusv(zfunction.size());
         transform(begin(zfunction), end(zfunction), begin(minusv), negate<prec_t>());
-        auto &&result = worstcase_l1(minusv, nominalprob, budgets[stateid][actionid]);
+        auto&& result = worstcase_l1(minusv, nominalprob, budgets[stateid][actionid]);
         return make_pair(result.first, -result.second);
     }
 };
@@ -180,13 +180,13 @@ public:
     /**
    * @brief Implements SANature interface
    */
-    pair<numvec, prec_t> operator()(long, long, const numvec &nominalprob,
-                                    const numvec &zfunction) const {
+    pair<numvec, prec_t> operator()(long, long, const numvec& nominalprob,
+                                    const numvec& zfunction) const {
         assert(nominalprob.size() == zfunction.size());
 
         numvec minusv(zfunction.size());
         transform(begin(zfunction), end(zfunction), begin(minusv), negate<prec_t>());
-        auto &&result = worstcase_l1(minusv, nominalprob, budget);
+        auto&& result = worstcase_l1(minusv, nominalprob, budget);
         return make_pair(result.first, -result.second);
     }
 };
@@ -196,8 +196,8 @@ struct robust_unbounded {
     /**
    * @brief Implements SANature interface
    */
-    pair<numvec, prec_t> operator()(long, long, const numvec &,
-                                    const numvec &zfunction) const {
+    pair<numvec, prec_t> operator()(long, long, const numvec&,
+                                    const numvec& zfunction) const {
         // assert(v.size() == p.size());
         numvec dist(zfunction.size(), 0.0);
         size_t index =
@@ -212,8 +212,8 @@ struct optimistic_unbounded {
     /**
    * @brief Implements SANature interface
    */
-    pair<numvec, prec_t> operator()(long, long, const numvec &,
-                                    const numvec &zfunction) const {
+    pair<numvec, prec_t> operator()(long, long, const numvec&,
+                                    const numvec& zfunction) const {
         // assert(v.size() == p.size());
         numvec dist(zfunction.size(), 0.0);
         size_t index =
@@ -223,8 +223,7 @@ struct optimistic_unbounded {
     }
 };
 
-// --------------- GUROBI START
-// --------------------------------------------------------
+// --------------- GUROBI START ----------------------------------------------------
 #ifdef GUROBI_USE
 
 /**
@@ -277,15 +276,15 @@ public:
    *                thread-safe.
    */
     robust_l1w_gurobi(vector<numvec> budgets, vector<vector<numvec>> weights,
-                      const shared_ptr<GRBEnv> &grbenv)
+                      const shared_ptr<GRBEnv>& grbenv)
         : budgets(move(budgets)), weights(move(weights)), env(grbenv){};
 
     /**
    * Implements the SANature interface
    */
     pair<numvec, prec_t> operator()(long stateid, long actionid,
-                                    const numvec &nominalprob,
-                                    const numvec &zfunction) const {
+                                    const numvec& nominalprob,
+                                    const numvec& zfunction) const {
         assert(stateid > 0 && stateid < long(budgets.size()));
         assert(actionid > 0 && actionid < long(budgets[stateid].size()));
 
@@ -330,8 +329,8 @@ public:
    * Implements SNature interface
    */
     tuple<numvec, vector<numvec>, prec_t>
-    operator()(long stateid, const vector<numvec> &nominalprobs,
-               const vector<numvec> &zvalues) const {
+    operator()(long stateid, const vector<numvec>& nominalprobs,
+               const vector<numvec>& zvalues) const {
         assert(stateid >= 0 && stateid < long(budgets.size()));
         assert(nominalprobs.size() == zvalues.size());
 
@@ -400,15 +399,15 @@ public:
    * @param env Gurobi environment to use
    * @param budgets Budgets, with a single value for each MDP state
    */
-    robust_s_l1_gurobi(const shared_ptr<GRBEnv> &env, numvec budgets)
+    robust_s_l1_gurobi(const shared_ptr<GRBEnv>& env, numvec budgets)
         : budgets(move(budgets)), env(env){};
 
     /**
    * Implements SNature interface
    */
     tuple<numvec, vector<numvec>, prec_t>
-    operator()(long stateid, const vector<numvec> &nominalprobs,
-               const vector<numvec> &zvalues) const {
+    operator()(long stateid, const vector<numvec>& nominalprobs,
+               const vector<numvec>& zvalues) const {
         assert(stateid >= 0 && stateid < long(budgets.size()));
         assert(nominalprobs.size() == zvalues.size());
 

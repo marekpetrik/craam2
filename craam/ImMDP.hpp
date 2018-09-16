@@ -48,7 +48,7 @@ using namespace util::lang;
 using namespace craam::algorithms;
 
 template <typename T> T max_value(vector<T> x) {
-    return (x.size() > 0) ? *max_element(x.begin(), x.end()) : -1;
+    return (!x.empty()) ? *max_element(x.begin(), x.end()) : -1;
 }
 
 /**
@@ -60,19 +60,19 @@ class MDPI {
 
 public:
     /**
-  Constructs the MDP with implementability constraints. This constructor makes
-  it possible to share the MDP with other data structures.
+      Constructs the MDP with implementability constraints. This constructor makes
+      it possible to share the MDP with other data structures.
 
-  Important: when the underlying MDP changes externally, the object becomes
-  invalid and may result in an unpredictable behavior.
+      Important: when the underlying MDP changes externally, the object becomes
+      invalid and may result in an unpredictable behavior.
 
-  \param mdp A non-robust base MDP model.
-  \param state2observ Maps each state to the index of the corresponding
-  observation. A valid policy will take the same action in all states with a
-  single observation. The index is 0-based. \param initial A representation of
-  the initial distribution. The rewards in this transition are ignored (and
-  should be 0).
-  */
+      \param mdp A non-robust base MDP model.
+      \param state2observ Maps each state to the index of the corresponding
+      observation. A valid policy will take the same action in all states with a
+      single observation. The index is 0-based. \param initial A representation of
+      the initial distribution. The rewards in this transition are ignored (and
+      should be 0).
+      */
     MDPI(const shared_ptr<const MDP>& mdp, const indvec& state2observ,
          const Transition& initial)
         : mdp(mdp), state2observ(state2observ), initial(initial),
@@ -117,11 +117,11 @@ public:
     size_t action_count(long obsid) { return action_counts[obsid]; };
 
     /**
-    Converts a policy defined in terms of observations to a policy defined in
-    terms of states.
-    \param obspol Policy that maps observations to actions to take
-    \return Observation policy
-    */
+      Converts a policy defined in terms of observations to a policy defined in
+      terms of states.
+      \param obspol Policy that maps observations to actions to take
+      \return Observation policy
+      */
     indvec obspol2statepol(const indvec& obspol) const {
         indvec statepol(state_count());
         obspol2statepol(obspol, statepol);
@@ -169,7 +169,7 @@ public:
     Transition get_initial() const { return initial; };
 
     /** Constructs a random observation policy */
-    indvec random_policy(unsigned seed = std::default_random_engine::default_seed) {
+    indvec random_policy(unsigned seed = 1u) {
         indvec policy(obscount, -1);
 
         default_random_engine gen(seed);
@@ -259,7 +259,7 @@ public:
       \param input_mdp File name for transition probabilities and rewards
       \param input_state2obs File name for mapping states to observations
       \param input_initial File name for initial distribution
-   */
+       */
     template <typename T = MDPI>
     static unique_ptr<T> from_csv(istream& input_mdp, istream& input_state2obs,
                                   istream& input_initial, bool headers = true) {
@@ -343,7 +343,7 @@ protected:
             throw invalid_argument(
                 "Number of observation indexes must match the number of states.");
         // check that the observation indexes are not negative
-        if (state2observ.size() == 0)
+        if (state2observ.empty())
             throw invalid_argument("Cannot have empty observations.");
         if (*min_element(state2observ.begin(), state2observ.end()) < 0)
             throw invalid_argument("Observation indexes must be non-negative");
@@ -363,27 +363,28 @@ class MDPI_R : public MDPI {
 
 public:
     /**
-  Calls the base constructor and also constructs the corresponding
-  robust MDP
-   */
+      Calls the base constructor and also constructs the corresponding
+      robust MDP
+       */
     MDPI_R(const shared_ptr<const MDP>& mdp, const indvec& state2observ,
            const Transition& initial)
-        : MDPI(mdp, state2observ, initial), robust_mdp(),
-          state2outcome(mdp->state_count(), -1) {
+        : MDPI(mdp, state2observ, initial), state2outcome(mdp->state_count(), -1) {
         initialize_robustmdp();
     }
 
     /**
-  Calls the base constructor and also constructs the corresponding
-  robust MDP.
-  */
+      Calls the base constructor and also constructs the corresponding
+      robust MDP.
+      */
     MDPI_R(const MDP& mdp, const indvec& state2observ, const Transition& initial)
-        : MDPI(mdp, state2observ, initial), robust_mdp(),
-          state2outcome(mdp.state_count(), -1) {
+        : MDPI(mdp, state2observ, initial), state2outcome(mdp.state_count(), -1) {
         initialize_robustmdp();
     }
-    /** Returns the internal robust MDP representation  */
-    const MDP& get_robust_mdp() const { return robust_mdp; };
+
+    const RMDP& get_robust_mdp() const {
+        /** Returns the internal robust MDP representation  */
+        return robust_mdp;
+    };
 
     /**
       Updates the weights on outcomes in the robust MDP based on the state
@@ -443,15 +444,13 @@ public:
       */
     indvec solve_reweighted(long iterations, prec_t discount,
                             const indvec& initobspol = indvec(0)) {
-
-        if (initobspol.size() > 0 && initobspol.size() != obs_count()) {
+        if (!initobspol.empty() && initobspol.size() != obs_count()) {
             throw invalid_argument(
                 "Initial policy must be defined for all observations.");
         }
 
         indvec obspol(initobspol); // return observation policy
-        if (obspol.size() == 0) { obspol.resize(obs_count(), 0); }
-
+        if (!obspol.empty()) { obspol.resize(obs_count(), 0); }
         indvec statepol(state_count(),
                         0); // state policy that corresponds to the observation policy
         obspol2statepol(obspol, statepol);
@@ -479,32 +478,32 @@ public:
     }
 
     /**
-  Uses a robust MDP formulation to solve the MDPI. States in the observation are
-  treated as outcomes. The baseline distribution is inferred from the provided
-  policy.
+      Uses a robust MDP formulation to solve the MDPI. States in the observation are
+      treated as outcomes. The baseline distribution is inferred from the provided
+      policy.
 
-  The uncertainty is bounded by using an L1 norm deviation and the provided
-  threshold.
+      The uncertainty is bounded by using an L1 norm deviation and the provided
+      threshold.
 
-  The method can run for several iterations, like solve_reweighted.
+      The method can run for several iterations, like solve_reweighted.
 
-  \param iterations Maximal number of iterations; terminates when the policy no
-  longer changes \param threshold Upper bound on the L1 deviation from the
-  baseline distribution. \param discount Discount factor \param initobspol
-  Initial observation policy (optional). When omitted or has length 0 a policy
-  that takes the first action (action 0) is used. \returns Policy for
-  observations (an index of each action for each observation)
-  */
+      \param iterations Maximal number of iterations; terminates when the policy no
+      longer changes \param threshold Upper bound on the L1 deviation from the
+      baseline distribution. \param discount Discount factor \param initobspol
+      Initial observation policy (optional). When omitted or has length 0 a policy
+      that takes the first action (action 0) is used. \returns Policy for
+      observations (an index of each action for each observation)
+      */
     indvec solve_robust(long iterations, prec_t threshold, prec_t discount,
                         const indvec& initobspol = indvec(0)) {
 
-        if (initobspol.size() > 0 && initobspol.size() != obs_count()) {
+        if (!initobspol.empty() && initobspol.size() != obs_count()) {
             throw invalid_argument(
                 "Initial policy must be defined for all observations.");
         }
 
         indvec obspol(initobspol); // return observation policy
-        if (obspol.size() == 0) { obspol.resize(obs_count(), 0); }
+        if (obspol.empty()) { obspol.resize(obs_count(), 0); }
         indvec statepol(state_count(),
                         0); // state policy that corresponds to the observation policy
         obspol2statepol(obspol, statepol);
@@ -547,77 +546,43 @@ public:
     }
 
 protected:
-    /** Non-robust representation of the MDPI. There are no transitions
-        defined. */
-    MDP robust_mdp;
-    /// Nature with robust outcomes
-    SARobustOutcomeBellman<RegularState> robust_bellman;
-
+    /** Robust representation of the MDPI */
+    RMDP robust_mdp;
     /** Maps the index of the mdp state to the index of the observation
   within the state corresponding to the observation (multiple states per
   observation) */
     indvec state2outcome;
-
-    /**
-     * Constructs a robust version of the implementable MDP. The MDP is really
-     * just a place-holder and all the information is contained
-     * the robust_bellman object.
-     */
+    /** Constructs a robust version of the implementable MDP.*/
     void initialize_robustmdp() {
         // Determine the number of state2observ
-        auto obs_count =
-            size_t(*max_element(state2observ.begin(), state2observ.end()) + 1);
+        auto obs_count = *max_element(state2observ.begin(), state2observ.end()) + 1;
 
-        // keep track of the number of states for each outcome
-        indvec outcome_count(size_t(obs_count), 0);
+        // keep track of the number of outcomes for each
+        indvec outcome_count(obs_count, 0);
 
-        // Nature's responses, one for each state and action
-        // they should really be s-rectangular and not s,a-rectangular
-        auto& responses = robust_bellman.get_responses();
-
-        // make sure there is one response for each observation
-        // and for each state
-        responses.resize(obs_count);
-        for (size_t obs = 0; obs < obs_count; ++obs) {
-            // create nature's observation
-            responses[obs].resize(action_counts[obs]);
-        }
-
-        // now, we loop over the states and actions in the original
-        // MDP and add an outcome for each one of the states
         for (size_t state_index : indices(*mdp)) {
-            // the current observation for the state
             auto obs = state2observ[state_index];
 
-            // make sure to at least create a terminal state when
-            // there are no actions for it
+            // make sure to at least create a terminal state when there are no actions
+            // for it
             robust_mdp.create_state(obs);
-
-            // create nature's observation
-            vector<WeightedOutcomeAction>& responses_state = responses[obs];
 
             // maps the transitions
             for (auto action_index : range(0l, action_counts[obs])) {
-
-                WeightedOutcomeAction& resp_sa = responses_state[action_index];
-
-                // Make sure that the corresponding action exists in the MDP
-                robust_mdp.create_state(obs).create_action(action_index);
-
-                // get original transition MDP
-                const Transition& original_tran =
+                // get original MDP transition
+                const Transition& old_tran =
                     mdp->get_state(state_index).get_action(action_index).get_outcome();
-
                 // create a new transition
-                Transition& new_tran = resp_sa.create_outcome(outcome_count[obs]);
+                Transition& new_tran = robust_mdp.create_state(obs)
+                                           .create_action(action_index)
+                                           .create_outcome(outcome_count[obs]);
 
                 // copy the original transitions (they are automatically consolidated
-                // while being added). Must go one by one because
-                // the state indices need to be remapped
-                for (size_t k : range(size_t(0), original_tran.size())) {
-                    new_tran.add_sample(state2observ[original_tran.get_indices()[k]],
-                                        original_tran.get_probabilities()[k],
-                                        original_tran.get_rewards()[k]);
+                // while being added)
+                for (size_t k : range(size_t(0), old_tran.size())) {
+                    new_tran.add_sample(state2observ[old_tran.get_indices()[k]],
+                                        old_tran.get_probabilities()[k],
+                                        old_tran.get_rewards()[k]);
                 }
             }
             state2outcome[size_t(state_index)] = outcome_count[size_t(obs)]++;

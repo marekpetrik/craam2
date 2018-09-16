@@ -58,186 +58,181 @@ the execution.
 */
 template <class AType> class SAState {
 protected:
-  /// list of actions
-  vector<AType> actions;
+    /// list of actions
+    vector<AType> actions;
 
 public:
-  SAState() : actions(0){};
+    SAState() : actions(0){};
 
-  /** Initializes state with actions and sets them all to valid */
-  SAState(const vector<AType> &actions) : actions(actions){};
+    /** Initializes state with actions and sets them all to valid */
+    SAState(const vector<AType>& actions) : actions(actions){};
 
-  /** Number of actions */
-  size_t action_count() const { return actions.size(); };
+    /** Number of actions */
+    size_t action_count() const { return actions.size(); };
 
-  /** Number of actions */
-  size_t size() const { return action_count(); };
+    /** Number of actions */
+    size_t size() const { return action_count(); };
 
-  /**
+    /**
   Creates an action given by actionid if it does not exists.
   Otherwise returns the existing one.
 
   All newly created actions with id < actionid are created as invalid
   (action.get_valid() = false). Action actionid is created as valid.
   */
-  AType &create_action(long actionid) {
-    assert(actionid >= 0);
+    AType& create_action(long actionid) {
+        assert(actionid >= 0);
 
-    // assumes that the default constructor makes the actions invalid
-    if (actionid >= (long)actions.size()) {
-      actions.resize(actionid + 1);
+        // assumes that the default constructor makes the actions invalid
+        if (actionid >= (long)actions.size()) { actions.resize(actionid + 1); }
+
+        // set only the action that is being added as valid
+        return actions[actionid];
     }
 
-    // set only the action that is being added as valid
-    return actions[actionid];
-  }
+    /** Creates an action at the last position of the state */
+    AType& create_action() { return create_action(actions.size()); };
 
-  /** Creates an action at the last position of the state */
-  AType &create_action() { return create_action(actions.size()); };
+    /** Returns an existing action */
+    const AType& get_action(long actionid) const {
+        assert(actionid >= 0 && size_t(actionid) < action_count());
+        return actions[actionid];
+    };
 
-  /** Returns an existing action */
-  const AType &get_action(long actionid) const {
-    assert(actionid >= 0 && size_t(actionid) < action_count());
-    return actions[actionid];
-  };
+    /** Returns an existing action */
+    const AType& operator[](long actionid) const { return get_action(actionid); }
 
-  /** Returns an existing action */
-  const AType &operator[](long actionid) const { return get_action(actionid); }
+    /** Returns an existing action */
+    AType& get_action(long actionid) {
+        assert(actionid >= 0 && size_t(actionid) < action_count());
+        return actions[actionid];
+    };
 
-  /** Returns an existing action */
-  AType &get_action(long actionid) {
-    assert(actionid >= 0 && size_t(actionid) < action_count());
-    return actions[actionid];
-  };
+    /** Returns an existing action */
+    AType& operator[](long actionid) { return get_action(actionid); }
 
-  /** Returns an existing action */
-  AType &operator[](long actionid) { return get_action(actionid); }
+    /// Returns whether the actions is valid
+    bool is_valid(long actionid) const {
+        assert(actionid < long(actions.size()) && actionid >= 0);
+        return actions[actionid].is_valid();
+    };
 
-  /// Returns whether the actions is valid
-  bool is_valid(long actionid) const {
-    assert(actionid < long(actions.size()) && actionid >= 0);
-    return actions[actionid].is_valid();
-  };
-
-  /** @returns List of action indices that have no transitions and are
+    /** @returns List of action indices that have no transitions and are
    *              thus considered to be invalid.
    */
-  indvec invalid_actions() const {
-    indvec invalid(0);
-    for (size_t a = 0; a < actions.size(); a++) {
-      if (!is_valid(a))
-        invalid.push_back(a);
+    indvec invalid_actions() const {
+        indvec invalid(0);
+        for (size_t a = 0; a < actions.size(); a++) {
+            if (!is_valid(a)) invalid.push_back(a);
+        }
+        return invalid;
     }
-    return invalid;
-  }
 
-  /** Returns teh set of all actions */
-  const vector<AType> &get_actions() const { return actions; };
+    /** Returns the set of all actions */
+    const vector<AType>& get_actions() const { return actions; };
 
-  /** True if the state is considered terminal (no actions). */
-  bool is_terminal() const { return actions.empty(); };
+    /** True if the state is considered terminal (no actions). */
+    bool is_terminal() const { return actions.empty(); };
 
-  /** Normalizes transition probabilities to sum to one. */
-  void normalize() {
-    for (AType &a : actions)
-      a.normalize();
-  }
-
-  /** Checks whether the prescribed action and outcome are correct */
-  bool is_action_correct(long aid, numvec nataction) const {
-    if ((aid < 0) || ((size_t)aid >= actions.size()))
-      return false;
-
-    return actions[aid].is_nature_correct(nataction);
-  }
-
-  /** Checks whether the prescribed action correct */
-  bool is_action_correct(long aid) const {
-    if ((aid < 0) || ((size_t)aid >= actions.size()))
-      return false;
-    else
-      return true;
-  }
-
-  /** Returns the mean reward following the action (and outcome). */
-  prec_t mean_reward(long actionid, numvec nataction) const {
-    if (is_terminal())
-      return 0;
-    else
-      return get_action(actionid).mean_reward(nataction);
-  }
-
-  /** Returns the mean reward following the action. */
-  prec_t mean_reward(long actionid) const {
-    if (is_terminal())
-      return 0;
-    else
-      return get_action(actionid).mean_reward();
-  }
-
-  /** Returns the mean transition probabilities following the action and
-  outcome. This class assumes a deterministic policy of the decision maker and
-  a randomized policy of nature.
-
-  \param action Deterministic action of the decision maker
-  \param nataction Randomized action of nature */
-  Transition mean_transition(long action, numvec nataction) const {
-    if (is_terminal())
-      return Transition();
-    else
-      return get_action(action).mean_transition(nataction);
-  }
-
-  /** Returns the mean transition probabilities following the action and
-  outcome.
-
-  \param action Deterministic action of decision maker */
-  Transition mean_transition(long action) const {
-    if (is_terminal())
-      return Transition();
-    else
-      return get_action(action).mean_transition();
-  }
-
-  /** Returns json representation of the state
-  \param stateid Includes also state id*/
-  string to_json(long stateid = -1) const {
-    string result{"{"};
-    result += "\"stateid\" : ";
-    result += std::to_string(stateid);
-    result += ",\"actions\" : [";
-    for (auto ai : indices(actions)) {
-      const auto &a = actions[ai];
-      result += a.to_json(ai);
-      result += ",";
+    /** Normalizes transition probabilities to sum to one. */
+    void normalize() {
+        for (AType& a : actions)
+            a.normalize();
     }
-    if (!actions.empty())
-      result.pop_back(); // remove last comma
-    result += ("]}");
-    return result;
-  }
 
-  /**
-   * Removes invalid actions, and reindexes the remaining ones accordingly.
-   *
-   * This function is not thread-safe and could leave the object in a very bad
-   * internal state if interrupted
-   *
-   * @returns List of original action ids
-   */
-  indvec pack_actions() {
-    indvec original;
-    vector<AType> newactions;
-    for (size_t actionid = 0; actionid < actions.size(); actionid++) {
-      AType &action = actions[actionid];
-      if (action.is_valid()) {
-        newactions.push_back(move(action));
-        original.push_back(actionid);
-      }
+    /** Checks whether the prescribed action and outcome are correct */
+    bool is_action_correct(long aid, numvec nataction) const {
+        if ((aid < 0) || ((size_t)aid >= actions.size())) return false;
+
+        return actions[aid].is_nature_correct(nataction);
     }
-    actions = move(newactions);
-    return original;
-  }
+
+    /** Checks whether the prescribed action correct */
+    bool is_action_correct(long aid) const {
+        if ((aid < 0) || ((size_t)aid >= actions.size()))
+            return false;
+        else
+            return true;
+    }
+
+    /** Returns the mean reward following the action (and outcome). */
+    prec_t mean_reward(long actionid, numvec nataction) const {
+        if (is_terminal())
+            return 0;
+        else
+            return get_action(actionid).mean_reward(nataction);
+    }
+
+    /** Returns the mean reward following the action. */
+    prec_t mean_reward(long actionid) const {
+        if (is_terminal())
+            return 0;
+        else
+            return get_action(actionid).mean_reward();
+    }
+
+    /** Returns the mean transition probabilities following the action and
+      outcome. This class assumes a deterministic policy of the decision maker and
+      a randomized policy of nature.
+
+      @param action Deterministic action of the decision maker
+      @param nataction Randomized action of nature */
+    Transition mean_transition(long action, numvec nataction) const {
+        if (is_terminal())
+            return Transition();
+        else
+            return get_action(action).mean_transition(nataction);
+    }
+
+    /** Returns the mean transition probabilities following the action and
+      outcome.
+
+      @param action Deterministic action of decision maker */
+    Transition mean_transition(long action) const {
+        if (is_terminal())
+            return Transition();
+        else
+            return get_action(action).mean_transition();
+    }
+
+    /** Returns json representation of the state
+        @param stateid Includes also state id*/
+    string to_json(long stateid = -1) const {
+        string result{"{"};
+        result += "\"stateid\" : ";
+        result += std::to_string(stateid);
+        result += ",\"actions\" : [";
+        for (auto ai : indices(actions)) {
+            const auto& a = actions[ai];
+            result += a.to_json(ai);
+            result += ",";
+        }
+        if (!actions.empty()) result.pop_back(); // remove last comma
+        result += ("]}");
+        return result;
+    }
+
+    /**
+      * Removes invalid actions, and reindexes the remaining ones accordingly.
+      *
+      * This function is not thread-safe and could leave the object in a very bad
+      * internal state if interrupted
+      *
+      * @returns List of original action ids
+      */
+    indvec pack_actions() {
+        indvec original;
+        vector<AType> newactions;
+        for (size_t actionid = 0; actionid < actions.size(); actionid++) {
+            AType& action = actions[actionid];
+            if (action.is_valid()) {
+                newactions.push_back(move(action));
+                original.push_back(actionid);
+            }
+        }
+        actions = move(newactions);
+        return original;
+    }
 };
 
 // **********************************************************************
@@ -255,16 +250,15 @@ using namespace craam;
 
 /// checks state and policy with a policy of nature
 template <class SType>
-bool is_action_correct(const SType &state, long stateid,
-                       const std::pair<indvec, vector<numvec>> &policies) {
-  return state.is_action_correct(policies.first[stateid],
-                                 policies.second[stateid]);
+bool is_action_correct(const SType& state, long stateid,
+                       const std::pair<indvec, vector<numvec>>& policies) {
+    return state.is_action_correct(policies.first[stateid], policies.second[stateid]);
 }
 
 /// checks state that does not require nature
 template <class SType>
-bool is_action_correct(const SType &state, long stateid, const indvec &policy) {
-  return state.is_action_correct(policy[stateid]);
+bool is_action_correct(const SType& state, long stateid, const indvec& policy) {
+    return state.is_action_correct(policy[stateid]);
 }
 } // namespace internal
 
