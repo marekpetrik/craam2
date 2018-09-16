@@ -41,7 +41,7 @@ using namespace std;
 using namespace util::lang;
 
 // *******************************************************
-// RegularAction computation methods
+// Action computation methods
 // *******************************************************
 
 /**
@@ -53,7 +53,7 @@ using namespace util::lang;
  * @return The length of the zvalues is the same as the number of
  *          transitions with positive probabilities.
  */
-inline numvec compute_zvalues(const RegularAction& action, const numvec& valuefunction,
+inline numvec compute_zvalues(const Action& action, const numvec& valuefunction,
                               prec_t discount) {
     const numvec& rewards = action.get_outcome().get_rewards();
     const indvec& nonzero_indices = action.get_outcome().get_indices();
@@ -77,7 +77,7 @@ of nature that is provided.
 @param discount Discount factor
 @param nature Method used to compute the response of nature.
 */
-inline vec_scal_t value_action(const RegularAction& action, const numvec& valuefunction,
+inline vec_scal_t value_action(const Action& action, const numvec& valuefunction,
                                prec_t discount, long stateid, long actionid,
                                const SANature& nature) {
     numvec zvalues = compute_zvalues(action, valuefunction, discount);

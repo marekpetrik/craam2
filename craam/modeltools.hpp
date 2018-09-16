@@ -479,14 +479,13 @@ inline RMDP robustify(const MDP& mdp, bool allowzeros = false) {
  */
 template <class T>
 inline vector<vector<T>>
-map_sa(const MDP& mdp, std::function<T(const RegularState&, const RegularAction&)> fun) {
+map_sa(const MDP& mdp, std::function<T(const RegularState&, const Action&)> fun) {
     vector<vector<T>> statesres(mdp.size());
     for (size_t i = 0; i < mdp.size(); i++) {
         const RegularState& s = mdp[i];
         statesres[i] = vector<T>(s.size());
         for (size_t j = 0; j < s.size(); j++) {
-            const RegularAction& a = s[j];
-            statesres[i][j] = fun(s, a);
+            statesres[i][j] = fun(s, s[j]);
         }
     }
     return statesres;

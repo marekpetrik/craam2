@@ -95,7 +95,7 @@ void solve_mdp(const cxxopts::Options& options, Solver solver){
 
         prec_t budget = options["budget"].as<prec_t>();
         numvecvec budgets = map_sa<prec_t>(mdp,
-            [budget](const RegularState&,const RegularAction&){return budget;});
+            [budget](const RegularState&,const Action&){return budget;});
 
         if(solver == Solver::MPI) {
             sol = algorithms::rsolve_mpi(mdp, discount, algorithms::nats::robust_l1(budgets), numvec(0), indvec(0),
@@ -117,7 +117,7 @@ void solve_mdp(const cxxopts::Options& options, Solver solver){
 
         prec_t budget = options["budget"].as<prec_t>();
         numvecvec budgets = map_sa<prec_t>(mdp,
-            [budget](const RegularState&,const RegularAction&){return  budget;});
+            [budget](const RegularState&,const Action&){return  budget;});
 
         if(solver == Solver::MPI) {
             sol = algorithms::rsolve_mpi(mdp, discount, algorithms::nats::robust_l1w_gurobi(budgets),

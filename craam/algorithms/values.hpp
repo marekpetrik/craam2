@@ -41,7 +41,7 @@ using namespace std;
 using namespace util::lang;
 
 // *******************************************************
-// RegularAction computation methods
+// Action computation methods
 // *******************************************************
 
 /**
@@ -52,7 +52,7 @@ Computes the average value of the action.
 @param discount Discount factor
 @return Action value
 */
-inline prec_t value_action(const RegularAction& action, const numvec& valuefunction,
+inline prec_t value_action(const Action& action, const numvec& valuefunction,
                            prec_t discount) {
     return action.get_outcome().value(valuefunction, discount);
 }
@@ -73,7 +73,7 @@ distribution is not zero.
 greater than 0. The order of states is the same as in the underlying transition.
 @return Action value
 */
-inline prec_t value_action(const RegularAction& action, const numvec& valuefunction,
+inline prec_t value_action(const Action& action, const numvec& valuefunction,
                            prec_t discount, numvec distribution) {
     return action.get_outcome().value(valuefunction, discount, distribution);
 }
@@ -466,9 +466,9 @@ vi_gs(const GRMDP<SType>& mdp, prec_t discount, numvec valuefunction = numvec(0)
 
     // just quit if there are no states
     if (mdp.empty()) return Solution<policy_type>(0);
-    if (valuefunction.empty()) { valuefunction.resize(mdp.state_count(), 0.0); }
+    if (valuefunction.empty()) { valuefunction.resize(mdp.size(), 0.0); }
 
-    vector<policy_type> policy(mdp.state_count());
+    vector<policy_type> policy(mdp.size());
 
     // initialize values
     prec_t residual = numeric_limits<prec_t>::infinity();
@@ -543,11 +543,11 @@ mpi_jac(const GRMDP<SType>& mdp, prec_t discount, const numvec& valuefunction = 
     if (mdp.empty()) return Solution<policy_type>(0);
 
     // intialize the policy
-    vector<policy_type> policy(mdp.state_count());
+    vector<policy_type> policy(mdp.size());
 
     numvec sourcevalue = valuefunction; // value function to compute the update
     // resize if the the value function is empty and initialize to 0
-    if (sourcevalue.empty()) sourcevalue.resize(mdp.state_count(), 0.0);
+    if (sourcevalue.empty()) sourcevalue.resize(mdp.size(), 0.0);
     numvec targetvalue = sourcevalue; // value function to hold the updated values
 
     numvec residuals(mdp.size());

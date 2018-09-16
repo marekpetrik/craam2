@@ -51,20 +51,20 @@ using namespace util::lang;
 Action in a regular MDP. There is no uncertainty and
 the action contains only a single outcome.
 */
-class RegularAction {
+class Action {
 protected:
     /// Transition probabilities
     Transition outcome;
 
 public:
     /** Creates an empty action. */
-    RegularAction() : outcome() {}
+    Action() : outcome() {}
 
     /** Initializes outcomes to the provided transition vector */
-    RegularAction(const Transition& outcome) : outcome(outcome) {}
+    Action(const Transition& outcome) : outcome(outcome) {}
 
     /** Returns the outcomes. */
-    vector<Transition> get_outcomes() const { return vector<Transition>{outcome}; }
+    auto get_outcomes() const { return vector<Transition>{outcome}; }
 
     /** Returns the single outcome. */
     const Transition& get_outcome(long outcomeid) const {
