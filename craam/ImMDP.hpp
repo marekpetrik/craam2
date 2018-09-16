@@ -192,8 +192,7 @@ public:
       \return Discounted return of the policy
       */
     prec_t total_return(prec_t discount, prec_t precision = SOLPREC) const {
-        auto&& sol = mpi_jac(*mdp, discount, numvec(0), PlainBellman<RegularState>(),
-                             MAXITER, precision);
+        auto&& sol = solve_mpi(*mdp, discount, numvec(0), indvec(0), MAXITER, precision);
         return sol.total_return(initial);
     }
 
@@ -469,7 +468,7 @@ public:
             // update importance weights
             update_importance_weights(importanceweights);
             // compute solution of the robust MDP with the new weights
-            auto&& s = mpi_jac(robust_mdp, discount);
+            auto&& s = solve_mpi(robust_mdp, discount);
 
             // update the policy for the underlying states
             obspol = s.policy;
@@ -520,8 +519,7 @@ public:
             update_importance_weights(importanceweights);
 
             // compute solution of the robust MDP with the new weights
-            auto bu = SARobustBellman<WeightedRobustState>(nats::robust_l1u(threshold));
-            auto&& s = mpi_jac(robust_mdp, discount, numvec(0), bu);
+            auto&& s = rsolve_mpi(robust_mdp, discount, nats::robust_l1u(threshold));
 
             // update the policy for the underlying states
             obspol = unzip(s.policy).first;

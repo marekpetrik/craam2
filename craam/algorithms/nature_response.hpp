@@ -158,7 +158,7 @@ public:
 
         numvec minusv(zfunction.size());
         transform(begin(zfunction), end(zfunction), begin(minusv), negate<prec_t>());
-        auto&& result = worstcase_l1(minusv, nominalprob, budgets[stateid][actionid]);
+        auto result = worstcase_l1(minusv, nominalprob, budgets[stateid][actionid]);
         return make_pair(result.first, -result.second);
     }
 };
@@ -184,7 +184,7 @@ public:
 
         numvec minusv(zfunction.size());
         transform(begin(zfunction), end(zfunction), begin(minusv), negate<prec_t>());
-        auto&& result = worstcase_l1(minusv, nominalprob, budget);
+        auto result = worstcase_l1(minusv, nominalprob, budget);
         return make_pair(result.first, -result.second);
     }
 };

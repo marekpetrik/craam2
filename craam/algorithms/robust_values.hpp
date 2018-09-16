@@ -273,7 +273,7 @@ public:
       @param policy Index of the action to take for each state
       @param nature Function that describes nature's response
       */
-    SARobustBellman(SANature nature, indvec policy)
+    SARobustBellman(SANature&& nature, indvec policy)
         : nature(move(nature)), initial_policy(move(policy)) {}
 
     /**
@@ -281,7 +281,7 @@ public:
       policy is provided.
       @param nature Function that describes nature's response
       */
-    SARobustBellman(SANature nature) : nature(move(nature)), initial_policy(0) {}
+    SARobustBellman(SANature&& nature) : nature(move(nature)), initial_policy(0) {}
 
     /**
       Computes the Bellman update and updates the action in the solution to the best
@@ -366,7 +366,7 @@ public:
       @param policy Index of the action to take for each state
       @param nature Function that describes nature's response
       */
-    SRobustBellman(SNature nature, indvec policy)
+    SRobustBellman(SNature&& nature, indvec policy)
         : nature(move(nature)), initial_policy(move(policy)) {}
 
     /**
@@ -374,7 +374,7 @@ public:
       policy is provided.
       @param nature Function that describes nature's response
       */
-    SRobustBellman(SNature nature) : nature(move(nature)), initial_policy(0) {}
+    SRobustBellman(SNature&& nature) : nature(move(nature)), initial_policy(0) {}
 
     // **** BEGIN: Bellman Interface Methods  ********
 
@@ -579,7 +579,7 @@ and actions.
 value per state and then one value per action.
 @param valuefunction Initial value function. Passed by value, because it is
 modified. Optional, use all zeros when not provided. Ignored when size is 0.
-@param policy    Partial policy specification. Optimize only actions that are
+@param policy  Partial policy specification. Optimize only actions that are
 policy[state] = -1. Use policy length 0 to optimize all actions.
 @param iterations Maximal number of iterations to run
 @param maxresidual Stop when the maximal residual falls below this value.
@@ -589,12 +589,13 @@ policy.
 */
 template <class SType>
 inline SARobustSolution
-rsolve_vi(const GRMDP<SType>& mdp, prec_t discount, const SANature& nature,
+rsolve_vi(const GRMDP<SType>& mdp, prec_t discount, SANature nature,
           numvec valuefunction = numvec(0), const indvec& policy = indvec(0),
           unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC) {
-    return vi_gs<SType, SARobustBellman<SType>>(mdp, discount, move(valuefunction),
-                                                SARobustBellman<SType>(nature, policy),
-                                                iterations, maxresidual);
+
+    return vi_gs<SType, SARobustBellman<SType>>(
+        mdp, discount, move(valuefunction), SARobustBellman<SType>(move(nature), policy),
+        iterations, maxresidual);
 }
 
 /**
@@ -634,13 +635,13 @@ computation
 */
 template <class SType>
 inline SARobustSolution
-rsolve_mpi(const GRMDP<SType>& mdp, prec_t discount, const SANature& nature,
+rsolve_mpi(const GRMDP<SType>& mdp, prec_t discount, SANature nature,
            const numvec& valuefunction = numvec(0), const indvec& policy = indvec(0),
            unsigned long iterations_pi = MAXITER, prec_t maxresidual_pi = SOLPREC,
            unsigned long iterations_vi = MAXITER, prec_t maxresidual_vi = 0.9,
            bool print_progress = false) {
     return mpi_jac<SType, SARobustBellman<SType>>(
-        mdp, discount, valuefunction, SARobustBellman<SType>(nature, policy),
+        mdp, discount, valuefunction, SARobustBellman<SType>(move(nature), policy),
         iterations_pi, maxresidual_pi, iterations_vi, maxresidual_vi, print_progress);
 }
 
@@ -659,26 +660,29 @@ functionality.
 @param mdp      The MDP to solve
 @param discount Discount factor.
 @param nature   Response of nature, the function is the same for all states
-and actions. @param thresholds Parameters passed to nature response functions.
-One value per state and then one value per action. @param valuefunction
+and actions.
+@param thresholds Parameters passed to nature response functions. One value per
+state and then one value per action.
+@param valuefunction
 Initial value function. Passed by value, because it is modified. Optional, use
-all zeros when not provided. Ignored when size is 0. @param policy    Partial
-policy specification. Optimize only actions that are  policy[state] = -1. Use
-policy length 0 to optimize all actions. @param iterations Maximal number of
-iterations to run @param maxresidual Stop when the maximal residual falls
-below this value.
+all zeros when not provided. Ignored when size is 0.
+@param policy    Partial policy specification. Optimize only actions that are
+policy[state] = -1. Use policy length 0 to optimize all actions.
+@param iterations Maximal number of iterations to run
+@param maxresidual Stop when the maximal residual falls below this value.
 
 
 \returns Solution that can be used to compute the total return, or the optimal
 policy.
 */
 template <class SType>
-inline auto rsolve_vi(const GRMDP<SType>& mdp, prec_t discount, const SNature& nature,
-                      numvec valuefunction = numvec(0), const indvec& policy = indvec(0),
-                      unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC) {
-    return vi_gs<SType, SRobustBellman<SType>>(mdp, discount, move(valuefunction),
-                                               SRobustBellman<SType>(nature, policy),
-                                               iterations, maxresidual);
+inline SRobustSolution
+rsolve_s_vi(const GRMDP<SType>& mdp, prec_t discount, SNature nature,
+            numvec valuefunction = numvec(0), const indvec& policy = indvec(0),
+            unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC) {
+    return vi_gs<SType, SRobustBellman<SType>>(
+        mdp, discount, move(valuefunction), SRobustBellman<SType>(move(nature), policy),
+        iterations, maxresidual);
 }
 
 /**
@@ -711,13 +715,13 @@ Computed (approximate) solution
 */
 template <class SType>
 inline SRobustSolution
-rsolve_mpi(const GRMDP<SType>& mdp, prec_t discount, const SNature& nature,
-           const numvec& valuefunction = numvec(0), const indvec& policy = indvec(0),
-           unsigned long iterations_pi = MAXITER, prec_t maxresidual_pi = SOLPREC,
-           unsigned long iterations_vi = MAXITER, prec_t maxresidual_vi = 0.9,
-           bool print_progress = false) {
+rsolve_s_mpi(const GRMDP<SType>& mdp, prec_t discount, SNature nature,
+             const numvec& valuefunction = numvec(0), const indvec& policy = indvec(0),
+             unsigned long iterations_pi = MAXITER, prec_t maxresidual_pi = SOLPREC,
+             unsigned long iterations_vi = MAXITER, prec_t maxresidual_vi = 0.9,
+             bool print_progress = false) {
     return mpi_jac<SType, SRobustBellman<SType>>(
-        mdp, discount, valuefunction, SRobustBellman<SType>(nature, policy),
+        mdp, discount, valuefunction, SRobustBellman<SType>(move(nature), policy),
         iterations_pi, maxresidual_pi, iterations_vi, maxresidual_vi, print_progress);
 }
 

@@ -115,8 +115,8 @@ BOOST_AUTO_TEST_CASE(test_l1_worst_case) {
 BOOST_AUTO_TEST_CASE(empty_test) {
   MDP m(0);
 
-  vi_gs(m, 0.9);
-  mpi_jac(m, 0.9);
+  solve_vi(m, 0.9);
+  solve_mpi(m, 0.9);
 }
 
 BOOST_AUTO_TEST_CASE(basic_tests) {
@@ -179,8 +179,7 @@ template <class Model> void test_simple_vi(const Model &rmdp) {
 
   // small number of iterations (not the true value function)
   numvec val_rob{7.68072, 8.67072, 9.77072};
-  auto re = vi_gs(rmdp, 0.9, initial,
-                  PlainBellman<typename Model::state_type>(indvec(0)), 20, 0);
+  auto re = solve_vi(rmdp, 0.9, initial, indvec(0), 20, 0);
 
   CHECK_CLOSE_COLLECTION(val_rob, re.valuefunction, 1e-3);
   BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(),
@@ -188,9 +187,7 @@ template <class Model> void test_simple_vi(const Model &rmdp) {
 
   // test jac value iteration with small number of iterations ( not the true
   // value function)
-  auto re2 =
-      mpi_jac(rmdp, 0.9, initial,
-              PlainBellman<typename Model::state_type>(indvec(0)), 20, 0, 0);
+  auto re2 = solve_mpi(rmdp, 0.9, initial, indvec(0), 20, 0, 0);
 
   numvec val_rob2{7.5726, 8.56265679, 9.66265679};
   CHECK_CLOSE_COLLECTION(val_rob2, re2.valuefunction, 1e-3);
@@ -205,57 +202,46 @@ template <class Model> void test_simple_vi(const Model &rmdp) {
                     init_d.get_probabilities().cbegin(), 0.0);
 
   // robust
-  auto re3 =
-      vi_gs(rmdp, 0.9, initial,
-            SARobustBellman<typename Model::state_type>(nats::robust_l1u(0.0)));
+  auto re3 = rsolve_vi(rmdp, 0.9, nats::robust_l1u(0.0), initial);
   CHECK_CLOSE_COLLECTION(val_rob3, re3.valuefunction, 1e-2);
   auto re3_pol = unzip(re3.policy).first;
   BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re3_pol.begin(),
                                 re3_pol.end());
 
-  auto re4 = mpi_jac(
-      rmdp, 0.9, initial,
-      SARobustBellman<typename Model::state_type>(nats::robust_l1u(0.0)), 1000,
-      0.0, 1000, 0.0);
+  auto re4 = rsolve_mpi(rmdp, 0.9, nats::robust_l1u(0.0), initial, indvec(0),
+                        1000, 0.0, 1000, 0.0);
   CHECK_CLOSE_COLLECTION(val_rob3, re4.valuefunction, 1e-2);
   auto re4_pol = unzip(re4.policy).first;
   BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re4_pol.begin(),
                                 re4_pol.end());
 
   // optimistic
-  auto re5 = vi_gs(
-      rmdp, 0.9, initial,
-      SARobustBellman<typename Model::state_type>(nats::optimistic_l1u(0.0)));
+  auto re5 = rsolve_vi(rmdp, 0.9, nats::optimistic_l1u(0.0), initial);
   CHECK_CLOSE_COLLECTION(val_rob3, re5.valuefunction, 1e-2);
   auto re5_pol = unzip(re5.policy).first;
   BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re5_pol.begin(),
                                 re5_pol.end());
 
-  auto re6 = mpi_jac(
-      rmdp, 0.9, initial,
-      SARobustBellman<typename Model::state_type>(nats::optimistic_l1u(0.0)));
+  auto re6 = rsolve_mpi(rmdp, 0.9, nats::optimistic_l1u(0.0), initial);
   CHECK_CLOSE_COLLECTION(val_rob3, re6.valuefunction, 1e-2);
   auto re6_pol = unzip(re6.policy).first;
   BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re6_pol.begin(),
                                 re6_pol.end());
 
   // plain
-  auto re7 = vi_gs(rmdp, 0.9, initial);
+  auto re7 = solve_vi(rmdp, 0.9, initial);
   CHECK_CLOSE_COLLECTION(val_rob3, re7.valuefunction, 1e-2);
   BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(),
                                 re7.policy.begin(), re7.policy.end());
 
-  auto re8 =
-      mpi_jac(rmdp, 0.9, initial, PlainBellman<typename Model::state_type>());
+  auto re8 = solve_mpi(rmdp, 0.9, initial);
   CHECK_CLOSE_COLLECTION(val_rob3, re8.valuefunction, 1e-2);
   auto re8_pol = re8.policy;
   BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re8_pol.begin(),
                                 re8_pol.end());
 
   // fixed evaluation
-  auto re9 =
-      mpi_jac(rmdp, 0.9, initial,
-              PlainBellman<typename Model::state_type>(pol_rob), 10000, 0.0, 0);
+  auto re9 = solve_mpi(rmdp, 0.9, initial, indvec(0), 10000, 0.0, 0);
   CHECK_CLOSE_COLLECTION(val_rob3, re9.valuefunction, 1e-2);
 
   // check the computed returns
@@ -450,9 +436,7 @@ template <class Model> void test_simple_mdp_save_load() {
   numvec initial{0, 0, 0};
 
   auto re =
-      vi_gs(rmdp2, 0.9, initial,
-            SARobustBellman<typename Model::state_type>(nats::robust_l1u(0.0)),
-            20l, 0);
+      rsolve_vi(rmdp2, 0.9, nats::robust_l1u(0.0), initial, indvec(0), 20l, 0);
 
   numvec val_rob{7.68072, 8.67072, 9.77072};
   indvec pol_rob{1, 1, 1};
@@ -506,37 +490,27 @@ template <class Model> void test_value_function(const Model &rmdp) {
   numvec initial{0};
 
   // gauss-seidel
-  auto result1 = vi_gs(
-      rmdp, 0.9, initial,
-      SARobustBellman<typename Model::state_type>(nats::robust_unbounded()),
-      1000, 0);
+  auto result1 = rsolve_vi(rmdp, 0.9, nats::robust_unbounded(), initial,
+                           indvec(0), 1000, 0);
   BOOST_CHECK_CLOSE(result1.valuefunction[0], 10.0, 1e-3);
 
-  auto result2 = vi_gs(
-      rmdp, 0.9, initial,
-      SARobustBellman<typename Model::state_type>(nats::optimistic_unbounded()),
-      1000, 0);
+  auto result2 = rsolve_vi(rmdp, 0.9, nats::optimistic_unbounded(), initial,
+                           indvec(0), 1000, 0);
   BOOST_CHECK_CLOSE(result2.valuefunction[0], 20.0, 1e-3);
 
-  auto result3 = vi_gs(rmdp, 0.9, initial,
-                       PlainBellman<typename Model::state_type>(), 1000, 0);
+  auto result3 = solve_vi(rmdp, 0.9, initial, indvec(), 1000, 0);
   BOOST_CHECK_CLOSE(result3.valuefunction[0], 15, 1e-3);
 
   // mpi
-  result1 = mpi_jac(
-      rmdp, 0.9, initial,
-      SARobustBellman<typename Model::state_type>(nats::robust_unbounded()),
-      1000, 0);
+  result1 = rsolve_mpi(rmdp, 0.9, nats::robust_unbounded(), initial, indvec(0),
+                       1000, 0);
   BOOST_CHECK_CLOSE(result1.valuefunction[0], 10.0, 1e-3);
 
-  result2 = mpi_jac(
-      rmdp, 0.9, initial,
-      SARobustBellman<typename Model::state_type>(nats::optimistic_unbounded()),
-      1000, 0);
+  result2 = rsolve_mpi(rmdp, 0.9, nats::optimistic_unbounded(), initial,
+                       indvec(0), 1000, 0);
   BOOST_CHECK_CLOSE(result2.valuefunction[0], 20.0, 1e-3);
 
-  result3 = mpi_jac(rmdp, 0.9, initial,
-                    PlainBellman<typename Model::state_type>(), 1000, 0);
+  result3 = solve_mpi(rmdp, 0.9, initial, indvec(0), 1000, 0);
   BOOST_CHECK_CLOSE(result3.valuefunction[0], 15, 1e-3);
 }
 
@@ -565,29 +539,21 @@ void test_value_function_thr(double threshold, numvec expected) {
 
   // *** 2.0 ***
   // gauss-seidel
-  auto result1 =
-      vi_gs(rmdp, 0.9, initial,
-            SARobustBellman<WeightedRobustState>(nats::robust_l1u(threshold)),
-            1000, 0);
+  auto result1 = rsolve_vi(rmdp, 0.9, nats::robust_l1u(threshold), initial,
+                           indvec(0), 1000, 0);
   BOOST_CHECK_CLOSE(result1.valuefunction[0], expected[0], 1e-3);
 
-  auto result2 = vi_gs(
-      rmdp, 0.9, initial,
-      SARobustBellman<WeightedRobustState>(nats::optimistic_l1u(threshold)),
-      1000, 0);
+  auto result2 = rsolve_vi(rmdp, 0.9, nats::optimistic_l1u(threshold), initial,
+                           indvec(0), 1000, 0);
   BOOST_CHECK_CLOSE(result2.valuefunction[0], expected[1], 1e-3);
 
   // mpi
-  result1 =
-      mpi_jac(rmdp, 0.9, initial,
-              SARobustBellman<WeightedRobustState>(nats::robust_l1u(threshold)),
-              1000, 0);
+  result1 = rsolve_mpi(rmdp, 0.9, nats::robust_l1u(threshold), initial,
+                       indvec(0), 1000, 0);
   BOOST_CHECK_CLOSE(result1.valuefunction[0], expected[0], 1e-3);
 
-  result2 = mpi_jac(
-      rmdp, 0.9, initial,
-      SARobustBellman<WeightedRobustState>(nats::optimistic_l1u(threshold)),
-      1000, 0);
+  result2 = rsolve_mpi(rmdp, 0.9, nats::optimistic_l1u(threshold), initial,
+                       indvec(0), 1000, 0);
   BOOST_CHECK_CLOSE(result2.valuefunction[0], expected[1], 1e-3);
 }
 
@@ -659,9 +625,8 @@ BOOST_AUTO_TEST_CASE(test_normalization) {
 
   // solve and check value function
   numvec initial{0, 0};
-  auto re = mpi_jac(
-      rmdp, 0.9, initial,
-      SARobustBellman<WeightedRobustState>(nats::robust_unbounded()), 2000, 0);
+  auto re = rsolve_mpi(rmdp, 0.9, nats::robust_unbounded(), initial, indvec(0),
+                       2000, 0);
 
   numvec val{0.545454545455, 0.0};
 
@@ -678,11 +643,9 @@ void test_randomized_threshold_average(const RMDP &rmdp,
 
   const prec_t gamma = 0.9;
   numvec value(0);
-  auto sol2 = vi_gs(rmdp, gamma, value, PlainBellman<WeightedRobustState>(),
-                    1000, 1e-5);
+  auto sol2 = solve_vi(rmdp, gamma, value, indvec(), 1000, 1e-5);
   CHECK_CLOSE_COLLECTION(sol2.valuefunction, desired, 0.001);
-  auto sol3 = mpi_jac(rmdp, gamma, value, PlainBellman<WeightedRobustState>(),
-                      1000, 1e-5);
+  auto sol3 = solve_mpi(rmdp, gamma, value, indvec(0), 1000, 1e-5);
   CHECK_CLOSE_COLLECTION(sol3.valuefunction, desired, 0.001);
 }
 
@@ -691,15 +654,11 @@ void test_randomized_threshold_robust(const RMDP &rmdp, double threshold,
 
   const prec_t gamma = 0.9;
   numvec value(0);
-  auto sol2 =
-      vi_gs(rmdp, gamma, value,
-            SARobustBellman<WeightedRobustState>(nats::robust_l1u(threshold)),
-            1000, 1e-5);
+  auto sol2 = rsolve_vi(rmdp, gamma, nats::robust_l1u(threshold), value,
+                        indvec(0), 1000, 1e-5);
   CHECK_CLOSE_COLLECTION(sol2.valuefunction, desired, 0.001);
-  auto sol3 =
-      mpi_jac(rmdp, gamma, value,
-              SARobustBellman<WeightedRobustState>(nats::robust_l1u(threshold)),
-              1000, 1e-5);
+  auto sol3 = rsolve_mpi(rmdp, gamma, nats::robust_l1u(threshold), value,
+                         indvec(0), 1000, 1e-5);
   CHECK_CLOSE_COLLECTION(sol3.valuefunction, desired, 0.001);
 }
 
@@ -708,15 +667,11 @@ void test_randomized_threshold_optimistic(const RMDP &rmdp, double threshold,
 
   const prec_t gamma = 0.9;
   numvec value(0);
-  auto sol2 = vi_gs(
-      rmdp, gamma, value,
-      SARobustBellman<WeightedRobustState>(nats::optimistic_l1u(threshold)),
-      1000, 1e-5);
+  auto sol2 = rsolve_vi(rmdp, gamma, nats::optimistic_l1u(threshold), value,
+                        indvec(0), 1000, 1e-5);
   CHECK_CLOSE_COLLECTION(sol2.valuefunction, desired, 0.001);
-  auto sol3 = mpi_jac(
-      rmdp, gamma, value,
-      SARobustBellman<WeightedRobustState>(nats::optimistic_l1u(threshold)),
-      1000, 1e-5);
+  auto sol3 = rsolve_mpi(rmdp, gamma, nats::optimistic_l1u(threshold), value,
+                         indvec(0), 1000, 1e-5);
   CHECK_CLOSE_COLLECTION(sol3.valuefunction, desired, 0.001);
 }
 
@@ -957,29 +912,24 @@ BOOST_AUTO_TEST_CASE(test_robustification) {
   RMDP rmdp_z = robustify(mdp, true);
 
   // **** Test ordinary
-  BOOST_CHECK_CLOSE(mpi_jac(mdp, 0.9).valuefunction[0], (1.0 + 2.0) / 2.0,
+  BOOST_CHECK_CLOSE(solve_mpi(mdp, 0.9).valuefunction[0], (1.0 + 2.0) / 2.0,
                     1e-4);
-  BOOST_CHECK_CLOSE(mpi_jac(rmdp_nz, 0.9).valuefunction[0], (1.0 + 2.0) / 2.0,
+  BOOST_CHECK_CLOSE(solve_mpi(rmdp_nz, 0.9).valuefunction[0], (1.0 + 2.0) / 2.0,
                     1e-4);
-  BOOST_CHECK_CLOSE(mpi_jac(rmdp_z, 0.9).valuefunction[0], (1.0 + 2.0) / 2.0,
+  BOOST_CHECK_CLOSE(solve_mpi(rmdp_z, 0.9).valuefunction[0], (1.0 + 2.0) / 2.0,
                     1e-4);
 
   // **** Test robust
 
   // robust MDP should have the same result as a robustified RMDP
   BOOST_CHECK_CLOSE(
-      mpi_jac(mdp, 0.9, numvec(0), SARobustBellman(nats::robust_l1u(0.5)))
-          .valuefunction[0],
+      rsolve_mpi(mdp, 0.9, nats::robust_l1u(0.5)).valuefunction[0],
       (1.0 * (0.5 + 0.25) + 2.0 * (0.5 - 0.25)), 1e-4);
   BOOST_CHECK_CLOSE(
-      mpi_jac(rmdp_nz, 0.9, numvec(0),
-              SARobustBellman<WeightedRobustState>(nats::robust_l1u(0.5)))
-          .valuefunction[0],
+      rsolve_mpi(rmdp_nz, 0.9, nats::robust_l1u(0.5)).valuefunction[0],
       (1.0 * (0.5 + 0.25) + 2.0 * (0.5 - 0.25)), 1e-4);
   BOOST_CHECK_CLOSE(
-      mpi_jac(rmdp_z, 0.9, numvec(0),
-              SARobustBellman<WeightedRobustState>(nats::robust_l1u(0.5)))
-          .valuefunction[0],
+      rsolve_mpi(rmdp_z, 0.9, nats::robust_l1u(0.5)).valuefunction[0],
       (1.0 * (0.5) + 2.0 * (0.5 - 0.25) + 0.0 * 0.25), 1e-4);
 }
 
@@ -1006,7 +956,7 @@ BOOST_AUTO_TEST_CASE(s_rectangular) {
 
   add_transition(mdp, 0, 3, 2, 1.0, 1.0);
 
-  rsolve_vi(mdp, 1.0, nats::robust_s_l1(numvec{0.1, 0, 0, 0}));
+  auto sol = rsolve_s_vi(mdp, 1.0, nats::robust_s_l1(numvec{0.1, 0, 0, 0}));
 }
 
 #ifdef GUROBI_USE
@@ -1028,7 +978,8 @@ BOOST_AUTO_TEST_CASE(s_rectangular_gurobi) {
 
   add_transition(mdp, 0, 3, 2, 1.0, 1.0);
 
-  rsolve_vi(mdp, 1.0, nats::robust_s_l1_gurobi(numvec{0.1, 0, 0, 0}));
+  auto sol =
+      rsolve_s_vi(mdp, 1.0, nats::robust_s_l1_gurobi(numvec{0.1, 0, 0, 0}));
 }
 
 #endif

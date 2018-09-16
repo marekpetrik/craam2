@@ -330,7 +330,7 @@ BOOST_AUTO_TEST_CASE(construct_mdp_from_samples_si_pol) {
       BOOST_CHECK_EQUAL((*mdp)[i].size(), 2);
   }
 
-  auto sol = mpi_jac(*mdp, 0.9);
+  auto sol = solve_mpi(*mdp, 0.9);
 
   BOOST_CHECK_CLOSE(sol.total_return(smdp.get_initial()), 51.313973, 1e-3);
 }
@@ -376,8 +376,8 @@ BOOST_AUTO_TEST_CASE(simulate_mdp) {
 
   auto newmdp = smdp.get_mdp();
 
-  auto solution1 = mpi_jac(*m, 0.9);
-  auto solution2 = mpi_jac(*newmdp, 0.9);
+  auto solution1 = solve_mpi(*m, 0.9);
+  auto solution2 = solve_mpi(*newmdp, 0.9);
 
   BOOST_CHECK_CLOSE(solution1.total_return(initial), 8.90971, 1.0);
   // cout << "Return in original MDP " << solution1.total_return(initial) <<
@@ -395,7 +395,7 @@ BOOST_AUTO_TEST_CASE(simulate_mdp) {
   indvec policytarget{1, 1, 1};
   BOOST_CHECK_EQUAL_COLLECTIONS(policy.begin(), policy.end(),
                                 policytarget.begin(), policytarget.end());
-  auto solution3 = mpi_jac(*m, 0.9, numvec(0), PlainBellman(policy));
+  auto solution3 = solve_mpi(*m, 0.9, numvec(0), policy);
 
   BOOST_CHECK_CLOSE(solution3.total_return(initial), 8.90916, 1e-2);
   // cout << "Return of sampled policy in the original MDP " <<
@@ -437,7 +437,7 @@ BOOST_AUTO_TEST_CASE(inventory_simulator) {
   // get a copy
   MDP newmdp = *smdp.get_mdp();
   newmdp.pack_actions();
-  auto solution = mpi_jac(newmdp, 0.9);
+  auto solution = solve_mpi(newmdp, 0.9);
   Transition init({initial}, {1.0});
 
   // Need to know what the exact return should be to make the below test
@@ -466,7 +466,7 @@ BOOST_AUTO_TEST_CASE(invasive_species_simulator) {
   smdp.add_samples(samples);
   MDP newmdp = *smdp.get_mdp();
   newmdp.pack_actions();
-  auto solution = mpi_jac(newmdp, 0.9);
+  auto solution = solve_mpi(newmdp, 0.9);
   Transition init({initial_population}, {1.0});
 
   // Need to know what the exact return should be to make the below test

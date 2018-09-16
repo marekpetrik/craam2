@@ -407,9 +407,9 @@ public:
     }
 
     /**
-   * Removes invalid actions, and reindexes the remaining ones accordingly.
-   * @returns List of original action ids for each state
-   */
+       * Removes invalid actions, and reindexes the remaining ones accordingly.
+       * @returns List of original action ids for each state
+       */
     vector<indvec> pack_actions() {
         vector<indvec> result;
         result.reserve(size());
