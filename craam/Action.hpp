@@ -51,7 +51,7 @@ using namespace util::lang;
 Action in a regular MDP. There is no uncertainty and
 the action contains only a single outcome.
 */
-class Action {
+class Action : public Transition {
 protected:
     /// Transition probabilities
     Transition outcome;

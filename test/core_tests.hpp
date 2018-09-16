@@ -154,7 +154,7 @@ BOOST_AUTO_TEST_CASE(basic_tests) {
           .second,
       max(t1.value(valuefunction, 0.9), t2.value(valuefunction, 0.9)), 1e-3);
 
-  WeightedRobustState s1({a1, a2, a3});
+  StateO s1({a1, a2, a3});
   auto v1 = get<2>(
       value_max_state(s1, valuefunction, 0.9, 0, nats::optimistic_unbounded()));
   auto v2 = get<2>(

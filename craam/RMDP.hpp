@@ -441,11 +441,11 @@ protected:
 /**
 Regular MDP with discrete actions and one outcome per action
 */
-using MDP = GRMDP<RegularState>;
+using MDP = GRMDP<State>;
 
 /**
 An uncertain MDP with outcomes and weights. See craam::L1RobustState.
 */
-using RMDP = GRMDP<WeightedRobustState>;
+using RMDP = GRMDP<StateO>;
 
 } // namespace craam

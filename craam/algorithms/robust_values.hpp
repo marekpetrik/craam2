@@ -210,7 +210,7 @@ inline ind_vec_scal_t value_max_state(const SType& state, const numvec& valuefun
  *          of the inner vector is the number of non-zero transition
  * probabilities
  */
-inline vector<numvec> compute_probabilities(const RegularState& state) {
+inline vector<numvec> compute_probabilities(const State& state) {
     vector<numvec> result;
     result.reserve(state.size());
 
@@ -229,8 +229,8 @@ inline vector<numvec> compute_probabilities(const RegularState& state) {
  *          of the inner vector is the number of non-zero transition
  * probabilities
  */
-inline vector<numvec> compute_zvalues(const RegularState& state,
-                                      const numvec& valuefunction, prec_t discount) {
+inline vector<numvec> compute_zvalues(const State& state, const numvec& valuefunction,
+                                      prec_t discount) {
     numvecvec result;
     result.reserve(state.size());
 
@@ -255,7 +255,7 @@ using SARobustSolution = Solution<pair<long, numvec>>;
  *
  * @see PlainBellman for a plain implementation
  */
-template <class SType = RegularState> class SARobustBellman {
+template <class SType = State> class SARobustBellman {
 protected:
     /// Reference to the function that is used to call the nature
     SANature nature;
@@ -347,7 +347,7 @@ using SRobustSolution = Solution<pair<numvec, vector<numvec>>>;
  *
  * @see PlainBellman for a plain implementation
  */
-template <class SType = RegularState> class SRobustBellman {
+template <class SType = State> class SRobustBellman {
 protected:
     /// Reference to the function that is used to call the nature
     SNature nature;
@@ -459,7 +459,7 @@ public:
  * The update for a state value recomputes the worst case, which should ensure
  * the convergence of the modified policy policy iteration in robust cases.
  */
-template <class SType = RegularState> class SARobustOutcomeBellman {
+template <class SType = State> class SARobustOutcomeBellman {
 public:
     /// Action index and distribution over outcomes
     using policy_type = std::pair<long, numvec>;

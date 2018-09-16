@@ -361,7 +361,7 @@ Many of the methods are parametrized by the type of the state.
 The class also allows to use an initial policy specification. See the
 constructor for the definition.
 */
-template <class SType = RegularState> class PlainBellman {
+template <class SType = State> class PlainBellman {
 public:
     /**
    * Provides the type of policy for each state (int represents a deterministic
