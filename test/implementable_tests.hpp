@@ -109,13 +109,13 @@ BOOST_AUTO_TEST_CASE(simple_construct_mdpi_r) {
 
   vector<prec_t> iv(rmdp.state_count(), 0.0);
 
-  auto &&so = mpi_jac(
+  auto so = mpi_jac(
       rmdp, 0.9, iv,
       SARobustBellman<WeightedRobustState>(nats::optimistic_unbounded()), 100,
       0.0, 10, 0.0);
   BOOST_CHECK_CLOSE(so.valuefunction[0], 20, 1e-3);
 
-  auto &&sr =
+  auto sr =
       mpi_jac(rmdp, 0.9, iv,
               SARobustBellman<WeightedRobustState>(nats::robust_unbounded()),
               100, 0.0, 10, 0.0);
@@ -164,13 +164,13 @@ BOOST_AUTO_TEST_CASE(small_construct_mdpi_r) {
   vector<prec_t> target_v_rob{12.0, 12.0};
 
   BOOST_TEST_CHECKPOINT("Solving RMDP");
-  auto &&so = mpi_jac(
+  auto so = mpi_jac(
       rmdp, 0.9, iv,
       SARobustBellman<WeightedRobustState>(nats::optimistic_unbounded()), 100,
       0.0, 10, 0.0);
   CHECK_CLOSE_COLLECTION(so.valuefunction, target_v_opt, 1e-3);
 
-  auto &&sr =
+  auto sr =
       mpi_jac(rmdp, 0.9, iv,
               SARobustBellman<WeightedRobustState>(nats::robust_unbounded()),
               100, 0.0, 10, 0.0);
@@ -254,7 +254,7 @@ BOOST_AUTO_TEST_CASE(simple_mdpo_save_load_save_load) {
 }
 
 BOOST_AUTO_TEST_CASE(simple_mdpor_save_load_save_load) {
-  MDP &&rmdp1 = make_chain1();
+  MDP rmdp1 = make_chain1();
 
   Transition initial(indvec{0, 1, 2}, numvec{1.0 / 3.0, 1.0 / 3.0, 1 / 3.0});
   indvec state2obs{0, 0, 1};
@@ -268,9 +268,9 @@ BOOST_AUTO_TEST_CASE(simple_mdpor_save_load_save_load) {
   store2.seekg(0);
   store3.seekg(0);
 
-  auto &&string11 = store1.str();
-  auto &&string12 = store2.str();
-  auto &&string13 = store3.str();
+  auto string11 = store1.str();
+  auto string12 = store2.str();
+  auto string13 = store3.str();
 
   auto mdpi2 = MDPI_R::from_csv(store1, store2, store3);
 
@@ -278,9 +278,9 @@ BOOST_AUTO_TEST_CASE(simple_mdpor_save_load_save_load) {
 
   mdpi2->to_csv(store21, store22, store23);
 
-  auto &&string21 = store21.str();
-  auto &&string22 = store22.str();
-  auto &&string23 = store23.str();
+  auto string21 = store21.str();
+  auto string22 = store22.str();
+  auto string23 = store23.str();
 
   BOOST_CHECK_EQUAL(string11, string21);
   BOOST_CHECK_EQUAL(string12, string22);
@@ -292,7 +292,7 @@ using namespace craam::msen;
 /*
 template<class T>
 void print_vector(vector<T> vec){
-    for(auto&& p : vec){
+    for(auto p : vec){
         cout << p << " ";
     }
 }*/
@@ -329,9 +329,9 @@ BOOST_AUTO_TEST_CASE(implementable_from_samples) {
   SampledMDP smdp;
   smdp.add_samples(*sd.get_discrete());
   auto mdp = smdp.get_mdp();
-  auto &&initial = smdp.get_initial();
+  auto initial = smdp.get_initial();
 
-  auto &&sol = mpi_jac(*mdp, 0.9);
+  auto sol = mpi_jac(*mdp, 0.9);
 
   // cout << "Optimal policy: " << endl; print_vector(sol.policy); cout << endl;
 
@@ -357,7 +357,7 @@ BOOST_AUTO_TEST_CASE(implementable_from_samples) {
   // cout << endl;
 
   MDPI_R mdpi(mdp, observations, initial);
-  auto &&randompolicy = mdpi.random_policy(25);
+  auto randompolicy = mdpi.random_policy(25);
 
   auto isol = mdpi.solve_reweighted(0, 0.9, randompolicy);
   BOOST_CHECK_EQUAL_COLLECTIONS(randompolicy.begin(), randompolicy.end(),
@@ -389,7 +389,7 @@ BOOST_AUTO_TEST_CASE(test_return_of_implementable) {
 
   const prec_t gamma = 0.99;
 
-  MDP &&mdp = make_chain1();
+  MDP mdp = make_chain1();
   indvec observations = {0, 0, 0};
   Transition initial1(numvec({1.0, 0.0, 0.0})),
       initial2(numvec({0.0, 1.0, 0.0})), initial3(numvec({0.0, 0.0, 1.0}));

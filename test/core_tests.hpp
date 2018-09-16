@@ -205,7 +205,7 @@ template <class Model> void test_simple_vi(const Model &rmdp) {
                     init_d.get_probabilities().cbegin(), 0.0);
 
   // robust
-  auto &&re3 =
+  auto re3 =
       vi_gs(rmdp, 0.9, initial,
             SARobustBellman<typename Model::state_type>(nats::robust_l1u(0.0)));
   CHECK_CLOSE_COLLECTION(val_rob3, re3.valuefunction, 1e-2);
@@ -213,7 +213,7 @@ template <class Model> void test_simple_vi(const Model &rmdp) {
   BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re3_pol.begin(),
                                 re3_pol.end());
 
-  auto &&re4 = mpi_jac(
+  auto re4 = mpi_jac(
       rmdp, 0.9, initial,
       SARobustBellman<typename Model::state_type>(nats::robust_l1u(0.0)), 1000,
       0.0, 1000, 0.0);
@@ -223,7 +223,7 @@ template <class Model> void test_simple_vi(const Model &rmdp) {
                                 re4_pol.end());
 
   // optimistic
-  auto &&re5 = vi_gs(
+  auto re5 = vi_gs(
       rmdp, 0.9, initial,
       SARobustBellman<typename Model::state_type>(nats::optimistic_l1u(0.0)));
   CHECK_CLOSE_COLLECTION(val_rob3, re5.valuefunction, 1e-2);
@@ -231,7 +231,7 @@ template <class Model> void test_simple_vi(const Model &rmdp) {
   BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re5_pol.begin(),
                                 re5_pol.end());
 
-  auto &&re6 = mpi_jac(
+  auto re6 = mpi_jac(
       rmdp, 0.9, initial,
       SARobustBellman<typename Model::state_type>(nats::optimistic_l1u(0.0)));
   CHECK_CLOSE_COLLECTION(val_rob3, re6.valuefunction, 1e-2);
@@ -240,12 +240,12 @@ template <class Model> void test_simple_vi(const Model &rmdp) {
                                 re6_pol.end());
 
   // plain
-  auto &&re7 = vi_gs(rmdp, 0.9, initial);
+  auto re7 = vi_gs(rmdp, 0.9, initial);
   CHECK_CLOSE_COLLECTION(val_rob3, re7.valuefunction, 1e-2);
   BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(),
                                 re7.policy.begin(), re7.policy.end());
 
-  auto &&re8 =
+  auto re8 =
       mpi_jac(rmdp, 0.9, initial, PlainBellman<typename Model::state_type>());
   CHECK_CLOSE_COLLECTION(val_rob3, re8.valuefunction, 1e-2);
   auto re8_pol = re8.policy;
@@ -253,7 +253,7 @@ template <class Model> void test_simple_vi(const Model &rmdp) {
                                 re8_pol.end());
 
   // fixed evaluation
-  auto &&re9 =
+  auto re9 =
       mpi_jac(rmdp, 0.9, initial,
               PlainBellman<typename Model::state_type>(pol_rob), 10000, 0.0, 0);
   CHECK_CLOSE_COLLECTION(val_rob3, re9.valuefunction, 1e-2);
@@ -263,10 +263,10 @@ template <class Model> void test_simple_vi(const Model &rmdp) {
 
   // check if we get the same return from the solution as from the
   // occupancy frequencies
-  auto &&occupancy_freq = occfreq_mat(rmdp, init_d, 0.9, re.policy);
+  auto occupancy_freq = occfreq_mat(rmdp, init_d, 0.9, re.policy);
   CHECK_CLOSE_COLLECTION(occupancy_freq, occ_freq3, 1e-3);
 
-  auto &&rewards = rewards_vec(rmdp, re3_pol);
+  auto rewards = rewards_vec(rmdp, re3_pol);
   auto cmp_tr = inner_product(rewards.begin(), rewards.end(),
                               occupancy_freq.begin(), 0.0);
   BOOST_CHECK_CLOSE(cmp_tr, ret_true, 1e-3);
@@ -295,7 +295,7 @@ BOOST_AUTO_TEST_CASE(test_check_add_transition_m) {
   add_transition(rmdp, 0, 0, 0, 5, 0.1, 1);
   add_transition(rmdp, 0, 0, 0, 7, 0.1, 2);
 
-  Transition &&transition = rmdp.get_state(0).mean_transition(0);
+  Transition transition = rmdp.get_state(0).mean_transition(0);
 
   BOOST_CHECK(is_sorted(transition.get_indices().begin(),
                         transition.get_indices().end()));
@@ -367,7 +367,7 @@ BOOST_AUTO_TEST_CASE(test_check_add_transition_r) {
   add_transition(rmdp, 0, 0, 0, 5, 0.1, 1);
   add_transition(rmdp, 0, 0, 0, 7, 0.1, 2);
 
-  Transition &&transition = rmdp.get_state(0).mean_transition(0, firstoutcome);
+  Transition transition = rmdp.get_state(0).mean_transition(0, firstoutcome);
 
   BOOST_CHECK(is_sorted(transition.get_indices().begin(),
                         transition.get_indices().end()));
@@ -449,7 +449,7 @@ template <class Model> void test_simple_mdp_save_load() {
 
   numvec initial{0, 0, 0};
 
-  auto &&re =
+  auto re =
       vi_gs(rmdp2, 0.9, initial,
             SARobustBellman<typename Model::state_type>(nats::robust_l1u(0.0)),
             20l, 0);
@@ -506,20 +506,20 @@ template <class Model> void test_value_function(const Model &rmdp) {
   numvec initial{0};
 
   // gauss-seidel
-  auto &&result1 = vi_gs(
+  auto result1 = vi_gs(
       rmdp, 0.9, initial,
       SARobustBellman<typename Model::state_type>(nats::robust_unbounded()),
       1000, 0);
   BOOST_CHECK_CLOSE(result1.valuefunction[0], 10.0, 1e-3);
 
-  auto &&result2 = vi_gs(
+  auto result2 = vi_gs(
       rmdp, 0.9, initial,
       SARobustBellman<typename Model::state_type>(nats::optimistic_unbounded()),
       1000, 0);
   BOOST_CHECK_CLOSE(result2.valuefunction[0], 20.0, 1e-3);
 
-  auto &&result3 = vi_gs(rmdp, 0.9, initial,
-                         PlainBellman<typename Model::state_type>(), 1000, 0);
+  auto result3 = vi_gs(rmdp, 0.9, initial,
+                       PlainBellman<typename Model::state_type>(), 1000, 0);
   BOOST_CHECK_CLOSE(result3.valuefunction[0], 15, 1e-3);
 
   // mpi
@@ -566,13 +566,13 @@ void test_value_function_thr(double threshold, numvec expected) {
 
   // *** 2.0 ***
   // gauss-seidel
-  auto &&result1 =
+  auto result1 =
       vi_gs(rmdp, 0.9, initial,
             SARobustBellman<WeightedRobustState>(nats::robust_l1u(threshold)),
             1000, 0);
   BOOST_CHECK_CLOSE(result1.valuefunction[0], expected[0], 1e-3);
 
-  auto &&result2 = vi_gs(
+  auto result2 = vi_gs(
       rmdp, 0.9, initial,
       SARobustBellman<WeightedRobustState>(nats::optimistic_l1u(threshold)),
       1000, 0);
@@ -660,7 +660,7 @@ BOOST_AUTO_TEST_CASE(test_normalization) {
 
   // solve and check value function
   numvec initial{0, 0};
-  auto &&re = mpi_jac(
+  auto re = mpi_jac(
       rmdp, 0.9, initial,
       SARobustBellman<WeightedRobustState>(nats::robust_unbounded()), 2000, 0);
 
@@ -679,11 +679,11 @@ void test_randomized_threshold_average(const RMDP &rmdp,
 
   const prec_t gamma = 0.9;
   numvec value(0);
-  auto &&sol2 = vi_gs(rmdp, gamma, value, PlainBellman<WeightedRobustState>(),
-                      1000, 1e-5);
+  auto sol2 = vi_gs(rmdp, gamma, value, PlainBellman<WeightedRobustState>(),
+                    1000, 1e-5);
   CHECK_CLOSE_COLLECTION(sol2.valuefunction, desired, 0.001);
-  auto &&sol3 = mpi_jac(rmdp, gamma, value, PlainBellman<WeightedRobustState>(),
-                        1000, 1e-5);
+  auto sol3 = mpi_jac(rmdp, gamma, value, PlainBellman<WeightedRobustState>(),
+                      1000, 1e-5);
   CHECK_CLOSE_COLLECTION(sol3.valuefunction, desired, 0.001);
 }
 
@@ -692,12 +692,12 @@ void test_randomized_threshold_robust(const RMDP &rmdp, double threshold,
 
   const prec_t gamma = 0.9;
   numvec value(0);
-  auto &&sol2 =
+  auto sol2 =
       vi_gs(rmdp, gamma, value,
             SARobustBellman<WeightedRobustState>(nats::robust_l1u(threshold)),
             1000, 1e-5);
   CHECK_CLOSE_COLLECTION(sol2.valuefunction, desired, 0.001);
-  auto &&sol3 =
+  auto sol3 =
       mpi_jac(rmdp, gamma, value,
               SARobustBellman<WeightedRobustState>(nats::robust_l1u(threshold)),
               1000, 1e-5);
@@ -709,12 +709,12 @@ void test_randomized_threshold_optimistic(const RMDP &rmdp, double threshold,
 
   const prec_t gamma = 0.9;
   numvec value(0);
-  auto &&sol2 = vi_gs(
+  auto sol2 = vi_gs(
       rmdp, gamma, value,
       SARobustBellman<WeightedRobustState>(nats::optimistic_l1u(threshold)),
       1000, 1e-5);
   CHECK_CLOSE_COLLECTION(sol2.valuefunction, desired, 0.001);
-  auto &&sol3 = mpi_jac(
+  auto sol3 = mpi_jac(
       rmdp, gamma, value,
       SARobustBellman<WeightedRobustState>(nats::optimistic_l1u(threshold)),
       1000, 1e-5);

@@ -330,7 +330,7 @@ BOOST_AUTO_TEST_CASE(construct_mdp_from_samples_si_pol) {
       BOOST_CHECK_EQUAL(mdp->get_state(i).action_count(), 2);
   }
 
-  auto &&sol = mpi_jac(*mdp, 0.9);
+  auto sol = mpi_jac(*mdp, 0.9);
 
   BOOST_CHECK_CLOSE(sol.total_return(smdp.get_initial()), 51.313973, 1e-3);
 }
