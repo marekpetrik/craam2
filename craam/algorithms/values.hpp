@@ -54,7 +54,7 @@ Computes the average value of the action.
 */
 inline prec_t value_action(const Action& action, const numvec& valuefunction,
                            prec_t discount) {
-    return action.get_outcome().value(valuefunction, discount);
+    return action.value(valuefunction, discount);
 }
 
 /**
@@ -75,7 +75,7 @@ greater than 0. The order of states is the same as in the underlying transition.
 */
 inline prec_t value_action(const Action& action, const numvec& valuefunction,
                            prec_t discount, numvec distribution) {
-    return action.get_outcome().value(valuefunction, discount, distribution);
+    return action.value(valuefunction, discount, distribution);
 }
 
 // *******************************************************

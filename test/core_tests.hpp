@@ -43,6 +43,17 @@ using namespace std;
 using namespace craam;
 using namespace craam::algorithms;
 
+// a helper function
+inline void add_transition(RMDP &mdp, long fromid, long actionid, long toid,
+                           prec_t probability, prec_t reward) {
+  // make sure that the destination state exists
+  mdp.create_state(toid);
+  auto &state_from = mdp.create_state(fromid);
+  auto &action = state_from.create_action(actionid);
+  Transition &outcome = action.create_outcome(0);
+  outcome.add_sample(toid, probability, reward);
+}
+
 // ********************************************************************************
 // ***** Model construction methods
 // ***********************************************
@@ -54,13 +65,13 @@ template <class Model> Model create_test_mdp() {
   // action 1 is optimal, with transition matrix [[0,1,0],[0,0,1],[0,0,1]] and
   // rewards [0,0,1.1] action 0 has a transition matrix [[1,0,0],[1,0,0],
   // [0,1,0]] and rewards [0,1.0,1.0]
-  add_transition<Model>(rmdp, 0, 1, 1, 1.0, 0.0);
-  add_transition<Model>(rmdp, 1, 1, 2, 1.0, 0.0);
-  add_transition<Model>(rmdp, 2, 1, 2, 1.0, 1.1);
+  add_transition(rmdp, 0, 1, 1, 1.0, 0.0);
+  add_transition(rmdp, 1, 1, 2, 1.0, 0.0);
+  add_transition(rmdp, 2, 1, 2, 1.0, 1.1);
 
-  add_transition<Model>(rmdp, 0, 0, 0, 1.0, 0.0);
-  add_transition<Model>(rmdp, 1, 0, 0, 1.0, 1.0);
-  add_transition<Model>(rmdp, 2, 0, 1, 1.0, 1.0);
+  add_transition(rmdp, 0, 0, 0, 1.0, 0.0);
+  add_transition(rmdp, 1, 0, 0, 1.0, 1.0);
+  add_transition(rmdp, 2, 0, 1, 1.0, 1.0);
 
   return rmdp;
 }
@@ -278,8 +289,8 @@ BOOST_AUTO_TEST_CASE(test_check_add_transition_m) {
   MDP rmdp;
 
   // check adding to the end
-  add_transition(rmdp, 0, 0, 0, 5, 0.1, 1);
-  add_transition(rmdp, 0, 0, 0, 7, 0.1, 2);
+  add_transition(rmdp, 0, 0, 5, 0.1, 1);
+  add_transition(rmdp, 0, 0, 7, 0.1, 2);
 
   Transition transition = rmdp[0].mean_transition(0);
 
@@ -290,7 +301,7 @@ BOOST_AUTO_TEST_CASE(test_check_add_transition_m) {
   BOOST_CHECK_EQUAL(transition.get_rewards().size(), 2);
 
   // check updating the last element
-  add_transition(rmdp, 0, 0, 0, 7, 0.4, 4);
+  add_transition(rmdp, 0, 0, 7, 0.4, 4);
   transition = rmdp[0].mean_transition(0);
 
   BOOST_CHECK(is_sorted(transition.get_indices().begin(),
@@ -308,7 +319,7 @@ BOOST_AUTO_TEST_CASE(test_check_add_transition_m) {
                                 tp.begin(), tp.end());
 
   // check inserting an element into the middle
-  add_transition(rmdp, 0, 0, 0, 6, 0.1, 0.5);
+  add_transition(rmdp, 0, 0, 6, 0.1, 0.5);
   transition = rmdp[0].mean_transition(0);
 
   BOOST_CHECK(is_sorted(transition.get_indices().begin(),
@@ -326,7 +337,7 @@ BOOST_AUTO_TEST_CASE(test_check_add_transition_m) {
                                 tp.begin(), tp.end());
 
   // check updating an element in the middle
-  add_transition(rmdp, 0, 0, 0, 6, 0.1, 1.5);
+  add_transition(rmdp, 0, 0, 6, 0.1, 1.5);
   transition = rmdp[0].mean_transition(0);
 
   BOOST_CHECK(is_sorted(transition.get_indices().begin(),
@@ -421,17 +432,15 @@ BOOST_AUTO_TEST_CASE(test_check_add_transition_r) {
 // ************************************************************
 // ********************************************************************************
 
-template <class Model> void test_simple_mdp_save_load() {
-
-  auto rmdp1 = create_test_mdp<Model>();
+BOOST_AUTO_TEST_CASE(simple_mdp_save_load_mdp) {
+  auto rmdp1 = create_test_mdp<MDP>();
 
   stringstream store;
 
   to_csv(rmdp1, store);
   store.seekg(0);
 
-  Model rmdp2;
-  from_csv(rmdp2, store);
+  MDP rmdp2 = mdp_from_csv(store);
 
   numvec initial{0, 0, 0};
 
@@ -447,16 +456,32 @@ template <class Model> void test_simple_mdp_save_load() {
                                 re_policy.begin(), re_policy.end());
 }
 
-BOOST_AUTO_TEST_CASE(simple_mdp_save_load_mdp) {
-  test_simple_mdp_save_load<MDP>();
-}
-
 BOOST_AUTO_TEST_CASE(simple_mdp_save_load_rmdpd) {
-  test_simple_mdp_save_load<RMDP>();
+  auto rmdp1 = create_test_mdp<RMDP>();
+
+  stringstream store;
+
+  to_csv(rmdp1, store);
+  store.seekg(0);
+
+  RMDP rmdp2 = mdpo_from_csv(store);
+
+  numvec initial{0, 0, 0};
+
+  auto re =
+      rsolve_vi(rmdp2, 0.9, nats::robust_l1u(0.0), initial, indvec(0), 20l, 0);
+
+  numvec val_rob{7.68072, 8.67072, 9.77072};
+  indvec pol_rob{1, 1, 1};
+
+  CHECK_CLOSE_COLLECTION(val_rob, re.valuefunction, 1e-3);
+  auto re_policy = unzip(re.policy).first;
+  BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(),
+                                re_policy.begin(), re_policy.end());
 }
 
-template <class Model> void test_simple_mdp_save_load_save_load() {
-  Model rmdp1 = create_test_mdp<Model>();
+void test_simple_mdp_save_load_save_load() {
+  MDP rmdp1 = create_test_mdp<MDP>();
 
   stringstream store;
 
@@ -465,8 +490,7 @@ template <class Model> void test_simple_mdp_save_load_save_load() {
 
   auto string1 = store.str();
 
-  Model rmdp2;
-  from_csv(rmdp2, store);
+  MDP rmdp2 = mdp_from_csv(store);
 
   stringstream store2;
 
@@ -475,10 +499,6 @@ template <class Model> void test_simple_mdp_save_load_save_load() {
   auto string2 = store2.str();
 
   BOOST_CHECK_EQUAL(string1, string2);
-}
-
-BOOST_AUTO_TEST_CASE(simple_mdp_save_load_save_load) {
-  test_simple_mdp_save_load_save_load<MDP>();
 }
 
 // ********************************************************************************
@@ -571,8 +591,8 @@ BOOST_AUTO_TEST_CASE(test_value_function_rmdpl1) {
 
 BOOST_AUTO_TEST_CASE(test_string_mdp) {
   MDP rmdp;
-  add_transition(rmdp, 0, 0, 0, 0, 1, 1);
-  add_transition(rmdp, 1, 0, 0, 0, 1, 1);
+  add_transition(rmdp, 0, 0, 0, 1, 1);
+  add_transition(rmdp, 1, 0, 0, 1, 1);
 
   auto s = rmdp.to_string();
   BOOST_CHECK_EQUAL(s.length(), 42);
@@ -676,11 +696,12 @@ void test_randomized_threshold_optimistic(const RMDP &rmdp, double threshold,
 }
 
 BOOST_AUTO_TEST_CASE(test_randomized_mdp) {
-  RMDP rmdp;
 
   // define the MDP representation
   // format: idstatefrom, idaction, idoutcome, idstateto, probability, reward
-  string string_representation{"1,0,0,1,1.0,2.0 \
+  string string_representation{
+      "idstatefrom, idaction, idoutcome, idstateto, probability, reward\
+         1,0,0,1,1.0,2.0 \
          2,0,0,2,1.0,3.0 \
          3,0,0,3,1.0,1.0 \
          4,0,0,4,1.0,4.0 \
@@ -702,7 +723,7 @@ BOOST_AUTO_TEST_CASE(test_randomized_mdp) {
   stringstream store(string_representation);
 
   store.seekg(0);
-  from_csv(rmdp, store, false);
+  RMDP rmdp = mdpo_from_csv(store);
 
   // print the problem definition for debugging
   // cout << string_representation << endl;
@@ -749,11 +770,12 @@ BOOST_AUTO_TEST_CASE(test_randomized_mdp) {
 // ********************************************************************************
 
 BOOST_AUTO_TEST_CASE(test_randomized_mdp_with_terminal_state) {
-  RMDP rmdp;
 
   // define the MDP representation
   // format: idstatefrom, idaction, idoutcome, idstateto, probability, reward
-  string string_representation{"1,0,0,5,1.0,20.0 \
+  string string_representation{
+      "idstatefrom, idaction, idoutcome, idstateto, probability, reward\
+         1,0,0,5,1.0,20.0 \
          2,0,0,5,1.0,30.0 \
          3,0,0,5,1.0,10.0 \
          4,0,0,5,1.0,40.0 \
@@ -777,7 +799,7 @@ BOOST_AUTO_TEST_CASE(test_randomized_mdp_with_terminal_state) {
   stringstream store(string_representation);
 
   store.seekg(0);
-  from_csv(rmdp, store, false);
+  RMDP rmdp = mdpo_from_csv(store);
 
   // print the problem definition for debugging
   // cout << string_representation << endl;
@@ -855,11 +877,11 @@ BOOST_AUTO_TEST_CASE(test_create_outcome) {
 
 BOOST_AUTO_TEST_CASE(test_parameter_read_write) {
 
-  RMDP rmdp;
-
   // define the MDP representation
   // format: idstatefrom, idaction, idoutcome, idstateto, probability, reward
-  string string_representation{"1,0,0,5,1.0,20.0 \
+  string string_representation{
+      "idstatefrom, idaction, idoutcome, idstateto, probability, reward\
+         1,0,0,5,1.0,20.0 \
          2,0,0,5,1.0,30.0 \
          3,0,0,5,1.0,10.0 \
          4,0,0,5,1.0,40.0 \
@@ -873,7 +895,7 @@ BOOST_AUTO_TEST_CASE(test_parameter_read_write) {
   stringstream store(string_representation);
 
   store.seekg(0);
-  from_csv(rmdp, store, false);
+  RMDP rmdp = mdpo_from_csv(store);
 
   BOOST_CHECK_EQUAL(rmdp[3][0].get_outcome(0).get_reward(0), 10.0);
   rmdp[3][0].get_outcome(0).set_reward(0, 15.1);

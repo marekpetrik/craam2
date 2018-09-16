@@ -263,8 +263,7 @@ public:
     static unique_ptr<T> from_csv(istream& input_mdp, istream& input_state2obs,
                                   istream& input_initial, bool headers = true) {
         // read mdp
-        MDP mdp;
-        craam::from_csv(mdp, input_mdp);
+        MDP mdp = craam::mdp_from_csv(input_mdp);
 
         // read state2obs
         string line;
@@ -570,8 +569,7 @@ protected:
             // maps the transitions
             for (auto action_index : range(0l, action_counts[obs])) {
                 // get original MDP transition
-                const Transition& old_tran =
-                    (*mdp)[state_index][action_index].get_outcome();
+                const Transition& old_tran = (*mdp)[state_index][action_index];
                 // create a new transition
                 Transition& new_tran = robust_mdp.create_state(obs)
                                            .create_action(action_index)

@@ -30,6 +30,7 @@
 #include "definitions.hpp"
 
 #include <cassert>
+#include <csv.h>
 #include <fstream>
 #include <functional>
 #include <istream>
@@ -50,6 +51,7 @@ using namespace util::lang;
 
 /**
 Adds a transition probability and reward for a particular outcome.
+
 \param mdp model to add the transition to
 \param fromid Starting state ID
 \param actionid Action ID
@@ -57,8 +59,7 @@ Adds a transition probability and reward for a particular outcome.
 \param probability Probability of the transition (must be non-negative)
 \param reward The reward associated with the transition.
 */
-template <class Model>
-inline void add_transition(Model& mdp, long fromid, long actionid, long outcomeid,
+inline void add_transition(RMDP& mdp, long fromid, long actionid, long outcomeid,
                            long toid, prec_t probability, prec_t reward) {
     // make sure that the destination state exists
     mdp.create_state(toid);
@@ -68,8 +69,7 @@ inline void add_transition(Model& mdp, long fromid, long actionid, long outcomei
     outcome.add_sample(toid, probability, reward);
 }
 /**
-Adds a transition probability and reward for an GMDP model. The
-outcomeid is 0.
+Adds a transition probability and reward for an RMDP model.
 
 \param mdp model to add the transition to
 \param fromid Starting state ID
@@ -78,99 +78,13 @@ outcomeid is 0.
 \param probability Probability of the transition (must be non-negative)
 \param reward The reward associated with the transition.
 */
-template <class Model>
-inline void add_transition(Model& mdp, long fromid, long actionid, long toid,
-                           prec_t probability, prec_t reward) {
-    add_transition(mdp, fromid, actionid, 0, toid, probability, reward);
-}
-
-/**
-Adds a transition probability and reward for an MDP model.
-\param mdp model to add the transition to
-\param fromid Starting state ID
-\param actionid Action ID
-\param toid Destination ID
-\param probability Probability of the transition (must be non-negative)
-\param reward The reward associated with the transition.
-*/
-
 inline void add_transition(MDP& mdp, long fromid, long actionid, long toid,
                            prec_t probability, prec_t reward) {
-    add_transition(mdp, fromid, actionid, 0, toid, probability, reward);
-}
-
-/**
-Loads an GRMDP definition from a simple csv file. States, actions, and
-outcomes are identified by 0-based ids. The columns are separated by
-commas, and rows by new lines.
-
-The file is formatted with the following columns:
-idstatefrom, idaction, idoutcome, idstateto, probability, reward
-
-\see from_csv for conveniently specialized methods
-
-\param mdp Model output (also returned)
-\param input Source of the RMDP
-\param header Whether the first line of the file represents the header.
-                The column names are not checked for correctness or number!
-\param has_outcome Whether the outcome column is included. If not, it is assumed
-to be 0. \returns The input model
- */
-template <class Model>
-inline Model& from_csv_general(Model& mdp, istream& input, bool header = true,
-                               bool has_outcome = true) {
-    string line;
-    // skip the first row if so instructed
-    if (header) input >> line;
-    input >> line;
-    while (input.good()) {
-        string cellstring;
-        stringstream linestream(line);
-        long idstatefrom, idstateto, idaction, idoutcome;
-        prec_t probability, reward;
-
-        // read idstatefrom
-        getline(linestream, cellstring, ',');
-        idstatefrom = stol(cellstring);
-        // read idaction
-        getline(linestream, cellstring, ',');
-        idaction = stol(cellstring);
-        // read idoutcome
-        if (has_outcome) {
-            getline(linestream, cellstring, ',');
-            idoutcome = stol(cellstring);
-        } else {
-            idoutcome = 0l;
-        }
-        // read idstateto
-        getline(linestream, cellstring, ',');
-        idstateto = stol(cellstring);
-        // read probability
-        getline(linestream, cellstring, ',');
-        probability = stod(cellstring);
-        // read reward
-        getline(linestream, cellstring, ',');
-        reward = stod(cellstring);
-        // add transition
-        add_transition<Model>(mdp, idstatefrom, idaction, idoutcome, idstateto,
-                              probability, reward);
-        input >> line;
-    }
-    return mdp;
-}
-
-/**
-A specialization of from_csv_general.
- */
-MDP& from_csv(MDP& mdp, istream& input, bool header = true, bool has_outcome = false) {
-    return from_csv_general(mdp, input, header, has_outcome);
-}
-
-/**
-A specialization of from_csv_general.
- */
-RMDP& from_csv(RMDP& mdp, istream& input, bool header = true, bool has_outcome = true) {
-    return from_csv_general(mdp, input, header, has_outcome);
+    // make sure that the destination state exists
+    mdp.create_state(toid);
+    auto& state_from = mdp.create_state(fromid);
+    auto& action = state_from.create_action(actionid);
+    action.add_sample(toid, probability, reward);
 }
 
 /**
@@ -180,19 +94,67 @@ commas, and rows by new lines.
 
 The file is formatted with the following columns:
 idstatefrom, idaction, idstateto, probability, reward
+The file must have a header.
 
-
-\param input Source of the MDP
-\param header Whether the first line of the file represents the header.
-                The column names are not checked for correctness or number!
-\param has_outcome Whether the outcome column is included. If not, it is assumed
-to be 0.
-
-\returns The input model
  */
-MDP from_csv_mdp(istream& input, bool header = true, bool has_outcome = false) {
+MDP mdp_from_csv(io::CSVReader<5> in) {
+    long idstatefrom, idaction, idstateto;
+    double probability, reward;
+
     MDP mdp;
-    return from_csv(mdp, input, header, has_outcome);
+    in.read_header(io::ignore_extra_column, "idstatefrom", "idaction", "idstateto",
+                   "probability", "reward");
+    bool read_row = in.read_row(idstatefrom, idaction, idstateto, probability, reward);
+    do {
+        add_transition(mdp, idstatefrom, idaction, idstateto, probability, reward);
+        read_row = in.read_row(idstatefrom, idaction, idstateto, probability, reward);
+    } while (read_row);
+    return mdp;
+}
+
+MDP mdp_from_csv(const string& file_name) {
+    return mdp_from_csv(io::CSVReader<5>(file_name));
+}
+
+MDP mdp_from_csv(istream& input) {
+    return mdp_from_csv(io::CSVReader<5>("temp_file", input));
+}
+
+/**
+Loads an RMDP definition from a simple csv file. States, actions, and
+outcomes are identified by 0-based ids. The columns are separated by
+commas, and rows by new lines.
+
+The file is formatted with the following columns:
+idstatefrom, idaction, idoutcome, idstateto, probability, reward
+The file must have a header.
+
+ */
+RMDP mdpo_from_csv(io::CSVReader<6> in) {
+    long idstatefrom, idaction, idoutcome, idstateto;
+    double probability, reward;
+
+    RMDP mdp;
+
+    in.read_header(io::ignore_extra_column, "idstatefrom", "idaction", "idoutcome",
+                   "idstateto", "probability", "reward");
+    bool read_row =
+        in.read_row(idstatefrom, idaction, idoutcome, idstateto, probability, reward);
+    do {
+        add_transition(mdp, idstatefrom, idaction, idoutcome, idstateto, probability,
+                       reward);
+        read_row =
+            in.read_row(idstatefrom, idaction, idoutcome, idstateto, probability, reward);
+    } while (read_row);
+    return mdp;
+}
+
+RMDP mdpo_from_csv(const string& file_name) {
+    return mdpo_from_csv(io::CSVReader<6>(file_name));
+}
+
+RMDP mdpo_from_csv(istream& input) {
+    return mdpo_from_csv(io::CSVReader<6>("temp_file", input));
 }
 
 /**
@@ -279,10 +241,9 @@ void to_csv(const MDP& mdp, ostream& output, bool header = true) {
 
     // idstatefrom
     for (size_t i = 0l; i < mdp.size(); i++) {
-        const auto& actions = mdp[i].get_actions();
         // idaction
-        for (size_t j = 0; j < actions.size(); j++) {
-            const auto& tran = actions[j].get_outcome();
+        for (size_t j = 0; j < mdp[i].size(); j++) {
+            const auto& tran = mdp[i][j];
 
             const auto& indices = tran.get_indices();
             const auto& rewards = tran.get_rewards();
@@ -303,33 +264,18 @@ a detailed description.
 \param filename Name of the file
 \param header Whether to create a header of the file too
  */
-template <class M>
-void to_csv_file(const M& mdp, const string& filename, bool header = true) {
+template <class Model>
+void to_csv_file(const Model& mdp, const string& filename, bool header = true) {
     ofstream ofs(filename, ofstream::out);
     to_csv(mdp, ofs, header);
     ofs.close();
 }
 
 /**
-Loads transition probabilities and rewards from a CSV file.
-\param mdp Model output (also returned)
-\param filename Name of the file
-\param header Whether to create a header of the file too
-\returns The input model
- */
-template <class Model>
-inline Model& from_csv_file(Model& mdp, const string& filename, bool header = true) {
-    ifstream ifs(filename);
-    from_csv(mdp, ifs, header);
-    ifs.close();
-    return mdp;
-}
-
-/**
 Sets the distribution for outcomes for each state and
 action to be uniform.
 */
-template <class Model> inline void set_uniform_outcome_dst(Model& mdp) {
+inline void set_uniform_outcome_dst(RMDP& mdp) {
     for (const auto si : indices(mdp)) {
         auto& s = mdp[si];
         for (const auto ai : indices(s)) {
@@ -344,8 +290,7 @@ template <class Model> inline void set_uniform_outcome_dst(Model& mdp) {
 /**
 Sets the distribution of outcomes for the given state and action.
 */
-template <class Model>
-inline void set_outcome_dst(Model& mdp, size_t stateid, size_t actionid,
+inline void set_outcome_dst(RMDP& mdp, size_t stateid, size_t actionid,
                             const numvec& dist) {
     assert(stateid >= 0 && stateid < mdp.size());
     assert(actionid >= 0 && actionid < mdp[stateid].size());
@@ -359,7 +304,7 @@ This function only applies to models that have outcomes, such as ones using
 "ActionO" or its derivatives.
 
 */
-template <class Model> inline bool is_outcome_dst_normalized(const Model& mdp) {
+inline bool is_outcome_dst_normalized(const RMDP& mdp) {
     for (auto si : indices(mdp)) {
         auto& state = mdp[si];
         for (auto ai : indices(state)) {
@@ -375,7 +320,7 @@ Normalizes outcome distributions for all states and actions.
 This function only applies to models that have outcomes, such as ones using
 "ActionO" or its derivatives.
 */
-template <class Model> inline void normalize_outcome_dst(Model& mdp) {
+inline void normalize_outcome_dst(RMDP& mdp) {
     for (auto si : indices(mdp)) {
         auto& state = mdp[si];
         for (auto ai : indices(state))
@@ -442,7 +387,7 @@ inline RMDP robustify(const MDP& mdp, bool allowzeros = false) {
         for (size_t ai : indices(s)) {
             // make sure that the invalid actions are marked as such in the rmdp
             auto& newaction = newstate.create_action(ai);
-            const Transition& t = s[ai].get_outcome();
+            const Transition& t = s[ai];
             // iterate over transitions next states (at t+1) and add samples
             if (allowzeros) { // add outcomes for states with 0 transition probability
                 numvec probabilities = t.probabilities_vector(mdp.state_count());
@@ -477,8 +422,8 @@ inline RMDP robustify(const MDP& mdp, bool allowzeros = false) {
  * @param mdp The mdp to map
  * @param fun Function that takes a state and action as an input
  */
-template <class T>
-inline vector<vector<T>> map_sa(const MDP& mdp,
+template <class T, class Model>
+inline vector<vector<T>> map_sa(const Model& mdp,
                                 std::function<T(const State&, const Action&)> fun) {
     vector<vector<T>> statesres(mdp.size());
     for (size_t i = 0; i < mdp.size(); i++) {

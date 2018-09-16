@@ -52,92 +52,27 @@ Action in a regular MDP. There is no uncertainty and
 the action contains only a single outcome.
 */
 class Action : public Transition {
-protected:
-    /// Transition probabilities
-    Transition outcome;
-
 public:
     /** Creates an empty action. */
-    Action() : outcome() {}
+    Action() : Transition() {}
 
     /** Initializes outcomes to the provided transition vector */
-    Action(const Transition& outcome) : outcome(outcome) {}
-
-    /** Returns the outcomes. */
-    auto get_outcomes() const { return vector<Transition>{outcome}; }
-
-    /** Returns the single outcome. */
-    const Transition& get_outcome(long outcomeid) const {
-        assert(outcomeid == 0);
-        return outcome;
-    }
-
-    /** Returns the single outcome. */
-    Transition& get_outcome(long outcomeid) {
-        assert(outcomeid == 0);
-        return outcome;
-    }
-
-    /** Returns the outcome */
-    const Transition& operator[](long outcomeid) const { return get_outcome(outcomeid); }
-
-    /** Returns the outcome */
-    Transition& operator[](long outcomeid) { return get_outcome(outcomeid); }
-
-    /** Returns the single outcome. */
-    const Transition& get_outcome() const { return outcome; }
-
-    /** Returns the single outcome. */
-    Transition& get_outcome() { return outcome; }
-
-    /** Replaces internal transition probabilities by new ones. */
-    void set_outcome(Transition outcome) { this->outcome = move(outcome); }
-
-    /**
-      Adds a sufficient number of empty outcomes for the outcomeid to be a correct
-      identifier. This method does nothing in this action.
-      */
-    Transition& create_outcome(long outcomeid) {
-        assert(outcomeid == 0);
-        return outcome;
-    }
-
-    /** Normalizes transition probabilities */
-    void normalize() { outcome.normalize(); }
-
-    /** Returns number of outcomes (1). */
-    size_t outcome_count() const { return 1; }
-
-    /** Returns the number of states with positive transition probabilities */
-    size_t size() const { return outcome.size(); }
+    Action(const Transition& outcome) : Transition(outcome) {}
 
     /** Appends a string representation to the argument */
     string to_string() const { return "1(reg)"; };
 
     /** Whether the action has some transitions */
-    bool is_valid() const { return outcome.size() > 0; };
-
-    /** Whether the provided outcome is valid. Check only size, not that the
-      distribution sums to any particular number. */
-    bool is_nature_correct(numvec oid) const { return oid.size() == outcome.size(); }
-
-    /** Returns the mean reward from the transition. */
-    prec_t mean_reward() const { return outcome.mean_reward(); }
-
-    /**
-      Returns the mean reward from the transition.
-      @param natpolicy Nature can choose the probability distribution
-      */
-    prec_t mean_reward(numvec natpolicy) const { return outcome.mean_reward(natpolicy); }
+    bool is_valid() const { return size() > 0; }
 
     /** Returns the mean transition probabilities. Ignore rewards. */
-    Transition mean_transition() const { return outcome; }
+    Transition mean_transition() const { return *this; }
 
     /** Returns the mean transition probabilities. Ignore rewards.
       @param natpolicy Nature can choose a non-zero state to go to
       */
     Transition mean_transition(numvec natpolicy) const {
-        return Transition(outcome.get_indices(), natpolicy, numvec(outcome.size(), 0.0));
+        return Transition(get_indices(), natpolicy, numvec(size(), 0.0));
     }
 
     /** Returns a json representation of the action
@@ -148,7 +83,7 @@ public:
         result << "\"actionid\" : ";
         result << std::to_string(actionid);
         result << ",\"transition\" : ";
-        result << outcome.to_json(-1);
+        result << Transition::to_json(-1);
         result << "}";
         return result.str();
     }

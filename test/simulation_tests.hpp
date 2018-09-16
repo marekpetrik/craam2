@@ -277,8 +277,8 @@ BOOST_AUTO_TEST_CASE(sampled_mdp_reward) {
   SampledMDP smdp;
 
   smdp.add_samples(samples);
-  auto reward = (*smdp.get_mdp())[0][0][0].get_rewards()[1];
-  // cout << (*smdp.get_mdp())[0][0][0].get_rewards()[1] << endl;
+  auto reward = (*smdp.get_mdp())[0][0].get_rewards()[1];
+  // cout << (*smdp.get_mdp())[0][0].get_rewards()[1] << endl;
 
   BOOST_CHECK_CLOSE(reward, 1.666666, 1e-4);
 
@@ -295,8 +295,8 @@ BOOST_AUTO_TEST_CASE(sampled_mdp_reward) {
   samples2.add_sample(0, 0, 0, 0.0, 1.0, 0, 0);
 
   smdp.add_samples(samples2);
-  // cout << (*smdp.get_mdp())[0][0][0].get_rewards()[1] << endl;
-  reward = (*smdp.get_mdp())[0][0][0].get_rewards()[1];
+  // cout << (*smdp.get_mdp())[0][0].get_rewards()[1] << endl;
+  reward = (*smdp.get_mdp())[0][0].get_rewards()[1];
   BOOST_CHECK_CLOSE(reward, 2.916666666666, 1e-4);
 }
 
@@ -341,15 +341,15 @@ template <class Model> Model create_test_mdp_sim() {
   // nonrobust
   // action 1 is optimal, with transition matrix [[0,1,0],[0,0,1],[0,0,1]] and
   // rewards [0,0,1.1]
-  add_transition<Model>(rmdp, 0, 1, 1, 1.0, 0.0);
-  add_transition<Model>(rmdp, 1, 1, 2, 1.0, 0.0);
-  add_transition<Model>(rmdp, 2, 1, 2, 1.0, 1.1);
+  add_transition(rmdp, 0, 1, 1, 1.0, 0.0);
+  add_transition(rmdp, 1, 1, 2, 1.0, 0.0);
+  add_transition(rmdp, 2, 1, 2, 1.0, 1.1);
 
-  add_transition<Model>(rmdp, 0, 0, 0, 1.0, 0.0);
-  add_transition<Model>(rmdp, 1, 0, 0, 1.0, 1.0);
-  add_transition<Model>(rmdp, 2, 0, 1, 1.0, 1.0);
+  add_transition(rmdp, 0, 0, 0, 1.0, 0.0);
+  add_transition(rmdp, 1, 0, 0, 1.0, 1.0);
+  add_transition(rmdp, 2, 0, 1, 1.0, 1.0);
 
-  add_transition<Model>(rmdp, 1, 2, 1, 0.5, 0.5);
+  add_transition(rmdp, 1, 2, 1, 0.5, 0.5);
 
   return rmdp;
 }

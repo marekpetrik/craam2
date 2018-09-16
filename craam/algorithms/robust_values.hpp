@@ -55,8 +55,8 @@ using namespace util::lang;
  */
 inline numvec compute_zvalues(const Action& action, const numvec& valuefunction,
                               prec_t discount) {
-    const numvec& rewards = action.get_outcome().get_rewards();
-    const indvec& nonzero_indices = action.get_outcome().get_indices();
+    const numvec& rewards = action.get_rewards();
+    const indvec& nonzero_indices = action.get_indices();
 
     numvec zvalues(rewards.size()); // values for individual states - used by nature.
 
@@ -81,7 +81,7 @@ inline vec_scal_t value_action(const Action& action, const numvec& valuefunction
                                prec_t discount, long stateid, long actionid,
                                const SANature& nature) {
     numvec zvalues = compute_zvalues(action, valuefunction, discount);
-    return nature(stateid, actionid, action.get_outcome().get_probabilities(), zvalues);
+    return nature(stateid, actionid, action.get_probabilities(), zvalues);
 }
 
 // *******************************************************
@@ -215,7 +215,7 @@ inline vector<numvec> compute_probabilities(const State& state) {
     result.reserve(state.size());
 
     for (const auto& action : state.get_actions()) {
-        result.push_back(action.get_outcome().get_probabilities());
+        result.push_back(action.get_probabilities());
     }
     return result;
 }
@@ -414,7 +414,7 @@ public:
             newvalue = value_fix_state(state, valuefunction, discount, actionid);
             transitions = vector<numvec>(state.size()); // create an entry for each state
             // but set only the one that is relevant
-            transitions[actionid] = state[actionid].get_outcome().get_probabilities();
+            transitions[actionid] = state[actionid].get_probabilities();
             // set the actual action value
             action = numvec(state.size(), 0.0);
             action[actionid] = 1.0;
