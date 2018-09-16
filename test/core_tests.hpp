@@ -295,7 +295,7 @@ BOOST_AUTO_TEST_CASE(test_check_add_transition_m) {
   add_transition(rmdp, 0, 0, 0, 5, 0.1, 1);
   add_transition(rmdp, 0, 0, 0, 7, 0.1, 2);
 
-  Transition transition = rmdp.get_state(0).mean_transition(0);
+  Transition transition = rmdp[0].mean_transition(0);
 
   BOOST_CHECK(is_sorted(transition.get_indices().begin(),
                         transition.get_indices().end()));
@@ -305,7 +305,7 @@ BOOST_AUTO_TEST_CASE(test_check_add_transition_m) {
 
   // check updating the last element
   add_transition(rmdp, 0, 0, 0, 7, 0.4, 4);
-  transition = rmdp.get_state(0).mean_transition(0);
+  transition = rmdp[0].mean_transition(0);
 
   BOOST_CHECK(is_sorted(transition.get_indices().begin(),
                         transition.get_indices().end()));
@@ -323,7 +323,7 @@ BOOST_AUTO_TEST_CASE(test_check_add_transition_m) {
 
   // check inserting an element into the middle
   add_transition(rmdp, 0, 0, 0, 6, 0.1, 0.5);
-  transition = rmdp.get_state(0).mean_transition(0);
+  transition = rmdp[0].mean_transition(0);
 
   BOOST_CHECK(is_sorted(transition.get_indices().begin(),
                         transition.get_indices().end()));
@@ -341,7 +341,7 @@ BOOST_AUTO_TEST_CASE(test_check_add_transition_m) {
 
   // check updating an element in the middle
   add_transition(rmdp, 0, 0, 0, 6, 0.1, 1.5);
-  transition = rmdp.get_state(0).mean_transition(0);
+  transition = rmdp[0].mean_transition(0);
 
   BOOST_CHECK(is_sorted(transition.get_indices().begin(),
                         transition.get_indices().end()));
@@ -367,7 +367,7 @@ BOOST_AUTO_TEST_CASE(test_check_add_transition_r) {
   add_transition(rmdp, 0, 0, 0, 5, 0.1, 1);
   add_transition(rmdp, 0, 0, 0, 7, 0.1, 2);
 
-  Transition transition = rmdp.get_state(0).mean_transition(0, firstoutcome);
+  Transition transition = rmdp[0].mean_transition(0, firstoutcome);
 
   BOOST_CHECK(is_sorted(transition.get_indices().begin(),
                         transition.get_indices().end()));
@@ -377,7 +377,7 @@ BOOST_AUTO_TEST_CASE(test_check_add_transition_r) {
 
   // check updating the last element
   add_transition(rmdp, 0, 0, 0, 7, 0.4, 4);
-  transition = rmdp.get_state(0).mean_transition(0, firstoutcome);
+  transition = rmdp[0].mean_transition(0, firstoutcome);
 
   BOOST_CHECK(is_sorted(transition.get_indices().begin(),
                         transition.get_indices().end()));
@@ -395,7 +395,7 @@ BOOST_AUTO_TEST_CASE(test_check_add_transition_r) {
 
   // check inserting an element into the middle
   add_transition(rmdp, 0, 0, 0, 6, 0.1, 0.5);
-  transition = rmdp.get_state(0).mean_transition(0, firstoutcome);
+  transition = rmdp[0].mean_transition(0, firstoutcome);
 
   BOOST_CHECK(is_sorted(transition.get_indices().begin(),
                         transition.get_indices().end()));
@@ -413,7 +413,7 @@ BOOST_AUTO_TEST_CASE(test_check_add_transition_r) {
 
   // check updating an element in the middle
   add_transition(rmdp, 0, 0, 0, 6, 0.1, 1.5);
-  transition = rmdp.get_state(0).mean_transition(0, firstoutcome);
+  transition = rmdp[0].mean_transition(0, firstoutcome);
 
   BOOST_CHECK(is_sorted(transition.get_indices().begin(),
                         transition.get_indices().end()));
@@ -561,8 +561,7 @@ void test_value_function_thr(double threshold, numvec expected) {
   numvec initial{0};
 
   numvec d{0.5, 0.5};
-  CHECK_CLOSE_COLLECTION(rmdp.get_state(0).get_action(0).get_distribution(), d,
-                         1e-6);
+  CHECK_CLOSE_COLLECTION(rmdp[0][0].get_distribution(), d, 1e-6);
 
   // *** 2.0 ***
   // gauss-seidel
@@ -646,7 +645,7 @@ BOOST_AUTO_TEST_CASE(test_normalization) {
   BOOST_CHECK(is_outcome_dst_normalized(rmdp));
 
   // denormalize and make sure it works
-  rmdp.get_state(0).get_action(0).set_distribution(0, 0.8);
+  rmdp[0][0].set_distribution(0, 0.8);
   BOOST_CHECK(!is_outcome_dst_normalized(rmdp));
 
   // make sure that the normalization works
@@ -921,17 +920,13 @@ BOOST_AUTO_TEST_CASE(test_parameter_read_write) {
   store.seekg(0);
   from_csv(rmdp, store, false);
 
-  BOOST_CHECK_EQUAL(
-      rmdp.get_state(3).get_action(0).get_outcome(0).get_reward(0), 10.0);
-  rmdp.get_state(3).get_action(0).get_outcome(0).set_reward(0, 15.1);
-  BOOST_CHECK_EQUAL(
-      rmdp.get_state(3).get_action(0).get_outcome(0).get_reward(0), 15.1);
+  BOOST_CHECK_EQUAL(rmdp[3][0].get_outcome(0).get_reward(0), 10.0);
+  rmdp[3][0].get_outcome(0).set_reward(0, 15.1);
+  BOOST_CHECK_EQUAL(rmdp[3][0].get_outcome(0).get_reward(0), 15.1);
 
-  BOOST_CHECK_EQUAL(
-      rmdp.get_state(0).get_action(1).get_outcome(0).get_reward(1), 2.0);
-  rmdp.get_state(0).get_action(1).get_outcome(0).set_reward(1, 19.1);
-  BOOST_CHECK_EQUAL(
-      rmdp.get_state(0).get_action(1).get_outcome(0).get_reward(1), 19.1);
+  BOOST_CHECK_EQUAL(rmdp[0][1].get_outcome(0).get_reward(1), 2.0);
+  rmdp[0][1].get_outcome(0).set_reward(1, 19.1);
+  BOOST_CHECK_EQUAL(rmdp[0][1].get_outcome(0).get_reward(1), 19.1);
 }
 
 // ********************************************************************************

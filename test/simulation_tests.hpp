@@ -325,9 +325,9 @@ BOOST_AUTO_TEST_CASE(construct_mdp_from_samples_si_pol) {
   shared_ptr<const MDP> mdp = smdp.get_mdp();
 
   // check that the number of actions is correct (2)
-  for (size_t i = 0; i < mdp->state_count(); i++) {
-    if (mdp->get_state(i).action_count() > 0)
-      BOOST_CHECK_EQUAL(mdp->get_state(i).action_count(), 2);
+  for (size_t i = 0; i < mdp->state_count(); ++i) {
+    if (!(*mdp)[i].empty())
+      BOOST_CHECK_EQUAL((*mdp)[i].size(), 2);
   }
 
   auto sol = mpi_jac(*mdp, 0.9);

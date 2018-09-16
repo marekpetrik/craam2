@@ -58,15 +58,14 @@ Adds a transition probability and reward for a particular outcome.
 \param reward The reward associated with the transition.
 */
 template <class Model>
-inline void add_transition(Model &mdp, long fromid, long actionid,
-                           long outcomeid, long toid, prec_t probability,
-                           prec_t reward) {
-  // make sure that the destination state exists
-  mdp.create_state(toid);
-  auto &state_from = mdp.create_state(fromid);
-  auto &action = state_from.create_action(actionid);
-  Transition &outcome = action.create_outcome(outcomeid);
-  outcome.add_sample(toid, probability, reward);
+inline void add_transition(Model& mdp, long fromid, long actionid, long outcomeid,
+                           long toid, prec_t probability, prec_t reward) {
+    // make sure that the destination state exists
+    mdp.create_state(toid);
+    auto& state_from = mdp.create_state(fromid);
+    auto& action = state_from.create_action(actionid);
+    Transition& outcome = action.create_outcome(outcomeid);
+    outcome.add_sample(toid, probability, reward);
 }
 /**
 Adds a transition probability and reward for an GMDP model. The
@@ -80,9 +79,9 @@ outcomeid is 0.
 \param reward The reward associated with the transition.
 */
 template <class Model>
-inline void add_transition(Model &mdp, long fromid, long actionid, long toid,
+inline void add_transition(Model& mdp, long fromid, long actionid, long toid,
                            prec_t probability, prec_t reward) {
-  add_transition(mdp, fromid, actionid, 0, toid, probability, reward);
+    add_transition(mdp, fromid, actionid, 0, toid, probability, reward);
 }
 
 /**
@@ -95,9 +94,9 @@ Adds a transition probability and reward for an MDP model.
 \param reward The reward associated with the transition.
 */
 
-inline void add_transition(MDP &mdp, long fromid, long actionid, long toid,
+inline void add_transition(MDP& mdp, long fromid, long actionid, long toid,
                            prec_t probability, prec_t reward) {
-  add_transition(mdp, fromid, actionid, 0, toid, probability, reward);
+    add_transition(mdp, fromid, actionid, 0, toid, probability, reward);
 }
 
 /**
@@ -118,63 +117,60 @@ idstatefrom, idaction, idoutcome, idstateto, probability, reward
 to be 0. \returns The input model
  */
 template <class Model>
-inline Model &from_csv_general(Model &mdp, istream &input, bool header = true,
+inline Model& from_csv_general(Model& mdp, istream& input, bool header = true,
                                bool has_outcome = true) {
-  string line;
-  // skip the first row if so instructed
-  if (header)
+    string line;
+    // skip the first row if so instructed
+    if (header) input >> line;
     input >> line;
-  input >> line;
-  while (input.good()) {
-    string cellstring;
-    stringstream linestream(line);
-    long idstatefrom, idstateto, idaction, idoutcome;
-    prec_t probability, reward;
+    while (input.good()) {
+        string cellstring;
+        stringstream linestream(line);
+        long idstatefrom, idstateto, idaction, idoutcome;
+        prec_t probability, reward;
 
-    // read idstatefrom
-    getline(linestream, cellstring, ',');
-    idstatefrom = stol(cellstring);
-    // read idaction
-    getline(linestream, cellstring, ',');
-    idaction = stol(cellstring);
-    // read idoutcome
-    if (has_outcome) {
-      getline(linestream, cellstring, ',');
-      idoutcome = stol(cellstring);
-    } else {
-      idoutcome = 0l;
+        // read idstatefrom
+        getline(linestream, cellstring, ',');
+        idstatefrom = stol(cellstring);
+        // read idaction
+        getline(linestream, cellstring, ',');
+        idaction = stol(cellstring);
+        // read idoutcome
+        if (has_outcome) {
+            getline(linestream, cellstring, ',');
+            idoutcome = stol(cellstring);
+        } else {
+            idoutcome = 0l;
+        }
+        // read idstateto
+        getline(linestream, cellstring, ',');
+        idstateto = stol(cellstring);
+        // read probability
+        getline(linestream, cellstring, ',');
+        probability = stod(cellstring);
+        // read reward
+        getline(linestream, cellstring, ',');
+        reward = stod(cellstring);
+        // add transition
+        add_transition<Model>(mdp, idstatefrom, idaction, idoutcome, idstateto,
+                              probability, reward);
+        input >> line;
     }
-    // read idstateto
-    getline(linestream, cellstring, ',');
-    idstateto = stol(cellstring);
-    // read probability
-    getline(linestream, cellstring, ',');
-    probability = stod(cellstring);
-    // read reward
-    getline(linestream, cellstring, ',');
-    reward = stod(cellstring);
-    // add transition
-    add_transition<Model>(mdp, idstatefrom, idaction, idoutcome, idstateto,
-                          probability, reward);
-    input >> line;
-  }
-  return mdp;
+    return mdp;
 }
 
 /**
 A specialization of from_csv_general.
  */
-MDP &from_csv(MDP &mdp, istream &input, bool header = true,
-              bool has_outcome = false) {
-  return from_csv_general(mdp, input, header, has_outcome);
+MDP& from_csv(MDP& mdp, istream& input, bool header = true, bool has_outcome = false) {
+    return from_csv_general(mdp, input, header, has_outcome);
 }
 
 /**
 A specialization of from_csv_general.
  */
-RMDP &from_csv(RMDP &mdp, istream &input, bool header = true,
-               bool has_outcome = true) {
-  return from_csv_general(mdp, input, header, has_outcome);
+RMDP& from_csv(RMDP& mdp, istream& input, bool header = true, bool has_outcome = true) {
+    return from_csv_general(mdp, input, header, has_outcome);
 }
 
 /**
@@ -194,9 +190,9 @@ to be 0.
 
 \returns The input model
  */
-MDP from_csv_mdp(istream &input, bool header = true, bool has_outcome = false) {
-  MDP mdp;
-  return from_csv(mdp, input, header, has_outcome);
+MDP from_csv_mdp(istream& input, bool header = true, bool has_outcome = false) {
+    MDP mdp;
+    return from_csv(mdp, input, header, has_outcome);
 }
 
 /**
@@ -218,40 +214,40 @@ Note that underlying nominal distributions are not saved.
 \param header Whether the header should be written as the
       first line of the file represents the header.
 */
-void to_csv(const RMDP &rmdp, ostream &output, bool header = true) {
+void to_csv(const RMDP& rmdp, ostream& output, bool header = true) {
 
-  // write header if so requested
-  if (header) {
-    output << "idstatefrom,"
-           << "idaction,"
-           << "idoutcome,"
-           << "idstateto,"
-           << "probability,"
-           << "reward" << endl;
-  }
-
-  // idstatefrom
-  for (size_t i = 0l; i < rmdp.get_states().size(); i++) {
-    const auto &actions = rmdp.get_state(i).get_actions();
-    // idaction
-    for (size_t j = 0; j < actions.size(); j++) {
-
-      const auto &outcomes = actions[j].get_outcomes();
-      // idoutcome
-      for (size_t k = 0; k < outcomes.size(); k++) {
-        const auto &tran = outcomes[k];
-
-        auto &indices = tran.get_indices();
-        const auto &rewards = tran.get_rewards();
-        const auto &probabilities = tran.get_probabilities();
-        // idstateto
-        for (size_t l = 0; l < tran.size(); l++) {
-          output << i << ',' << j << ',' << k << ',' << indices[l] << ','
-                 << probabilities[l] << ',' << rewards[l] << endl;
-        }
-      }
+    // write header if so requested
+    if (header) {
+        output << "idstatefrom,"
+               << "idaction,"
+               << "idoutcome,"
+               << "idstateto,"
+               << "probability,"
+               << "reward" << endl;
     }
-  }
+
+    // idstatefrom
+    for (size_t i = 0l; i < rmdp.size(); i++) {
+        const auto& actions = rmdp[i].get_actions();
+        // idaction
+        for (size_t j = 0; j < actions.size(); j++) {
+
+            const auto& outcomes = actions[j].get_outcomes();
+            // idoutcome
+            for (size_t k = 0; k < outcomes.size(); k++) {
+                const auto& tran = outcomes[k];
+
+                auto& indices = tran.get_indices();
+                const auto& rewards = tran.get_rewards();
+                const auto& probabilities = tran.get_probabilities();
+                // idstateto
+                for (size_t l = 0; l < tran.size(); l++) {
+                    output << i << ',' << j << ',' << k << ',' << indices[l] << ','
+                           << probabilities[l] << ',' << rewards[l] << endl;
+                }
+            }
+        }
+    }
 }
 
 /**
@@ -271,33 +267,33 @@ with no outcomes, but will be marked as invalid in the state.
 \param header Whether the header should be written as the
       first line of the file represents the header.
 */
-void to_csv(const MDP &mdp, ostream &output, bool header = true) {
-  // write header if so requested
-  if (header) {
-    output << "idstatefrom,"
-           << "idaction,"
-           << "idstateto,"
-           << "probability,"
-           << "reward" << endl;
-  }
-
-  // idstatefrom
-  for (size_t i = 0l; i < mdp.get_states().size(); i++) {
-    const auto &actions = mdp.get_state(i).get_actions();
-    // idaction
-    for (size_t j = 0; j < actions.size(); j++) {
-      const auto &tran = actions[j].get_outcome();
-
-      const auto &indices = tran.get_indices();
-      const auto &rewards = tran.get_rewards();
-      const auto &probabilities = tran.get_probabilities();
-      // idstateto
-      for (size_t l = 0; l < tran.size(); l++) {
-        output << i << ',' << j << ',' << indices[l] << ',' << probabilities[l]
-               << ',' << rewards[l] << endl;
-      }
+void to_csv(const MDP& mdp, ostream& output, bool header = true) {
+    // write header if so requested
+    if (header) {
+        output << "idstatefrom,"
+               << "idaction,"
+               << "idstateto,"
+               << "probability,"
+               << "reward" << endl;
     }
-  }
+
+    // idstatefrom
+    for (size_t i = 0l; i < mdp.size(); i++) {
+        const auto& actions = mdp[i].get_actions();
+        // idaction
+        for (size_t j = 0; j < actions.size(); j++) {
+            const auto& tran = actions[j].get_outcome();
+
+            const auto& indices = tran.get_indices();
+            const auto& rewards = tran.get_rewards();
+            const auto& probabilities = tran.get_probabilities();
+            // idstateto
+            for (size_t l = 0; l < tran.size(); l++) {
+                output << i << ',' << j << ',' << indices[l] << ',' << probabilities[l]
+                       << ',' << rewards[l] << endl;
+            }
+        }
+    }
 }
 
 /**
@@ -308,10 +304,10 @@ a detailed description.
 \param header Whether to create a header of the file too
  */
 template <class M>
-void to_csv_file(const M &mdp, const string &filename, bool header = true) {
-  ofstream ofs(filename, ofstream::out);
-  to_csv(mdp, ofs, header);
-  ofs.close();
+void to_csv_file(const M& mdp, const string& filename, bool header = true) {
+    ofstream ofs(filename, ofstream::out);
+    to_csv(mdp, ofs, header);
+    ofs.close();
 }
 
 /**
@@ -322,39 +318,38 @@ Loads transition probabilities and rewards from a CSV file.
 \returns The input model
  */
 template <class Model>
-inline Model &from_csv_file(Model &mdp, const string &filename,
-                            bool header = true) {
-  ifstream ifs(filename);
-  from_csv(mdp, ifs, header);
-  ifs.close();
-  return mdp;
+inline Model& from_csv_file(Model& mdp, const string& filename, bool header = true) {
+    ifstream ifs(filename);
+    from_csv(mdp, ifs, header);
+    ifs.close();
+    return mdp;
 }
 
 /**
 Sets the distribution for outcomes for each state and
 action to be uniform.
 */
-template <class Model> inline void set_uniform_outcome_dst(Model &mdp) {
-  for (const auto si : indices(mdp)) {
-    auto &s = mdp[si];
-    for (const auto ai : indices(s)) {
-      auto &a = s[ai];
-      numvec distribution(a.size(), 1.0 / static_cast<prec_t>(a.size()));
+template <class Model> inline void set_uniform_outcome_dst(Model& mdp) {
+    for (const auto si : indices(mdp)) {
+        auto& s = mdp[si];
+        for (const auto ai : indices(s)) {
+            auto& a = s[ai];
+            numvec distribution(a.size(), 1.0 / static_cast<prec_t>(a.size()));
 
-      a.set_distribution(distribution);
+            a.set_distribution(distribution);
+        }
     }
-  }
 }
 
 /**
 Sets the distribution of outcomes for the given state and action.
 */
 template <class Model>
-inline void set_outcome_dst(Model &mdp, size_t stateid, size_t actionid,
-                            const numvec &dist) {
-  assert(stateid >= 0 && stateid < mdp.size());
-  assert(actionid >= 0 && actionid < mdp[stateid].size());
-  mdp[stateid][actionid].set_distribution(dist);
+inline void set_outcome_dst(Model& mdp, size_t stateid, size_t actionid,
+                            const numvec& dist) {
+    assert(stateid >= 0 && stateid < mdp.size());
+    assert(actionid >= 0 && actionid < mdp[stateid].size());
+    mdp[stateid][actionid].set_distribution(dist);
 }
 
 /**
@@ -364,15 +359,14 @@ This function only applies to models that have outcomes, such as ones using
 "WeightedOutcomeAction" or its derivatives.
 
 */
-template <class Model> inline bool is_outcome_dst_normalized(const Model &mdp) {
-  for (auto si : indices(mdp)) {
-    auto &state = mdp.get_state(si);
-    for (auto ai : indices(state)) {
-      if (!state[ai].is_distribution_normalized())
-        return false;
+template <class Model> inline bool is_outcome_dst_normalized(const Model& mdp) {
+    for (auto si : indices(mdp)) {
+        auto& state = mdp[si];
+        for (auto ai : indices(state)) {
+            if (!state[ai].is_distribution_normalized()) return false;
+        }
     }
-  }
-  return true;
+    return true;
 }
 
 /**
@@ -381,12 +375,12 @@ Normalizes outcome distributions for all states and actions.
 This function only applies to models that have outcomes, such as ones using
 "WeightedOutcomeAction" or its derivatives.
 */
-template <class Model> inline void normalize_outcome_dst(Model &mdp) {
-  for (auto si : indices(mdp)) {
-    auto &state = mdp.get_state(si);
-    for (auto ai : indices(state))
-      state.get_action(ai).normalize_distribution();
-  }
+template <class Model> inline void normalize_outcome_dst(Model& mdp) {
+    for (auto si : indices(mdp)) {
+        auto& state = mdp[si];
+        for (auto ai : indices(state))
+            state[ai].normalize_distribution();
+    }
 }
 
 /**
@@ -438,41 +432,41 @@ non-zero transition probability from state \f$ s \f$ and action \f$ a \f$.
                     transition probability
 \returns RMDP with nominal probabilities
 */
-inline RMDP robustify(const MDP &mdp, bool allowzeros = false) {
-  // construct the result first
-  RMDP rmdp;
-  // iterate over all starting states (at t)
-  for (size_t si : indices(mdp)) {
-    const auto &s = mdp[si];
-    auto &newstate = rmdp.create_state(si);
-    for (size_t ai : indices(s)) {
-      // make sure that the invalid actions are marked as such in the rmdp
-      auto &newaction = newstate.create_action(ai);
-      const Transition &t = s[ai].get_outcome();
-      // iterate over transitions next states (at t+1) and add samples
-      if (allowzeros) { // add outcomes for states with 0 transition probability
-        numvec probabilities = t.probabilities_vector(mdp.state_count());
-        numvec rewards = t.rewards_vector(mdp.state_count());
-        for (size_t nsi : indices(probabilities)) {
-          // create the outcome with the appropriate weight
-          Transition &newoutcome =
-              newaction.create_outcome(newaction.size(), probabilities[nsi]);
-          // adds the single sample for each outcome
-          newoutcome.add_sample(nsi, 1.0, rewards[nsi]);
+inline RMDP robustify(const MDP& mdp, bool allowzeros = false) {
+    // construct the result first
+    RMDP rmdp;
+    // iterate over all starting states (at t)
+    for (size_t si : indices(mdp)) {
+        const auto& s = mdp[si];
+        auto& newstate = rmdp.create_state(si);
+        for (size_t ai : indices(s)) {
+            // make sure that the invalid actions are marked as such in the rmdp
+            auto& newaction = newstate.create_action(ai);
+            const Transition& t = s[ai].get_outcome();
+            // iterate over transitions next states (at t+1) and add samples
+            if (allowzeros) { // add outcomes for states with 0 transition probability
+                numvec probabilities = t.probabilities_vector(mdp.state_count());
+                numvec rewards = t.rewards_vector(mdp.state_count());
+                for (size_t nsi : indices(probabilities)) {
+                    // create the outcome with the appropriate weight
+                    Transition& newoutcome =
+                        newaction.create_outcome(newaction.size(), probabilities[nsi]);
+                    // adds the single sample for each outcome
+                    newoutcome.add_sample(nsi, 1.0, rewards[nsi]);
+                }
+            } else { // add outcomes only for states with non-zero probabilities
+                for (size_t nsi : indices(t)) {
+                    // create the outcome with the appropriate weight
+                    Transition& newoutcome = newaction.create_outcome(
+                        newaction.size(), t.get_probabilities()[nsi]);
+                    // adds the single sample for each outcome
+                    newoutcome.add_sample(t.get_indices()[nsi], 1.0,
+                                          t.get_rewards()[nsi]);
+                }
+            }
         }
-      } else { // add outcomes only for states with non-zero probabilities
-        for (size_t nsi : indices(t)) {
-          // create the outcome with the appropriate weight
-          Transition &newoutcome = newaction.create_outcome(
-              newaction.size(), t.get_probabilities()[nsi]);
-          // adds the single sample for each outcome
-          newoutcome.add_sample(t.get_indices()[nsi], 1.0,
-                                t.get_rewards()[nsi]);
-        }
-      }
     }
-  }
-  return rmdp;
+    return rmdp;
 }
 
 /**
@@ -485,18 +479,17 @@ inline RMDP robustify(const MDP &mdp, bool allowzeros = false) {
  */
 template <class T>
 inline vector<vector<T>>
-map_sa(const MDP &mdp,
-       std::function<T(const RegularState &, const RegularAction &)> fun) {
-  vector<vector<T>> statesres(mdp.size());
-  for (size_t i = 0; i < mdp.size(); i++) {
-    const RegularState &s = mdp[i];
-    statesres[i] = vector<T>(s.size());
-    for (size_t j = 0; j < s.size(); j++) {
-      const RegularAction &a = s[j];
-      statesres[i][j] = fun(s, a);
+map_sa(const MDP& mdp, std::function<T(const RegularState&, const RegularAction&)> fun) {
+    vector<vector<T>> statesres(mdp.size());
+    for (size_t i = 0; i < mdp.size(); i++) {
+        const RegularState& s = mdp[i];
+        statesres[i] = vector<T>(s.size());
+        for (size_t j = 0; j < s.size(); j++) {
+            const RegularAction& a = s[j];
+            statesres[i][j] = fun(s, a);
+        }
     }
-  }
-  return statesres;
+    return statesres;
 }
 
 } // namespace craam

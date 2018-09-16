@@ -182,7 +182,7 @@ inline ind_vec_scal_t value_max_state(const SType& state, const numvec& valuefun
     long result = -1;
     numvec result_outcome;
 
-    for (size_t i = 0; i < state.get_actions().size(); i++) {
+    for (size_t i = 0; i < state.size(); i++) {
         const auto& action = state[i];
 
         if (!state.is_valid(i)) throw invalid_argument("Cannot have an invalid action.");
@@ -500,7 +500,7 @@ public:
         long result = -1;
         numvec result_outcome;
 
-        for (size_t i = 0; i < state.get_actions().size(); i++) {
+        for (size_t i = 0; i < state.size(); i++) {
             const auto& action = state[i];
 
             if (!state.is_valid(i))
@@ -536,9 +536,8 @@ public:
         assert(actionid >= 0 && actionid < long(state.size()));
 
         if (actionid < 0 || actionid >= long(state.size()))
-            throw range_error(
-                "invalid actionid: " + to_string(actionid) +
-                " for action count: " + to_string(state.get_actions().size()));
+            throw range_error("invalid actionid: " + to_string(actionid) +
+                              " for action count: " + to_string(state.size()));
 
         const auto& action = state[actionid];
         // cannot assume that the action is valid

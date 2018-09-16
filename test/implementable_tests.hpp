@@ -104,8 +104,8 @@ BOOST_AUTO_TEST_CASE(simple_construct_mdpi_r) {
   auto rmdp = imr.get_robust_mdp();
 
   BOOST_CHECK_EQUAL(rmdp.state_count(), 1);
-  BOOST_CHECK_EQUAL(rmdp.get_state(0).action_count(), 1);
-  BOOST_CHECK_EQUAL(rmdp.get_state(0).get_action(0).outcome_count(), 2);
+  BOOST_CHECK_EQUAL(rmdp[0].size(), 1);
+  BOOST_CHECK_EQUAL(rmdp[0][0].outcome_count(), 2);
 
   vector<prec_t> iv(rmdp.state_count(), 0.0);
 
@@ -152,11 +152,11 @@ BOOST_AUTO_TEST_CASE(small_construct_mdpi_r) {
 
   BOOST_TEST_CHECKPOINT("Checking MDP properties.");
   BOOST_CHECK_EQUAL(rmdp.state_count(), 2);
-  BOOST_CHECK_EQUAL(rmdp.get_state(0).action_count(), 2);
-  BOOST_CHECK_EQUAL(rmdp.get_state(1).action_count(), 1);
-  BOOST_CHECK_EQUAL(rmdp.get_state(0).get_action(0).outcome_count(), 2);
-  BOOST_CHECK_EQUAL(rmdp.get_state(0).get_action(1).outcome_count(), 2);
-  BOOST_CHECK_EQUAL(rmdp.get_state(1).get_action(0).outcome_count(), 1);
+  BOOST_CHECK_EQUAL(rmdp[0].size(), 2);
+  BOOST_CHECK_EQUAL(rmdp[1].size(), 1);
+  BOOST_CHECK_EQUAL(rmdp[0][0].outcome_count(), 2);
+  BOOST_CHECK_EQUAL(rmdp[0][1].outcome_count(), 2);
+  BOOST_CHECK_EQUAL(rmdp[1][0].outcome_count(), 1);
 
   vector<prec_t> iv(rmdp.state_count(), 0.0);
 
@@ -342,7 +342,7 @@ BOOST_AUTO_TEST_CASE(implementable_from_samples) {
   size_t last_obs(0), inobs(0);
   for (auto i : range(size_t(0), mdp->state_count())) {
     // check if this is a terminal state
-    if (mdp->get_state(i).action_count() == 0 || inobs >= 2) {
+    if ((*mdp)[i].empty() || inobs >= 2) {
       if (inobs > 0) {
         inobs = 0;
         last_obs++;

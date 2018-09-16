@@ -68,10 +68,7 @@ public:
     SAState(const vector<AType>& actions) : actions(actions){};
 
     /** Number of actions */
-    size_t action_count() const { return actions.size(); };
-
-    /** Number of actions */
-    size_t size() const { return action_count(); };
+    size_t size() const { return actions.size(); };
 
     /**
   Creates an action given by actionid if it does not exists.
@@ -94,19 +91,7 @@ public:
     AType& create_action() { return create_action(actions.size()); };
 
     /** Returns an existing action */
-    const AType& get_action(long actionid) const {
-        assert(actionid >= 0 && size_t(actionid) < action_count());
-        return actions[actionid];
-    };
-
-    /** Returns an existing action */
     const AType& operator[](long actionid) const { return get_action(actionid); }
-
-    /** Returns an existing action */
-    AType& get_action(long actionid) {
-        assert(actionid >= 0 && size_t(actionid) < action_count());
-        return actions[actionid];
-    };
 
     /** Returns an existing action */
     AType& operator[](long actionid) { return get_action(actionid); }
@@ -130,6 +115,9 @@ public:
 
     /** Returns the set of all actions */
     const vector<AType>& get_actions() const { return actions; };
+
+    /** Check whether it is empty */
+    bool empty() const { return actions.empty(); }
 
     /** True if the state is considered terminal (no actions). */
     bool is_terminal() const { return actions.empty(); };
@@ -198,18 +186,19 @@ public:
     /** Returns json representation of the state
         @param stateid Includes also state id*/
     string to_json(long stateid = -1) const {
-        string result{"{"};
-        result += "\"stateid\" : ";
-        result += std::to_string(stateid);
-        result += ",\"actions\" : [";
+        stringstream result;
+        result << "{";
+        result << "\"stateid\" : ";
+        result << std::to_string(stateid);
+        result << ",\"actions\" : [";
         for (auto ai : indices(actions)) {
             const auto& a = actions[ai];
-            result += a.to_json(ai);
-            result += ",";
+            result << a.to_json(ai);
+            result << ",";
         }
-        if (!actions.empty()) result.pop_back(); // remove last comma
-        result += ("]}");
-        return result;
+        //if (!actions.empty()) result.pop_back(); // remove last comma
+        result << ("]}");
+        return result.str();
     }
 
     /**
@@ -233,6 +222,19 @@ public:
         actions = move(newactions);
         return original;
     }
+
+protected:
+    /** Returns an existing action */
+    const AType& get_action(long actionid) const {
+        assert(actionid >= 0 && size_t(actionid) < size());
+        return actions[actionid];
+    };
+
+    /** Returns an existing action */
+    AType& get_action(long actionid) {
+        assert(actionid >= 0 && size_t(actionid) < size());
+        return actions[actionid];
+    };
 };
 
 // **********************************************************************

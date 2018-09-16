@@ -184,7 +184,7 @@ inline prec_t value_fix_state(const SAState<AType>& state, numvec const& valuefu
                               prec_t discount, long actionid) {
     // this is the terminal state, return 0
     if (state.is_terminal()) return 0;
-    if (actionid < 0 || actionid >= (long)state.get_actions().size())
+    if (actionid < 0 || actionid >= (long)state.size())
         throw range_error("invalid actionid: " + to_string(actionid) +
                           " for action count: " + to_string(state.get_actions().size()));
 
@@ -464,9 +464,8 @@ vi_gs(const GRMDP<SType>& mdp, prec_t discount, numvec valuefunction = numvec(0)
 
     using policy_type = typename ResponseType::policy_type;
 
-    const auto& states = mdp.get_states();
     // just quit if there are no states
-    if (mdp.state_count() == 0) return Solution<policy_type>(0);
+    if (mdp.empty()) return Solution<policy_type>(0);
     if (valuefunction.empty()) { valuefunction.resize(mdp.state_count(), 0.0); }
 
     vector<policy_type> policy(mdp.state_count());
@@ -478,10 +477,10 @@ vi_gs(const GRMDP<SType>& mdp, prec_t discount, numvec valuefunction = numvec(0)
     for (i = 0; i < iterations && residual > maxresidual; i++) {
         residual = 0;
 
-        for (size_t s = 0l; s < states.size(); s++) {
+        for (size_t s = 0l; s < mdp.size(); s++) {
             prec_t newvalue;
             tie(newvalue, policy[s]) =
-                response.policy_update(states[s], long(s), valuefunction, discount);
+                response.policy_update(mdp[s], long(s), valuefunction, discount);
 
             residual = max(residual, abs(valuefunction[s] - newvalue));
             valuefunction[s] = newvalue;
@@ -540,10 +539,8 @@ mpi_jac(const GRMDP<SType>& mdp, prec_t discount, const numvec& valuefunction = 
 
     using policy_type = typename ResponseType::policy_type;
 
-    const auto& states = mdp.get_states();
-
     // just quit if there are no states
-    if (mdp.state_count() == 0) return Solution<policy_type>(0);
+    if (mdp.empty()) return Solution<policy_type>(0);
 
     // intialize the policy
     vector<policy_type> policy(mdp.state_count());
@@ -553,7 +550,7 @@ mpi_jac(const GRMDP<SType>& mdp, prec_t discount, const numvec& valuefunction = 
     if (sourcevalue.empty()) sourcevalue.resize(mdp.state_count(), 0.0);
     numvec targetvalue = sourcevalue; // value function to hold the updated values
 
-    numvec residuals(states.size());
+    numvec residuals(mdp.size());
 
     // residual in the policy iteration part
     prec_t residual_pi = numeric_limits<prec_t>::infinity();
@@ -572,10 +569,10 @@ mpi_jac(const GRMDP<SType>& mdp, prec_t discount, const numvec& valuefunction = 
 
         // update policies
 #pragma omp parallel for
-        for (auto s = 0l; s < long(states.size()); s++) {
+        for (auto s = 0l; s < long(mdp.size()); s++) {
             prec_t newvalue;
             tie(newvalue, policy[s]) =
-                response.policy_update(states[s], s, sourcevalue, discount);
+                response.policy_update(mdp[s], s, sourcevalue, discount);
             residuals[s] = abs(sourcevalue[s] - newvalue);
             targetvalue[s] = newvalue;
         }
@@ -596,9 +593,9 @@ mpi_jac(const GRMDP<SType>& mdp, prec_t discount, const numvec& valuefunction = 
             swap(targetvalue, sourcevalue);
 
 #pragma omp parallel for
-            for (auto s = 0l; s < long(states.size()); s++) {
-                prec_t newvalue = response.compute_value(policy[s], states[s], s,
-                                                         sourcevalue, discount);
+            for (auto s = 0l; s < long(mdp.size()); s++) {
+                prec_t newvalue =
+                    response.compute_value(policy[s], mdp[s], s, sourcevalue, discount);
                 residuals[s] = abs(sourcevalue[s] - newvalue);
                 targetvalue[s] = newvalue;
             }

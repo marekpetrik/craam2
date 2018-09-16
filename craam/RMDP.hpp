@@ -287,26 +287,14 @@ public:
     /** Number of states */
     size_t size() const { return state_count(); };
 
-    /** Retrieves an existing state */
-    const SType& get_state(long stateid) const {
-        assert(stateid >= 0 && size_t(stateid) < state_count());
-        return states[stateid];
-    };
+    /** Is empty */
+    bool empty() const { return states.empty(); };
 
     /** Retrieves an existing state */
     const SType& operator[](long stateid) const { return get_state(stateid); };
 
     /** Retrieves an existing state */
-    SType& get_state(long stateid) {
-        assert(stateid >= 0 && size_t(stateid) < state_count());
-        return states[stateid];
-    };
-
-    /** Retrieves an existing state */
     SType& operator[](long stateid) { return get_state(stateid); };
-
-    /** \returns list of all states */
-    const vector<SType>& get_states() const { return states; };
 
     /**
       Check if all transitions in the process sum to one.
@@ -365,24 +353,24 @@ public:
       This method is suitable for analyzing small RMDPs.
       */
     string to_string() const {
-        string result;
+        stringstream result;
 
         for (size_t si : indices(states)) {
             const auto& s = get_state(si);
-            result += (std::to_string(si));
-            result += (" : ");
-            result += (std::to_string(s.action_count()));
-            result += ("\n");
+            result << std::to_string(si);
+            result << " : ";
+            result << std::to_string(s.size());
+            result << "\n";
             for (size_t ai : indices(s)) {
-                result += ("    ");
-                result += (std::to_string(ai));
-                result += (" : ");
-                const auto& a = s.get_action(ai);
-                a.to_string(result);
-                result += ("\n");
+                result << "    ";
+                result << std::to_string(ai);
+                result << " : ";
+                const auto& a = s[ai];
+                result << a.to_string();
+                result << "\n";
             }
         }
-        return result;
+        return result.str();
     }
 
     /**
@@ -390,15 +378,16 @@ public:
       This method is suitable to analyzing small RMDPs.
       */
     string to_json() const {
-        string result{"{\"states\" : ["};
+        stringstream result;
+        result << "{\"states\" : [";
         for (auto si : indices(states)) {
             const auto& s = states[si];
-            result += s.to_json(si);
-            result += ",";
+            result << s.to_json(si);
+            result << ",";
         }
-        if (!states.empty()) result.pop_back(); // remove last comma
-        result += "]}";
-        return result;
+        //if (!states.empty()) result.pop_back(); // remove last comma
+        result << "]}";
+        return result.str();
     }
 
     /**
@@ -430,6 +419,19 @@ public:
         }
         return result;
     }
+
+protected:
+    /** Retrieves an existing state */
+    const SType& get_state(long stateid) const {
+        assert(stateid >= 0 && size_t(stateid) < state_count());
+        return states[stateid];
+    };
+
+    /** Retrieves an existing state */
+    SType& get_state(long stateid) {
+        assert(stateid >= 0 && size_t(stateid) < state_count());
+        return states[stateid];
+    };
 };
 
 // **********************************************************************

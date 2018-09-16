@@ -83,7 +83,7 @@ public:
             auto obs = state2observ[state];
 
             // check the number of actions
-            auto ac = mdp->get_state(size_t(state)).action_count();
+            auto ac = (*mdp)[size_t(state)].size();
             if (action_counts[obs] >= 0) {
                 if (action_counts[obs] != long(ac)) {
                     throw invalid_argument(
@@ -404,17 +404,17 @@ public:
             const auto rmdp_outcomeid = state2outcome[i];
 
             // loop over all actions
-            auto& rstate = robust_mdp.get_state(rmdp_stateid);
+            auto& rstate = robust_mdp[rmdp_stateid];
             for (size_t ai : indices(rstate)) {
-                rstate.get_action(ai).set_distribution(rmdp_outcomeid, weights[i]);
+                rstate[ai].set_distribution(rmdp_outcomeid, weights[i]);
             }
         }
 
         // now normalize the weights to they sum to one
         for (size_t si : indices(robust_mdp)) {
-            auto& s = robust_mdp.get_state(si);
+            auto& s = robust_mdp[si];
             for (size_t ai : indices(s)) {
-                auto& a = s.get_action(ai);
+                auto& a = s[ai];
                 // check if the distribution sums to 0 (not visited)
                 const numvec& dist = a.get_distribution();
                 if (accumulate(dist.begin(), dist.end(), 0.0) > 0.0) {
@@ -573,7 +573,7 @@ protected:
             for (auto action_index : range(0l, action_counts[obs])) {
                 // get original MDP transition
                 const Transition& old_tran =
-                    mdp->get_state(state_index).get_action(action_index).get_outcome();
+                    (*mdp)[state_index][action_index].get_outcome();
                 // create a new transition
                 Transition& new_tran = robust_mdp.create_state(obs)
                                            .create_action(action_index)

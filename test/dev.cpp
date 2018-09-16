@@ -140,8 +140,8 @@ int main(void) {
   cout << "Observations: " << mdp->state_count() << " states  ";
   for (auto i : util::lang::range(size_t(0), mdp->state_count())) {
     // check if this is a terminal state
-    if (mdp->get_state(i).action_count() == 0 || inobs >= 2) {
-      if (inobs > 0 && mdp->get_state(i).action_count() == 0) {
+    if ((*mdp)[i].empty() || inobs >= 2) {
+      if (inobs > 0 && (*mdp)[i].size() == 0) {
         last_obs++;
       }
       observations[i] = last_obs++;

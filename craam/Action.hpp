@@ -58,42 +58,28 @@ protected:
 
 public:
     /** Creates an empty action. */
-    RegularAction()
-        : outcome()
-    {
-    }
+    RegularAction() : outcome() {}
 
     /** Initializes outcomes to the provided transition vector */
-    RegularAction(const Transition& outcome)
-        : outcome(outcome)
-    {
-    }
+    RegularAction(const Transition& outcome) : outcome(outcome) {}
 
     /** Returns the outcomes. */
-    vector<Transition> get_outcomes() const
-    {
-        return vector<Transition>{ outcome };
-    }
+    vector<Transition> get_outcomes() const { return vector<Transition>{outcome}; }
 
     /** Returns the single outcome. */
-    const Transition& get_outcome(long outcomeid) const
-    {
+    const Transition& get_outcome(long outcomeid) const {
         assert(outcomeid == 0);
         return outcome;
     }
 
     /** Returns the single outcome. */
-    Transition& get_outcome(long outcomeid)
-    {
+    Transition& get_outcome(long outcomeid) {
         assert(outcomeid == 0);
         return outcome;
     }
 
     /** Returns the outcome */
-    const Transition& operator[](long outcomeid) const
-    {
-        return get_outcome(outcomeid);
-    }
+    const Transition& operator[](long outcomeid) const { return get_outcome(outcomeid); }
 
     /** Returns the outcome */
     Transition& operator[](long outcomeid) { return get_outcome(outcomeid); }
@@ -111,8 +97,7 @@ public:
       Adds a sufficient number of empty outcomes for the outcomeid to be a correct
       identifier. This method does nothing in this action.
       */
-    Transition& create_outcome(long outcomeid)
-    {
+    Transition& create_outcome(long outcomeid) {
         assert(outcomeid == 0);
         return outcome;
     }
@@ -127,17 +112,14 @@ public:
     size_t size() const { return outcome.size(); }
 
     /** Appends a string representation to the argument */
-    void to_string(string& result) const { result.append("1(reg)"); };
+    string to_string() const { return "1(reg)"; };
 
     /** Whether the action has some transitions */
     bool is_valid() const { return outcome.size() > 0; };
 
     /** Whether the provided outcome is valid. Check only size, not that the
       distribution sums to any particular number. */
-    bool is_nature_correct(numvec oid) const
-    {
-        return oid.size() == outcome.size();
-    }
+    bool is_nature_correct(numvec oid) const { return oid.size() == outcome.size(); }
 
     /** Returns the mean reward from the transition. */
     prec_t mean_reward() const { return outcome.mean_reward(); }
@@ -146,10 +128,7 @@ public:
       Returns the mean reward from the transition.
       @param natpolicy Nature can choose the probability distribution
       */
-    prec_t mean_reward(numvec natpolicy) const
-    {
-        return outcome.mean_reward(natpolicy);
-    }
+    prec_t mean_reward(numvec natpolicy) const { return outcome.mean_reward(natpolicy); }
 
     /** Returns the mean transition probabilities. Ignore rewards. */
     Transition mean_transition() const { return outcome; }
@@ -157,23 +136,21 @@ public:
     /** Returns the mean transition probabilities. Ignore rewards.
       @param natpolicy Nature can choose a non-zero state to go to
       */
-    Transition mean_transition(numvec natpolicy) const
-    {
-        return Transition(
-            outcome.get_indices(), natpolicy, numvec(outcome.size(), 0.0));
+    Transition mean_transition(numvec natpolicy) const {
+        return Transition(outcome.get_indices(), natpolicy, numvec(outcome.size(), 0.0));
     }
 
     /** Returns a json representation of the action
         @param actionid Whether to include action id*/
-    string to_json(long actionid = -1) const
-    {
-        string result{ "{" };
-        result += "\"actionid\" : ";
-        result += std::to_string(actionid);
-        result += ",\"transition\" : ";
-        result += outcome.to_json(-1);
-        result += "}";
-        return result;
+    string to_json(long actionid = -1) const {
+        stringstream result;
+        result << "{";
+        result << "\"actionid\" : ";
+        result << std::to_string(actionid);
+        result << ",\"transition\" : ";
+        result << outcome.to_json(-1);
+        result << "}";
+        return result.str();
     }
 };
 
@@ -191,16 +168,10 @@ protected:
 
 public:
     /** Empty list of outcomes */
-    OutcomeManagement()
-        : outcomes()
-    {
-    }
+    OutcomeManagement() : outcomes() {}
 
     /** Initializes with a list of outcomes */
-    OutcomeManagement(const vector<Transition>& outcomes)
-        : outcomes(outcomes)
-    {
-    }
+    OutcomeManagement(const vector<Transition>& outcomes) : outcomes(outcomes) {}
 
     /** Empty virtual destructor */
     virtual ~OutcomeManagement() {}
@@ -211,13 +182,10 @@ public:
 
       Makes the action valid.
       */
-    virtual Transition& create_outcome(long outcomeid)
-    {
-        if (outcomeid < 0)
-            throw invalid_argument("Outcomeid must be non-negative.");
+    virtual Transition& create_outcome(long outcomeid) {
+        if (outcomeid < 0) throw invalid_argument("Outcomeid must be non-negative.");
 
-        if (outcomeid >= long(outcomes.size()))
-            outcomes.resize(outcomeid + 1);
+        if (outcomeid >= long(outcomes.size())) outcomes.resize(outcomeid + 1);
 
         return outcomes[outcomeid];
     }
@@ -225,30 +193,22 @@ public:
     /**
   Creates a new outcome at the end. Similar to push_back.
   */
-    virtual Transition& create_outcome()
-    {
-        return create_outcome(outcomes.size());
-    }
+    virtual Transition& create_outcome() { return create_outcome(outcomes.size()); }
 
     /** Returns a transition for the outcome. The transition must exist. */
-    const Transition& get_outcome(long outcomeid) const
-    {
+    const Transition& get_outcome(long outcomeid) const {
         assert((outcomeid >= 0l && outcomeid < (long)outcomes.size()));
         return outcomes[outcomeid];
     }
 
     /** Returns a transition for the outcome. The transition must exist. */
-    Transition& get_outcome(long outcomeid)
-    {
+    Transition& get_outcome(long outcomeid) {
         assert((outcomeid >= 0l && outcomeid < long(outcomes.size())));
         return outcomes[outcomeid];
     }
 
     /** Returns a transition for the outcome. The transition must exist. */
-    const Transition& operator[](long outcomeid) const
-    {
-        return get_outcome(outcomeid);
-    }
+    const Transition& operator[](long outcomeid) const { return get_outcome(outcomeid); }
 
     /** Returns a transition for the outcome. The transition must exist. */
     Transition& operator[](long outcomeid) { return get_outcome(outcomeid); }
@@ -262,8 +222,7 @@ public:
     /** Adds an outcome defined by the transition.
         @param outcomeid Id of the new outcome. Intermediate ids are created empty
         @param t Transition that defines the outcome*/
-    void add_outcome(long outcomeid, const Transition& t)
-    {
+    void add_outcome(long outcomeid, const Transition& t) {
         create_outcome(outcomeid) = t;
     }
 
@@ -275,26 +234,19 @@ public:
     const vector<Transition>& get_outcomes() const { return outcomes; }
 
     /** Normalizes transitions for outcomes */
-    void normalize()
-    {
+    void normalize() {
         for (Transition& t : outcomes)
             t.normalize();
     }
 
     /** Whether the provided outcomeid is correct */
-    bool is_nature_correct(numvec oid) const
-    {
-        return (oid.size() == outcomes.size());
-    }
+    bool is_nature_correct(numvec oid) const { return (oid.size() == outcomes.size()); }
 
     /** Whether the action has some outcomes */
     bool is_valid() const { return outcomes.size() > 0; };
 
     /** Appends a string representation to the argument */
-    void to_string(string& result) const
-    {
-        result.append(std::to_string(get_outcomes().size()));
-    }
+    string to_string() const { return std::to_string(get_outcomes().size()); }
 };
 
 // **************************************************************************************
@@ -317,18 +269,12 @@ protected:
 
 public:
     /** Creates an empty action. */
-    WeightedOutcomeAction()
-        : OutcomeManagement()
-        , distribution(0)
-    {
-    }
+    WeightedOutcomeAction() : OutcomeManagement(), distribution(0) {}
 
     /** Initializes outcomes to the provided vector */
     WeightedOutcomeAction(const vector<Transition>& outcomes)
-        : OutcomeManagement(outcomes)
-        , distribution(outcomes.size(), 1.0 / prec_t(outcomes.size()))
-    {
-    }
+        : OutcomeManagement(outcomes),
+          distribution(outcomes.size(), 1.0 / prec_t(outcomes.size())) {}
 
     using OutcomeManagement::create_outcome;
 
@@ -356,15 +302,13 @@ public:
       @param outcomeid Index of outcome to create
       @returns Transition that corresponds to outcomeid
       */
-    Transition& create_outcome(long outcomeid) override
-    {
-        if (outcomeid < 0)
-            throw invalid_argument("Outcomeid must be non-negative.");
+    Transition& create_outcome(long outcomeid) override {
+        if (outcomeid < 0) throw invalid_argument("Outcomeid must be non-negative.");
         // 1: compute the weight for the new outcome and old ones
 
-        size_t newsize = outcomeid + 1; // new size of the list of outcomes
+        size_t newsize = outcomeid + 1;   // new size of the list of outcomes
         size_t oldsize = outcomes.size(); // current size of the set
-        if (newsize <= oldsize) { // no need to add anything
+        if (newsize <= oldsize) {         // no need to add anything
             return outcomes[outcomeid];
         }
         // new uniform weight for each element
@@ -375,10 +319,8 @@ public:
             // only scale when the sum is not zero
             if (weightsum > 0) {
                 prec_t normal = (oldsize * newweight) / weightsum;
-                transform(distribution.begin(),
-                    distribution.end(),
-                    distribution.begin(),
-                    [normal](prec_t x) { return x * normal; });
+                transform(distribution.begin(), distribution.end(), distribution.begin(),
+                          [normal](prec_t x) { return x * normal; });
             }
         }
         outcomes.resize(newsize);
@@ -403,10 +345,8 @@ public:
         @param weight New nominal weight for the outcome.
         @returns Transition that corresponds to outcomeid
         */
-    Transition& create_outcome(long outcomeid, prec_t weight)
-    {
-        if (outcomeid < 0)
-            throw invalid_argument("Outcomeid must be non-negative.");
+    Transition& create_outcome(long outcomeid, prec_t weight) {
+        if (outcomeid < 0) throw invalid_argument("Outcomeid must be non-negative.");
         assert(weight >= 0 && weight <= 1);
 
         if (outcomeid >= static_cast<long>(outcomes.size())) { // needs to resize arrays
@@ -423,8 +363,7 @@ public:
      *
      * @param distribution New distribution of outcomes.
      */
-    void set_distribution(const numvec& distribution)
-    {
+    void set_distribution(const numvec& distribution) {
         if (distribution.size() != outcomes.size())
             throw invalid_argument("Invalid distribution size.");
         prec_t sum = accumulate(distribution.begin(), distribution.end(), 0.0);
@@ -444,8 +383,7 @@ public:
      * @param distribution New distribution of outcomes.
      * @param weight New weight
      */
-    void set_distribution(long outcomeid, prec_t weight)
-    {
+    void set_distribution(long outcomeid, prec_t weight) {
         assert(outcomeid >= 0 && (size_t)outcomeid < outcomes.size());
         distribution[outcomeid] = weight;
     }
@@ -458,49 +396,43 @@ public:
       is initialized. Exception is thrown if the distribution sums
       to zero.
     */
-    void normalize_distribution()
-    {
+    void normalize_distribution() {
         auto weightsum = accumulate(distribution.begin(), distribution.end(), 0.0);
 
         if (weightsum > 0.0) {
             for (auto& p : distribution)
                 p /= weightsum;
         } else {
-            throw invalid_argument(
-                "Distribution sums to 0 and cannot be normalized.");
+            throw invalid_argument("Distribution sums to 0 and cannot be normalized.");
         }
     }
 
     /**
     Checks whether the outcome distribution is normalized.
     */
-    bool is_distribution_normalized() const
-    {
-        return abs(1.0 - accumulate(distribution.begin(), distribution.end(), 0.0)) < SOLPREC;
+    bool is_distribution_normalized() const {
+        return abs(1.0 - accumulate(distribution.begin(), distribution.end(), 0.0)) <
+               SOLPREC;
     }
 
     /**
     Sets an initial uniform value for the distribution.
     If the distribution already exists, then it is overwritten.
     */
-    void uniform_distribution()
-    {
+    void uniform_distribution() {
         distribution.clear();
         if (outcomes.size() > 0)
             distribution.resize(outcomes.size(), 1.0 / (prec_t)outcomes.size());
     }
 
     /** Appends a string representation to the argument */
-    void to_string(string& result) const
-    {
-        result.append(std::to_string(get_outcomes().size()));
-        result.append(" / ");
-        result.append(std::to_string(get_distribution().size()));
+    string to_string() const {
+        return std::to_string(get_outcomes().size()) + " / " +
+               std::to_string(get_distribution().size());
     }
 
     /** Returns the mean reward from the transition for the provided nature action. */
-    prec_t mean_reward(const numvec& outcomedist) const
-    {
+    prec_t mean_reward(const numvec& outcomedist) const {
         assert(outcomedist.size() == outcomes.size());
         prec_t result = 0;
         for (size_t i = 0; i < outcomes.size(); i++) {
@@ -514,8 +446,7 @@ public:
 
     /** Returns the mean transition probabilities for the provided nature action.
    */
-    Transition mean_transition(const numvec& outcomedist) const
-    {
+    Transition mean_transition(const numvec& outcomedist) const {
         assert(outcomedist.size() == outcomes.size());
         Transition result;
         for (size_t i = 0; i < outcomes.size(); i++)
@@ -528,28 +459,26 @@ public:
 
     /** Returns a json representation of action
         @param actionid Includes also action id*/
-    string to_json(long actionid = -1) const
-    {
-        string result{ "{" };
-        result += "\"actionid\" : ";
-        result += std::to_string(actionid);
-        result += ",\"outcomes\" : [";
+    string to_json(long actionid = -1) const {
+        stringstream result;
+        result << "{";
+        result << "\"actionid\" : ";
+        result << std::to_string(actionid);
+        result << ",\"outcomes\" : [";
         for (auto oi : indices(outcomes)) {
             const auto& o = outcomes[oi];
-            result += o.to_json(oi);
-            result += ",";
+            result << o.to_json(oi);
+            result << ",";
         }
-        if (!outcomes.empty())
-            result.pop_back(); // remove last comma
-        result += "],\"distribution\" : [";
+        //result.seekp(-1, std::ios_base::end); // remove last comma (but what if it is empty)
+        result << "],\"distribution\" : [";
         for (auto d : distribution) {
-            result += std::to_string(d);
-            result += ",";
+            result << std::to_string(d);
+            result << ",";
         }
-        if (!distribution.empty())
-            result.pop_back(); // remove last comma
-        result += "]}";
-        return result;
+        //result.seekp(-1, std::ios_base::end); // remove last comma (but what if it is empty)
+        result << "]}";
+        return result.str();
     }
 };
 
