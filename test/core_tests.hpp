@@ -138,8 +138,8 @@ BOOST_AUTO_TEST_CASE(basic_tests) {
                     0.1 * (3 + 0.9 * 1) + 0.3 * (4 + 0.9 * 2), 1e-3);
 
   // check values of actions
-  WeightedOutcomeAction a1({t1, t2}), a2({t1, t3});
-  WeightedOutcomeAction a3({t2});
+  ActionO a1({t1, t2}), a2({t1, t3});
+  ActionO a3({t2});
 
   BOOST_CHECK_CLOSE(
       value_action(a1, valuefunction, 0.9),
@@ -824,7 +824,7 @@ BOOST_AUTO_TEST_CASE(test_randomized_mdp_with_terminal_state) {
 
 BOOST_AUTO_TEST_CASE(test_create_outcome) {
 
-  WeightedOutcomeAction a;
+  ActionO a;
   numvec desired(5, 0.2); // this is the correct distribution with 5 outcomes
 
   a.create_outcome(1);

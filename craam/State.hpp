@@ -244,7 +244,7 @@ protected:
 /// Regular MDP state with no outcomes
 typedef SAState<Action> RegularState;
 /// State with uncertain outcomes with L1 constraints on the distribution
-typedef SAState<WeightedOutcomeAction> WeightedRobustState;
+typedef SAState<ActionO> WeightedRobustState;
 
 /// helper functions
 namespace internal {

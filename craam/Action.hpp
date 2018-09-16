@@ -260,19 +260,19 @@ and nature choosing a distribution over outcomes. This action can be used by
 both regular and robust MDP algorithms.
 
 The distribution d over outcomes is uniform by default:
-see WeightedOutcomeAction::create_outcome.
+see ActionO::create_outcome.
 */
-class WeightedOutcomeAction : public OutcomeManagement {
+class ActionO : public OutcomeManagement {
 protected:
     /** Weights used in computing the worst/best case */
     numvec distribution;
 
 public:
     /** Creates an empty action. */
-    WeightedOutcomeAction() : OutcomeManagement(), distribution(0) {}
+    ActionO() : OutcomeManagement(), distribution(0) {}
 
     /** Initializes outcomes to the provided vector */
-    WeightedOutcomeAction(const vector<Transition>& outcomes)
+    ActionO(const vector<Transition>& outcomes)
         : OutcomeManagement(outcomes),
           distribution(outcomes.size(), 1.0 / prec_t(outcomes.size())) {}
 

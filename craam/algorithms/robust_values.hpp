@@ -85,7 +85,7 @@ inline vec_scal_t value_action(const Action& action, const numvec& valuefunction
 }
 
 // *******************************************************
-// WeightedOutcomeAction computation methods
+// ActionO computation methods
 // *******************************************************
 
 /**
@@ -99,9 +99,9 @@ inline vec_scal_t value_action(const Action& action, const numvec& valuefunction
 
         \return Outcome distribution and the mean value for the choice of the nature
         */
-inline vec_scal_t value_action(const WeightedOutcomeAction& action,
-                               const numvec& valuefunction, prec_t discount, long stateid,
-                               long actionid, const SANature& nature) {
+inline vec_scal_t value_action(const ActionO& action, const numvec& valuefunction,
+                               prec_t discount, long stateid, long actionid,
+                               const SANature& nature) {
     assert(action.get_distribution().size() == action.get_outcomes().size());
 
     if (action.get_outcomes().empty())
@@ -470,8 +470,7 @@ public:
     /**
          * @param responses Possible responses for each state and action
          */
-    SARobustOutcomeBellman(vector<vector<WeightedOutcomeAction>>&& responses,
-                           SANature&& nature)
+    SARobustOutcomeBellman(vector<vector<ActionO>>&& responses, SANature&& nature)
         : responses(responses), nature(nature) {}
 
     /**
@@ -547,11 +546,11 @@ public:
         return value_action(action, valuefunction, discount, stateid, actionid, nature);
     }
 
-    vector<vector<WeightedOutcomeAction>>& get_responses() { return responses; }
+    vector<vector<ActionO>>& get_responses() { return responses; }
 
 protected:
     /// Lists of outcomes for each state and action
-    vector<vector<WeightedOutcomeAction>> responses;
+    vector<vector<ActionO>> responses;
     /// How to combine the values from a robust solution
     SANature nature;
 };

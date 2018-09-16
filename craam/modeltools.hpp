@@ -356,7 +356,7 @@ inline void set_outcome_dst(Model& mdp, size_t stateid, size_t actionid,
 Checks whether outcome distributions sum to 1 for all states and actions.
 
 This function only applies to models that have outcomes, such as ones using
-"WeightedOutcomeAction" or its derivatives.
+"ActionO" or its derivatives.
 
 */
 template <class Model> inline bool is_outcome_dst_normalized(const Model& mdp) {
@@ -373,7 +373,7 @@ template <class Model> inline bool is_outcome_dst_normalized(const Model& mdp) {
 Normalizes outcome distributions for all states and actions.
 
 This function only applies to models that have outcomes, such as ones using
-"WeightedOutcomeAction" or its derivatives.
+"ActionO" or its derivatives.
 */
 template <class Model> inline void normalize_outcome_dst(Model& mdp) {
     for (auto si : indices(mdp)) {

@@ -79,7 +79,7 @@ inline prec_t value_action(const Action& action, const numvec& valuefunction,
 }
 
 // *******************************************************
-// WeightedOutcomeAction computation methods
+// ActionO computation methods
 // *******************************************************
 
 /**
@@ -90,12 +90,11 @@ Computes the average outcome using the provided distribution.
 @param discount Discount factor
 @return Mean value of the action
  */
-inline prec_t value_action(const WeightedOutcomeAction& action,
-                           numvec const& valuefunction, prec_t discount) {
+inline prec_t value_action(const ActionO& action, numvec const& valuefunction,
+                           prec_t discount) {
     assert(action.get_distribution().size() == action.get_outcomes().size());
 
-    if (action.get_outcomes().empty())
-        throw invalid_argument("WeightedOutcomeAction with no outcomes");
+    if (action.get_outcomes().empty()) throw invalid_argument("ActionO with no outcomes");
 
     prec_t averagevalue = 0.0;
     const numvec& distribution = action.get_distribution();
@@ -113,13 +112,11 @@ Computes the action value for a fixed index outcome.
 @param distribution Custom distribution that is selected by nature.
 @return Value of the action
  */
-inline prec_t value_action(const WeightedOutcomeAction& action,
-                           numvec const& valuefunction, prec_t discount,
-                           const numvec& distribution) {
+inline prec_t value_action(const ActionO& action, numvec const& valuefunction,
+                           prec_t discount, const numvec& distribution) {
 
     assert(distribution.size() == action.get_outcomes().size());
-    if (action.get_outcomes().empty())
-        throw invalid_argument("WeightedOutcomeAction with no outcomes");
+    if (action.get_outcomes().empty()) throw invalid_argument("ActionO with no outcomes");
 
     prec_t averagevalue = 0.0;
     // TODO: simd?
