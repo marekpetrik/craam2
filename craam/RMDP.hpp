@@ -253,11 +253,6 @@ public:
     /// Type of the state
     using state_type = SType;
 
-    /** Decision-maker's policy: Which action to take in which state.  */
-    typedef indvec policy_det;
-    /** Nature's policy: Which outcome to take in which state.  */
-    typedef vector<numvec> policy_rand;
-
     /**
       Constructs the RMDP with a pre-allocated number of states. All
       states are initially terminal.
@@ -416,7 +411,7 @@ public:
         for (size_t s = 0; s < states.size(); s++) {
             indvec invalid_a = states[s].invalid_actions();
             for (size_t ia = 0; ia < invalid_a.size(); ia++) {
-                invalid.push_back(make_pair(s, ia));
+                invalid.emplace_back(s, ia);
             }
         }
         return invalid;
@@ -444,11 +439,11 @@ public:
 /**
 Regular MDP with discrete actions and one outcome per action
 */
-typedef GRMDP<RegularState> MDP;
+using MDP = GRMDP<RegularState>;
 
 /**
 An uncertain MDP with outcomes and weights. See craam::L1RobustState.
 */
-typedef GRMDP<WeightedRobustState> RMDP;
+using RMDP = GRMDP<WeightedRobustState>;
 
 } // namespace craam

@@ -202,13 +202,13 @@ BOOST_AUTO_TEST_CASE(small_reweighted_solution) {
   MDPI_R imr(const_pointer_cast<const MDP>(mdp), observations, initial);
 
   BOOST_TEST_CHECKPOINT("Solving MDPI_R.");
-  auto &&pol = imr.solve_reweighted(10, 0.9);
+  auto pol = imr.solve_reweighted(10, 0.9);
 
   indvec polvec{0, 0};
   BOOST_CHECK_EQUAL_COLLECTIONS(pol.begin(), pol.end(), polvec.begin(),
                                 polvec.end());
 
-  auto &&pol2 = imr.solve_robust(10, 0.0, 0.9);
+  auto pol2 = imr.solve_robust(10, 0.0, 0.9);
   BOOST_CHECK_EQUAL_COLLECTIONS(pol2.begin(), pol2.end(), polvec.begin(),
                                 polvec.end());
 
@@ -220,7 +220,7 @@ BOOST_AUTO_TEST_CASE(small_reweighted_solution) {
 }
 
 BOOST_AUTO_TEST_CASE(simple_mdpo_save_load_save_load) {
-  MDP &&rmdp1 = make_chain1();
+  MDP rmdp1 = make_chain1();
 
   Transition initial(indvec{0, 1, 2}, numvec{1.0 / 3.0, 1.0 / 3.0, 1 / 3.0});
   indvec state2obs{0, 0, 1};
@@ -234,9 +234,9 @@ BOOST_AUTO_TEST_CASE(simple_mdpo_save_load_save_load) {
   store2.seekg(0);
   store3.seekg(0);
 
-  auto &&string11 = store1.str();
-  auto &&string12 = store2.str();
-  auto &&string13 = store3.str();
+  auto string11 = store1.str();
+  auto string12 = store2.str();
+  auto string13 = store3.str();
 
   auto mdpi2 = MDPI::from_csv(store1, store2, store3);
 
@@ -244,9 +244,9 @@ BOOST_AUTO_TEST_CASE(simple_mdpo_save_load_save_load) {
 
   mdpi2->to_csv(store21, store22, store23);
 
-  auto &&string21 = store21.str();
-  auto &&string22 = store22.str();
-  auto &&string23 = store23.str();
+  auto string21 = store21.str();
+  auto string22 = store22.str();
+  auto string23 = store23.str();
 
   BOOST_CHECK_EQUAL(string11, string21);
   BOOST_CHECK_EQUAL(string12, string22);

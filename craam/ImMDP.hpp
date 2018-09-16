@@ -172,7 +172,7 @@ public:
     indvec random_policy(unsigned seed = 1u) {
         indvec policy(obscount, -1);
 
-        default_random_engine gen(seed);
+        std::minstd_rand0 gen(seed);
 
         for (auto obs : range(0l, obscount)) {
             auto ac = action_counts[obs];
@@ -450,9 +450,11 @@ public:
         }
 
         indvec obspol(initobspol); // return observation policy
-        if (!obspol.empty()) { obspol.resize(obs_count(), 0); }
-        indvec statepol(state_count(),
-                        0); // state policy that corresponds to the observation policy
+
+        if (obspol.empty()) { obspol.resize(obs_count(), 0); }
+        // state policy that corresponds to the observation policy
+
+        indvec statepol(state_count(), 0);
         obspol2statepol(obspol, statepol);
 
         // map the initial distribution to observations in order to evaluate the
