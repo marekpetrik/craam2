@@ -379,7 +379,7 @@ public:
         initialize_robustmdp();
     }
 
-    const RMDP& get_robust_mdp() const {
+    const MDPO& get_robust_mdp() const {
         /** Returns the internal robust MDP representation  */
         return robust_mdp;
     };
@@ -546,7 +546,7 @@ public:
 
 protected:
     /** Robust representation of the MDPI */
-    RMDP robust_mdp;
+    MDPO robust_mdp;
     /** Maps the index of the mdp state to the index of the observation
   within the state corresponding to the observation (multiple states per
   observation) */

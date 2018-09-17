@@ -23,11 +23,11 @@
 
 #pragma once
 
-#include "Action.hpp"
-#include "RMDP.hpp"
-#include "State.hpp"
-#include "Transition.hpp"
-#include "definitions.hpp"
+#include "craam/Action.hpp"
+#include "craam/RMDP.hpp"
+#include "craam/State.hpp"
+#include "craam/Transition.hpp"
+#include "craam/definitions.hpp"
 
 #include <cassert>
 #include <csv.h>
@@ -59,7 +59,7 @@ Adds a transition probability and reward for a particular outcome.
 \param probability Probability of the transition (must be non-negative)
 \param reward The reward associated with the transition.
 */
-inline void add_transition(RMDP& mdp, long fromid, long actionid, long outcomeid,
+inline void add_transition(MDPO& mdp, long fromid, long actionid, long outcomeid,
                            long toid, prec_t probability, prec_t reward) {
     // make sure that the destination state exists
     mdp.create_state(toid);
@@ -69,7 +69,7 @@ inline void add_transition(RMDP& mdp, long fromid, long actionid, long outcomeid
     outcome.add_sample(toid, probability, reward);
 }
 /**
-Adds a transition probability and reward for an RMDP model.
+Adds a transition probability and reward for an MDPO model.
 
 \param mdp model to add the transition to
 \param fromid Starting state ID
@@ -121,7 +121,7 @@ MDP mdp_from_csv(istream& input) {
 }
 
 /**
-Loads an RMDP definition from a simple csv file. States, actions, and
+Loads an MDPO definition from a simple csv file. States, actions, and
 outcomes are identified by 0-based ids. The columns are separated by
 commas, and rows by new lines.
 
@@ -130,11 +130,11 @@ idstatefrom, idaction, idoutcome, idstateto, probability, reward
 The file must have a header.
 
  */
-RMDP mdpo_from_csv(io::CSVReader<6> in) {
+MDPO mdpo_from_csv(io::CSVReader<6> in) {
     long idstatefrom, idaction, idoutcome, idstateto;
     double probability, reward;
 
-    RMDP mdp;
+    MDPO mdp;
 
     in.read_header(io::ignore_extra_column, "idstatefrom", "idaction", "idoutcome",
                    "idstateto", "probability", "reward");
@@ -149,16 +149,16 @@ RMDP mdpo_from_csv(io::CSVReader<6> in) {
     return mdp;
 }
 
-RMDP mdpo_from_csv(const string& file_name) {
+MDPO mdpo_from_csv(const string& file_name) {
     return mdpo_from_csv(io::CSVReader<6>(file_name));
 }
 
-RMDP mdpo_from_csv(istream& input) {
+MDPO mdpo_from_csv(istream& input) {
     return mdpo_from_csv(io::CSVReader<6>("temp_file", input));
 }
 
 /**
-Saves the RMDP model to a stream as a simple csv file. States, actions, and
+Saves the MDPO model to a stream as a simple csv file. States, actions, and
 outcomes are identified by 0-based ids. Columns are separated by commas, and
 rows by new lines.
 
@@ -176,7 +176,7 @@ Note that underlying nominal distributions are not saved.
 \param header Whether the header should be written as the
       first line of the file represents the header.
 */
-void to_csv(const RMDP& rmdp, ostream& output, bool header = true) {
+void to_csv(const MDPO& rmdp, ostream& output, bool header = true) {
 
     // write header if so requested
     if (header) {
@@ -275,7 +275,7 @@ void to_csv_file(const Model& mdp, const string& filename, bool header = true) {
 Sets the distribution for outcomes for each state and
 action to be uniform.
 */
-inline void set_uniform_outcome_dst(RMDP& mdp) {
+inline void set_uniform_outcome_dst(MDPO& mdp) {
     for (const auto si : indices(mdp)) {
         auto& s = mdp[si];
         for (const auto ai : indices(s)) {
@@ -290,7 +290,7 @@ inline void set_uniform_outcome_dst(RMDP& mdp) {
 /**
 Sets the distribution of outcomes for the given state and action.
 */
-inline void set_outcome_dst(RMDP& mdp, size_t stateid, size_t actionid,
+inline void set_outcome_dst(MDPO& mdp, size_t stateid, size_t actionid,
                             const numvec& dist) {
     assert(stateid >= 0 && stateid < mdp.size());
     assert(actionid >= 0 && actionid < mdp[stateid].size());
@@ -304,7 +304,7 @@ This function only applies to models that have outcomes, such as ones using
 "ActionO" or its derivatives.
 
 */
-inline bool is_outcome_dst_normalized(const RMDP& mdp) {
+inline bool is_outcome_dst_normalized(const MDPO& mdp) {
     for (auto si : indices(mdp)) {
         auto& state = mdp[si];
         for (auto ai : indices(state)) {
@@ -320,7 +320,7 @@ Normalizes outcome distributions for all states and actions.
 This function only applies to models that have outcomes, such as ones using
 "ActionO" or its derivatives.
 */
-inline void normalize_outcome_dst(RMDP& mdp) {
+inline void normalize_outcome_dst(MDPO& mdp) {
     for (auto si : indices(mdp)) {
         auto& state = mdp[si];
         for (auto ai : indices(state))
@@ -336,7 +336,7 @@ to the outcomes.
 The input is an MDP:
 \f$ \mathcal{M} = (\mathcal{S},\mathcal{A},P,r) ,\f$
 where the states are \f$ \mathcal{S} = \{ s_1, \ldots, s_n \} \f$
-The output RMDP is:
+The output MDPO is:
 \f$ \bar{\mathcal{M}} = (\mathcal{S},\mathcal{A},\mathcal{B},
 \bar{P},\bar{r},d), \f$ where the states and actions are the same as in the
 original MDP and \f$ d : \mathcal{S} \times \mathcal{A} \rightarrow
@@ -375,11 +375,11 @@ non-zero transition probability from state \f$ s \f$ and action \f$ a \f$.
 \param mdp MDP \f$ \mathcal{M} \f$ used as the input
 \param allowzeros Whether to allow outcomes to states with zero
                     transition probability
-\returns RMDP with nominal probabilities
+\returns MDPO with nominal probabilitiesas weights
 */
-inline RMDP robustify(const MDP& mdp, bool allowzeros = false) {
+inline MDPO robustify(const MDP& mdp, bool allowzeros = false) {
     // construct the result first
-    RMDP rmdp;
+    MDPO rmdp;
     // iterate over all starting states (at t)
     for (size_t si : indices(mdp)) {
         const auto& s = mdp[si];

@@ -44,7 +44,7 @@ using namespace craam;
 using namespace craam::algorithms;
 
 // a helper function
-inline void add_transition(RMDP &mdp, long fromid, long actionid, long toid,
+inline void add_transition(MDPO &mdp, long fromid, long actionid, long toid,
                            prec_t probability, prec_t reward) {
   // make sure that the destination state exists
   mdp.create_state(toid);
@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_CASE(simple_mdp_vi_of_nonrobust) {
 
 BOOST_AUTO_TEST_CASE(simple_rmdpd_vi_of_nonrobust) {
   auto rmdp = create_test_mdp<MDP>();
-  test_simple_vi<RMDP>(robustify(rmdp));
+  test_simple_vi<MDPO>(robustify(rmdp));
 }
 
 // ********************************************************************************
@@ -357,7 +357,7 @@ BOOST_AUTO_TEST_CASE(test_check_add_transition_m) {
 
 BOOST_AUTO_TEST_CASE(test_check_add_transition_r) {
 
-  RMDP rmdp;
+  MDPO rmdp;
 
   numvec firstoutcome = numvec{1.0};
   // check adding to the end
@@ -457,14 +457,14 @@ BOOST_AUTO_TEST_CASE(simple_mdp_save_load_mdp) {
 }
 
 BOOST_AUTO_TEST_CASE(simple_mdp_save_load_rmdpd) {
-  auto rmdp1 = create_test_mdp<RMDP>();
+  auto rmdp1 = create_test_mdp<MDPO>();
 
   stringstream store;
 
   to_csv(rmdp1, store);
   store.seekg(0);
 
-  RMDP rmdp2 = mdpo_from_csv(store);
+  MDPO rmdp2 = mdpo_from_csv(store);
 
   numvec initial{0, 0, 0};
 
@@ -535,11 +535,11 @@ template <class Model> void test_value_function(const Model &rmdp) {
 }
 
 BOOST_AUTO_TEST_CASE(test_value_function_rmdp) {
-  RMDP rmdp;
+  MDPO rmdp;
 
   add_transition(rmdp, 0, 0, 0, 0, 1, 1);
   add_transition(rmdp, 0, 0, 1, 0, 1, 2);
-  test_value_function<RMDP>(rmdp);
+  test_value_function<MDPO>(rmdp);
 }
 
 // ********************************************************************************
@@ -548,7 +548,7 @@ BOOST_AUTO_TEST_CASE(test_value_function_rmdp) {
 // ********************************************************************************
 
 void test_value_function_thr(double threshold, numvec expected) {
-  RMDP rmdp;
+  MDPO rmdp;
 
   add_transition(rmdp, 0, 0, 0, 0, 1, 1);
   add_transition(rmdp, 0, 0, 1, 0, 1, 2);
@@ -599,7 +599,7 @@ BOOST_AUTO_TEST_CASE(test_string_mdp) {
 }
 
 BOOST_AUTO_TEST_CASE(test_string_rmdpl1) {
-  RMDP rmdp;
+  MDPO rmdp;
 
   numvec dist{0.5, 0.5};
 
@@ -621,7 +621,7 @@ BOOST_AUTO_TEST_CASE(test_string_rmdpl1) {
 // ********************************************************************************
 
 BOOST_AUTO_TEST_CASE(test_normalization) {
-  RMDP rmdp;
+  MDPO rmdp;
 
   // nonrobust
   add_transition(rmdp, 0, 0, 0, 1.0, 0.1);
@@ -658,7 +658,7 @@ BOOST_AUTO_TEST_CASE(test_normalization) {
 // *********************************
 // ********************************************************************************
 
-void test_randomized_threshold_average(const RMDP &rmdp,
+void test_randomized_threshold_average(const MDPO &rmdp,
                                        const numvec &desired) {
 
   const prec_t gamma = 0.9;
@@ -669,7 +669,7 @@ void test_randomized_threshold_average(const RMDP &rmdp,
   CHECK_CLOSE_COLLECTION(sol3.valuefunction, desired, 0.001);
 }
 
-void test_randomized_threshold_robust(const RMDP &rmdp, double threshold,
+void test_randomized_threshold_robust(const MDPO &rmdp, double threshold,
                                       const numvec &desired) {
 
   const prec_t gamma = 0.9;
@@ -682,7 +682,7 @@ void test_randomized_threshold_robust(const RMDP &rmdp, double threshold,
   CHECK_CLOSE_COLLECTION(sol3.valuefunction, desired, 0.001);
 }
 
-void test_randomized_threshold_optimistic(const RMDP &rmdp, double threshold,
+void test_randomized_threshold_optimistic(const MDPO &rmdp, double threshold,
                                           const numvec &desired) {
 
   const prec_t gamma = 0.9;
@@ -700,7 +700,7 @@ BOOST_AUTO_TEST_CASE(test_randomized_mdp) {
   // define the MDP representation
   // format: idstatefrom, idaction, idoutcome, idstateto, probability, reward
   string string_representation{
-      "idstatefrom, idaction, idoutcome, idstateto, probability, reward\
+      "idstatefrom, idaction, idoutcome, idstateto, probability, reward \
          1,0,0,1,1.0,2.0 \
          2,0,0,2,1.0,3.0 \
          3,0,0,3,1.0,1.0 \
@@ -723,7 +723,7 @@ BOOST_AUTO_TEST_CASE(test_randomized_mdp) {
   stringstream store(string_representation);
 
   store.seekg(0);
-  RMDP rmdp = mdpo_from_csv(store);
+  MDPO rmdp = mdpo_from_csv(store);
 
   // print the problem definition for debugging
   // cout << string_representation << endl;
@@ -799,7 +799,7 @@ BOOST_AUTO_TEST_CASE(test_randomized_mdp_with_terminal_state) {
   stringstream store(string_representation);
 
   store.seekg(0);
-  RMDP rmdp = mdpo_from_csv(store);
+  MDPO rmdp = mdpo_from_csv(store);
 
   // print the problem definition for debugging
   // cout << string_representation << endl;
@@ -895,7 +895,7 @@ BOOST_AUTO_TEST_CASE(test_parameter_read_write) {
   stringstream store(string_representation);
 
   store.seekg(0);
-  RMDP rmdp = mdpo_from_csv(store);
+  MDPO rmdp = mdpo_from_csv(store);
 
   BOOST_CHECK_EQUAL(rmdp[3][0].get_outcome(0).get_reward(0), 10.0);
   rmdp[3][0].get_outcome(0).set_reward(0, 15.1);
@@ -929,9 +929,9 @@ BOOST_AUTO_TEST_CASE(test_robustification) {
   MDP mdp = create_test_mdp_robustify();
 
   // no transition to zero probability states
-  RMDP rmdp_nz = robustify(mdp, false);
+  MDPO rmdp_nz = robustify(mdp, false);
   // allow transitions to zero probability states
-  RMDP rmdp_z = robustify(mdp, true);
+  MDPO rmdp_z = robustify(mdp, true);
 
   // **** Test ordinary
   BOOST_CHECK_CLOSE(solve_mpi(mdp, 0.9).valuefunction[0], (1.0 + 2.0) / 2.0,
@@ -943,7 +943,7 @@ BOOST_AUTO_TEST_CASE(test_robustification) {
 
   // **** Test robust
 
-  // robust MDP should have the same result as a robustified RMDP
+  // robust MDP should have the same result as a robustified MDPO
   BOOST_CHECK_CLOSE(
       rsolve_mpi(mdp, 0.9, nats::robust_l1u(0.5)).valuefunction[0],
       (1.0 * (0.5 + 0.25) + 2.0 * (0.5 - 0.25)), 1e-4);

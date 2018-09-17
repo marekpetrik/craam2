@@ -78,7 +78,7 @@ public:
 /**
  * L1 robust response with weights for states
  * The length of the state vector depends on the MDP type. For the plain
- * MDP it is the number of non-zero probabilities, a for an RMDP it is the
+ * MDP it is the number of non-zero probabilities, a for an MDPO it is the
  * number of outcomes.
  * @see rsolve_mpi, rsolve_vi
  */

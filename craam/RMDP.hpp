@@ -101,8 +101,8 @@ The main models supported are:
 
 - `craam::MDP` : plain MDP with no specific definition of ambiguity (can be used
 to compute robust solutions anyway)
-- `craam::RMDP` : an augmented model that adds nature's actions (so-called
-outcomes) to the model for convenience
+- `craam::MDPO` : an augmented model that adds outcomes to states (and actions)
+    to the model for convenience
 - `craam::impl::MDPIR` : an MDP with implementability constraints. See
 [Petrik2016].
 
@@ -446,6 +446,6 @@ using MDP = GRMDP<State>;
 /**
 An uncertain MDP with outcomes and weights. See craam::L1RobustState.
 */
-using RMDP = GRMDP<StateO>;
+using MDPO = GRMDP<StateO>;
 
 } // namespace craam

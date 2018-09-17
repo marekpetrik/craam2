@@ -34,7 +34,7 @@ regular MDPs.
 #include <rm/range.hpp>
 #include <type_traits>
 
-/// Main namespace for algorithms that operate on MDPs and RMDPs
+/// Main namespace for algorithms that operate on MDPs and MDPOs
 namespace craam::algorithms {
 
 using namespace std;
@@ -296,7 +296,7 @@ inline prec_t value_fix_state(const SAState<AType>& state, numvec const& valuefu
 }
 
 // *******************************************************
-// RMDP computation methods
+// MDPO computation methods
 // *******************************************************
 
 /**

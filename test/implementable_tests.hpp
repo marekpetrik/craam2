@@ -159,7 +159,7 @@ BOOST_AUTO_TEST_CASE(small_construct_mdpi_r) {
   vector<prec_t> target_v_opt{20.0, 12.0};
   vector<prec_t> target_v_rob{12.0, 12.0};
 
-  BOOST_TEST_CHECKPOINT("Solving RMDP");
+  BOOST_TEST_CHECKPOINT("Solving MDPO");
   auto so = rsolve_mpi(rmdp, 0.9, nats::optimistic_unbounded(), iv, indvec(0),
                        100, 0.0, 10, 0.0);
   CHECK_CLOSE_COLLECTION(so.valuefunction, target_v_opt, 1e-3);
