@@ -65,7 +65,7 @@ public:
     SAState() : actions(0){};
 
     /** Initializes state with actions and sets them all to valid */
-    SAState(const vector<AType>& actions) : actions(actions){};
+    SAState(vector<AType> actions) : actions(move(actions)){};
 
     /** Number of actions */
     size_t size() const { return actions.size(); };
@@ -128,35 +128,12 @@ public:
             a.normalize();
     }
 
-    /** Checks whether the prescribed action and outcome are correct */
-    bool is_action_correct(long aid, numvec nataction) const {
-        if ((aid < 0) || ((size_t)aid >= actions.size())) return false;
-
-        return actions[aid].is_nature_correct(nataction);
-    }
-
     /** Checks whether the prescribed action correct */
     bool is_action_correct(long aid) const {
         if ((aid < 0) || ((size_t)aid >= actions.size()))
             return false;
         else
             return true;
-    }
-
-    /** Returns the mean reward following the action (and outcome). */
-    prec_t mean_reward(long actionid, numvec nataction) const {
-        if (is_terminal())
-            return 0;
-        else
-            return get_action(actionid).mean_reward(nataction);
-    }
-
-    /** Returns the mean reward following the action. */
-    prec_t mean_reward(long actionid) const {
-        if (is_terminal())
-            return 0;
-        else
-            return get_action(actionid).mean_reward();
     }
 
     /** Returns the mean transition probabilities following the action and
@@ -240,11 +217,6 @@ protected:
 // **********************************************************************
 // *********************    SPECIFIC STATE DEFINITIONS    ***************
 // **********************************************************************
-
-/// Regular MDP state with no outcomes
-typedef SAState<Action> State;
-/// State with uncertain outcomes with L1 constraints on the distribution
-typedef SAState<ActionO> StateO;
 
 /// helper functions
 namespace internal {

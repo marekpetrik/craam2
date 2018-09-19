@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "State.hpp"
+#include "craam/definitions.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -32,7 +32,6 @@
 #include <istream>
 #include <limits>
 #include <memory>
-#include <rm/range.hpp>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -67,7 +66,7 @@ Note that $p$ is constrained to be **absolutely continuous** with
 respect to $P(s,a,\cdot)$. This is a hard requirement for all choices of
 ambiguity (or uncertainty).
 
-The **RMPD** model adds a set of *outcomes* that model possible actions that can
+The **MDPO** model adds a set of *outcomes* that model possible actions that can
 be taken by nature. In that case, the robust solution may for example satisfy
 the following Bellman optimality equation:
 \f[ v(s) = \max_{a \in \mathcal{A}} \min_{o \in \mathcal{O}}
@@ -129,7 +128,7 @@ The following is a simple example of formulating and solving a small MDP.
 
 \code
 
-    #include "craam/RMDP.hpp"
+    #include "craam/GMDP.hpp"
     #include "craam/algorithms/values.hpp"
     #include "craam/modeltools.hpp"
 
@@ -219,7 +218,6 @@ Product Recommendations. In Uncertainty in Artificial Intelligence (UAI).
 namespace craam {
 
 using namespace std;
-using namespace util::lang;
 
 // **************************************************************************************
 //  Generic MDP Class
@@ -244,7 +242,7 @@ but assumes 0 return for regular models.
 \tparam SType Type of state, determines s-rectangularity or s,a-rectangularity
 and also the type of the outcome and action constraints
  */
-template <class SType> class GRMDP {
+template <class SType> class GMDP {
 protected:
     /** Internal list of states */
     vector<SType> states;
@@ -259,10 +257,10 @@ public:
       @param state_count The initial number of states, which dynamically
                           increases as more transitions are added. All initial states are terminal.
       */
-    GRMDP(long state_count) : states(state_count){};
+    GMDP(long state_count) : states(state_count){};
 
     /** Constructs an empty RMDP. */
-    GRMDP() : states(){};
+    GMDP() : states(){};
 
     /**
       Assures that the MDP state exists and if it does not, then it is created.
@@ -433,19 +431,5 @@ protected:
         return states[stateid];
     };
 };
-
-// **********************************************************************
-// *********************    TEMPLATE DECLARATIONS    ********************
-// **********************************************************************
-
-/**
-Regular MDP with discrete actions and one outcome per action
-*/
-using MDP = GRMDP<State>;
-
-/**
-An uncertain MDP with outcomes and weights. See craam::L1RobustState.
-*/
-using MDPO = GRMDP<StateO>;
 
 } // namespace craam

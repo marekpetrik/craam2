@@ -27,7 +27,7 @@
 #include "craam/definitions.hpp"
 #include <functional>
 
-namespace craam::algorithms {
+namespace craam { namespace algorithms {
 
 using namespace std;
 using namespace craam;
@@ -45,9 +45,8 @@ using namespace craam;
  * The z-function is rewards + discount * valuefunction. It is defined only for
  * the same states that have non-zero transition probabilites.
  */
-using SANature = function<pair<numvec, prec_t>(long stateid, long actionid,
-                                               const numvec &nominalprob,
-                                               const numvec &zvalues)>;
+using SANature = function<pair<numvec, prec_t>(
+    long stateid, long actionid, const numvec& nominalprob, const numvec& zvalues)>;
 
 /**
  * Defines s-rectangular nature to be a function that is given a state index,
@@ -62,7 +61,6 @@ using SANature = function<pair<numvec, prec_t>(long stateid, long actionid,
  * same states that have non-zero transition probabilites.
  */
 using SNature = function<tuple<numvec, vector<numvec>, prec_t>(
-    long stateid, const vector<numvec> &nominalprobs,
-    const vector<numvec> &zvalues)>;
+    long stateid, const vector<numvec>& nominalprobs, const vector<numvec>& zvalues)>;
 
-} // namespace craam::algorithms
+}} // namespace craam::algorithms

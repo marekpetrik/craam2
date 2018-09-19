@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "craam/RMDP.hpp"
+#include "craam/GMDP.hpp"
 #include "craam/algorithms/nature_response.hpp"
 #include "craam/algorithms/occupancies.hpp"
 #include "craam/algorithms/robust_values.hpp"
@@ -32,6 +32,7 @@
 #include "craam/modeltools.hpp"
 #include "craam/optimization/bisection.hpp"
 #include "craam/optimization/srect_gurobi.hpp"
+#include "craam/solvers.hpp"
 
 #include <cmath>
 #include <iostream>
@@ -700,15 +701,15 @@ BOOST_AUTO_TEST_CASE(test_randomized_mdp) {
   // define the MDP representation
   // format: idstatefrom, idaction, idoutcome, idstateto, probability, reward
   string string_representation{
-      "idstatefrom, idaction, idoutcome, idstateto, probability, reward \
-         1,0,0,1,1.0,2.0 \
-         2,0,0,2,1.0,3.0 \
-         3,0,0,3,1.0,1.0 \
-         4,0,0,4,1.0,4.0 \
-         0,0,0,1,1.0,0.0 \
-         0,0,1,2,1.0,0.0 \
-         0,1,0,3,1.0,0.0 \
-         0,1,1,4,1.0,0.0\n"};
+      "idstatefrom,idaction,idoutcome,idstateto,probability,reward\n"
+      "1,0,0,1,1.0,2.0\n"
+      "2,0,0,2,1.0,3.0\n"
+      "3,0,0,3,1.0,1.0\n"
+      "4,0,0,4,1.0,4.0\n"
+      "0,0,0,1,1.0,0.0\n"
+      "0,0,1,2,1.0,0.0\n"
+      "0,1,0,3,1.0,0.0\n"
+      "0,1,1,4,1.0,0.0\n"};
 
   // initialize desired outcomes
   numvec robust_2_0{0.9 * 20, 20, 30, 10, 40};
@@ -774,15 +775,15 @@ BOOST_AUTO_TEST_CASE(test_randomized_mdp_with_terminal_state) {
   // define the MDP representation
   // format: idstatefrom, idaction, idoutcome, idstateto, probability, reward
   string string_representation{
-      "idstatefrom, idaction, idoutcome, idstateto, probability, reward\
-         1,0,0,5,1.0,20.0 \
-         2,0,0,5,1.0,30.0 \
-         3,0,0,5,1.0,10.0 \
-         4,0,0,5,1.0,40.0 \
-         0,0,0,1,1.0,0.0 \
-         0,0,1,2,1.0,0.0 \
-         0,1,0,3,1.0,0.0 \
-         0,1,1,4,1.0,0.0\n"};
+      "idstatefrom, idaction, idoutcome, idstateto, probability, reward\n"
+      "1,0,0,5,1.0,20.0\n"
+      "2,0,0,5,1.0,30.0\n"
+      "3,0,0,5,1.0,10.0\n"
+      "4,0,0,5,1.0,40.0\n"
+      "0,0,0,1,1.0,0.0\n"
+      "0,0,1,2,1.0,0.0\n"
+      "0,1,0,3,1.0,0.0\n"
+      "0,1,1,4,1.0,0.0\n"};
 
   // the last state is terminal
 
@@ -880,17 +881,17 @@ BOOST_AUTO_TEST_CASE(test_parameter_read_write) {
   // define the MDP representation
   // format: idstatefrom, idaction, idoutcome, idstateto, probability, reward
   string string_representation{
-      "idstatefrom, idaction, idoutcome, idstateto, probability, reward\
-         1,0,0,5,1.0,20.0 \
-         2,0,0,5,1.0,30.0 \
-         3,0,0,5,1.0,10.0 \
-         4,0,0,5,1.0,40.0 \
-         4,1,0,5,1.0,41.0 \
-         0,0,0,1,1.0,0.0 \
-         0,0,1,2,1.0,0.0 \
-         0,1,0,3,1.0,0.0 \
-         0,1,0,4,1.0,2.0 \
-         0,1,1,4,1.0,0.0\n"};
+      "idstatefrom, idaction, idoutcome, idstateto, probability, reward\n"
+      "1,0,0,5,1.0,20.0\n"
+      "2,0,0,5,1.0,30.0\n"
+      "3,0,0,5,1.0,10.0\n"
+      "4,0,0,5,1.0,40.0\n"
+      "4,1,0,5,1.0,41.0\n"
+      "0,0,0,1,1.0,0.0\n"
+      "0,0,1,2,1.0,0.0\n"
+      "0,1,0,3,1.0,0.0\n"
+      "0,1,0,4,1.0,2.0\n"
+      "0,1,1,4,1.0,0.0\n"};
 
   stringstream store(string_representation);
 

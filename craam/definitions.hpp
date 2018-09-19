@@ -40,29 +40,27 @@
 
 namespace craam {
 
-using namespace std;
-
 /// Default precision type
 using prec_t = double;
 /// Numerical vector
-using numvec = vector<prec_t>;
+using numvec = std::vector<prec_t>;
 /// Vector of indices
-using indvec = vector<long>;
+using indvec = std::vector<long>;
 /// Vector of size_t
 using sizvec = std::vector<size_t>;
 /// A vector of numeric vectors
-using numvecvec = vector<numvec>;
+using numvecvec = std::vector<numvec>;
 
 /** Probability list */
-using prob_list_t = vector<prec_t>;
+using prob_list_t = std::vector<prec_t>;
 
 /** Probability matrix */
-using prob_matrix_t = vector<prob_list_t>;
+using prob_matrix_t = std::vector<prob_list_t>;
 
 /** Pair of a vector and a scalar */
-using vec_scal_t = pair<numvec, prec_t>;
+using vec_scal_t = std::pair<numvec, prec_t>;
 /// Tuple of a index, vector and a scalar
-using ind_vec_scal_t = tuple<prec_t, numvec, prec_t>;
+using ind_vec_scal_t = std::tuple<prec_t, numvec, prec_t>;
 
 /** Default solution precision */
 constexpr prec_t SOLPREC = 0.0001;
@@ -78,12 +76,11 @@ constexpr prec_t THRESHOLD = 1e-6;
 
 #ifdef IS_DEBUG
 /** This is a useful print functionality for debugging.  */
-template <class T>
-std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
-  for (const auto &p : vec) {
-    cout << p << " ";
-  }
-  return os;
+template <class T> std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec) {
+    for (const auto& p : vec) {
+        std::cout << p << " ";
+    }
+    return os;
 }
 #endif
 
@@ -92,15 +89,14 @@ std::ostream &operator<<(std::ostream &os, const std::vector<T> &vec) {
  * \param v List of values
  * \return Sorted indices
  */
-template <typename T> inline vector<size_t> sort_indexes(vector<T> const &v) {
-  // initialize original index locations
-  vector<size_t> idx(v.size());
-  for (size_t i = 0; i != idx.size(); ++i)
-    idx[i] = i;
-  // sort indexes based on comparing values in v
-  sort(idx.begin(), idx.end(),
-       [&v](size_t i1, size_t i2) { return v[i1] < v[i2]; });
-  return idx;
+template <typename T> inline sizvec sort_indexes(std::vector<T> const& v) {
+    // initialize original index locations
+    sizvec idx(v.size());
+    for (size_t i = 0; i != idx.size(); ++i)
+        idx[i] = i;
+    // sort indexes based on comparing values in v
+    sort(idx.begin(), idx.end(), [&v](size_t i1, size_t i2) { return v[i1] < v[i2]; });
+    return idx;
 }
 
 /** \brief Sort indices by values in descending order
@@ -108,27 +104,25 @@ template <typename T> inline vector<size_t> sort_indexes(vector<T> const &v) {
  * \param v List of values
  * \return Sorted indices
  */
-template <typename T>
-inline vector<size_t> sort_indexes_desc(vector<T> const &v) {
-  // initialize original index locations
-  vector<size_t> idx(v.size());
-  for (size_t i = 0; i != idx.size(); ++i)
-    idx[i] = i;
-  // sort indexes based on comparing values in v
-  sort(idx.begin(), idx.end(),
-       [&v](size_t i1, size_t i2) { return v[i1] > v[i2]; });
+template <typename T> inline sizvec sort_indexes_desc(std::vector<T> const& v) {
+    // initialize original index locations
+    sizvec idx(v.size());
+    for (size_t i = 0; i != idx.size(); ++i)
+        idx[i] = i;
+    // sort indexes based on comparing values in v
+    sort(idx.begin(), idx.end(), [&v](size_t i1, size_t i2) { return v[i1] > v[i2]; });
 
-  return idx;
+    return idx;
 }
 
 /**
  * @brief Computes the l1 norm between two vectors of equal length
  */
 inline prec_t l1norm(numvec p1, numvec p2) {
-  prec_t result = 0;
-  for (size_t i = 0; i < p1.size(); i++)
-    result += std::abs(p1[i] - p2[i]);
-  return result;
+    prec_t result = 0;
+    for (size_t i = 0; i < p1.size(); i++)
+        result += std::abs(p1[i] - p2[i]);
+    return result;
 }
 
 /**
@@ -138,89 +132,89 @@ inline prec_t l1norm(numvec p1, numvec p2) {
  * @param b End value
  * @param N Number of points
  */
-template <typename T = double>
-inline std::vector<T> linspace(T a, T b, size_t N) {
-  T h = (b - a) / static_cast<T>(N - 1);
-  std::vector<T> xs(N);
-  typename std::vector<T>::iterator x;
-  T val;
-  for (x = xs.begin(), val = a; x != xs.end(); ++x, val += h)
-    *x = val;
-  return xs;
+template <typename T = double> inline std::vector<T> linspace(T a, T b, size_t N) {
+    T h = (b - a) / static_cast<T>(N - 1);
+    std::vector<T> xs(N);
+    typename std::vector<T>::iterator x;
+    T val;
+    for (x = xs.begin(), val = a; x != xs.end(); ++x, val += h)
+        *x = val;
+    return xs;
 }
 
 /// Zips two vectors
 template <class T1, class T2>
-inline vector<pair<T1, T2>> zip(const vector<T1> &v1, const vector<T2> &v2) {
+inline std::vector<std::pair<T1, T2>> zip(const std::vector<T1>& v1,
+                                          const std::vector<T2>& v2) {
 
-  assert(v1.size() == v2.size());
-  vector<pair<T1, T2>> result(v1.size());
-  for (size_t i = 0; i < v1.size(); i++) {
-    result[i] = make_pair(v1[i], v2[i]);
-  }
-  return result;
+    assert(v1.size() == v2.size());
+    std::vector<std::pair<T1, T2>> result(v1.size());
+    for (size_t i = 0; i < v1.size(); i++) {
+        result[i] = make_pair(v1[i], v2[i]);
+    }
+    return result;
 }
 
 /// Zips two vectors of vectors
 template <class T1, class T2>
-inline vector<vector<pair<T1, T2>>> zip(const vector<vector<T1>> &v1,
-                                        const vector<vector<T2>> &v2) {
+inline std::vector<std::vector<std::pair<T1, T2>>>
+zip(const std::vector<std::vector<T1>>& v1, const std::vector<std::vector<T2>>& v2) {
 
-  assert(v1.size() == v2.size());
-  vector<vector<pair<T1, T2>>> result(v1.size());
-  for (size_t i = 0; i < v1.size(); i++) {
-    result[i] = zip(v1[i], v2[i]);
-  }
-  return result;
+    assert(v1.size() == v2.size());
+    std::vector<std::vector<std::pair<T1, T2>>> result(v1.size());
+    for (size_t i = 0; i < v1.size(); i++) {
+        result[i] = zip(v1[i], v2[i]);
+    }
+    return result;
 }
 
 /// Zips a single value with a vector
 template <class T1, class T2>
-inline vector<pair<T1, T2>> zip(const T1 &v1, const vector<T2> &v2) {
+inline std::vector<std::pair<T1, T2>> zip(const T1& v1, const std::vector<T2>& v2) {
 
-  vector<pair<T1, T2>> result(v2.size());
-  for (size_t i = 0; i < v2.size(); i++) {
-    result[i] = make_pair(v1, v2[i]);
-  }
-  return result;
+    std::vector<std::pair<T1, T2>> result(v2.size());
+    for (size_t i = 0; i < v2.size(); i++) {
+        result[i] = make_pair(v1, v2[i]);
+    }
+    return result;
 }
 
 /// Zips a single value with a vector of vectors
 template <class T1, class T2>
-inline vector<vector<pair<T1, T2>>> zip(const T1 &v1,
-                                        const vector<vector<T2>> &v2) {
+inline std::vector<std::vector<std::pair<T1, T2>>>
+zip(const T1& v1, const std::vector<std::vector<T2>>& v2) {
 
-  vector<vector<pair<T1, T2>>> result(v2.size());
-  for (size_t i = 0; i < v2.size(); i++) {
-    result[i] = zip(v1, v2[i]);
-  }
-  return result;
+    std::vector<std::vector<std::pair<T1, T2>>> result(v2.size());
+    for (size_t i = 0; i < v2.size(); i++) {
+        result[i] = zip(v1, v2[i]);
+    }
+    return result;
 }
 
 template <class T1, class T2>
-inline pair<vector<T1>, vector<T2>> unzip(const vector<pair<T1, T2>> &values) {
-  vector<T1> first;
-  first.reserve(values.size());
-  vector<T2> second;
-  second.reserve(values.size());
+inline std::pair<std::vector<T1>, std::vector<T2>>
+unzip(const std::vector<std::pair<T1, T2>>& values) {
+    std::vector<T1> first;
+    first.reserve(values.size());
+    std::vector<T2> second;
+    second.reserve(values.size());
 
-  for (const auto &x : values) {
-    first.push_back(x.first);
-    second.push_back(x.second);
-  }
-  return {first, second};
+    for (const auto& x : values) {
+        first.push_back(x.first);
+        second.push_back(x.second);
+    }
+    return {first, second};
 }
 
 // implement clamp when not provided by the library (in pre c++17 code)
 #ifndef __cpp_lib_clamp
 template <class T, class Compare>
-constexpr const T &clamp(const T &v, const T &lo, const T &hi, Compare comp) {
-  return assert(!comp(hi, lo)), comp(v, lo) ? lo : comp(hi, v) ? hi : v;
+constexpr const T& clamp(const T& v, const T& lo, const T& hi, Compare comp) {
+    return assert(!comp(hi, lo)), comp(v, lo) ? lo : comp(hi, v) ? hi : v;
 }
 
-template <class T>
-constexpr const T &clamp(const T &v, const T &lo, const T &hi) {
-  return clamp(v, lo, hi, std::less<>());
+template <class T> constexpr const T& clamp(const T& v, const T& lo, const T& hi) {
+    return clamp(v, lo, hi, std::less<>());
 }
 #endif
 

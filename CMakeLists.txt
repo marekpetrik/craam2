@@ -109,23 +109,32 @@ endif()
 include_directories (SYSTEM include)
 
 set (SRCS 
-          ${CMAKE_CURRENT_SOURCE_DIR}/craam/Action.hpp  
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/Action.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/ActionO.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/definitions.hpp  
-          ${CMAKE_CURRENT_SOURCE_DIR}/craam/RMDP.hpp  
-          ${CMAKE_CURRENT_SOURCE_DIR}/craam/State.hpp  
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/GMDP.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/State.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/Transition.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/modeltools.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/optimization/optimization.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/optimization/bisection.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/optimization/srect_gurobi.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/values.hpp
-          ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/nature_declarations.hpp
-          ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/robust_values.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/values_mdp.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/values_mdpo.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/nature_declarations.hpp          
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/occupancies.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/nature_response.hpp
-          ${CMAKE_CURRENT_SOURCE_DIR}/craam/Simulation.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/bellman_mdp.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/bellman_mdpo.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/iteration_methods.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/solvers.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/simulation.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/Samples.hpp
-          ${CMAKE_CURRENT_SOURCE_DIR}/craam/ImMDP.hpp)
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/ImMDP.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/MDP.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/MDPO.hpp)
+
 
 set (TSTS ${CMAKE_CURRENT_SOURCE_DIR}/test/test.cpp
            ${CMAKE_CURRENT_SOURCE_DIR}/test/core_tests.hpp 
@@ -139,16 +148,15 @@ set (BENCH ${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp)
 #add_library (craam STATIC ${SRCS} )
 
 # **** DEVELOPMENT EXECUTABLE ****
-add_executable (develop_exe ${DEV} ${SRCS})
-target_link_libraries (develop_exe Eigen3::Eigen)
-add_custom_target (develop COMMAND develop_exe
-                        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
-                        COMMENT "Running executable")
-if(GUROBI_USE)
-    target_link_libraries(develop_exe ${GUROBI_CXX_LIBRARY_1})
-    target_link_libraries(develop_exe ${GUROBI_CXX_LIBRARY_2})
-endif()
-
+#add_executable (develop_exe ${DEV} ${SRCS})
+#target_link_libraries (develop_exe Eigen3::Eigen)
+#add_custom_target (develop COMMAND develop_exe
+#                        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
+#                        COMMENT "Running executable")
+#if(GUROBI_USE)
+#    target_link_libraries(develop_exe ${GUROBI_CXX_LIBRARY_1})
+#    target_link_libraries(develop_exe ${GUROBI_CXX_LIBRARY_2})
+#endif()
 
 # **** TEST ****
 if (BUILD_TESTS)

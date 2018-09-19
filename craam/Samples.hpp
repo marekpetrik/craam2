@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "craam/RMDP.hpp"
+#include "craam/GMDP.hpp"
 #include "craam/definitions.hpp"
 #include "craam/modeltools.hpp"
 

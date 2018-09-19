@@ -1,6 +1,6 @@
 #pragma once
 
-#include "craam/RMDP.hpp"
+#include "craam/GMDP.hpp"
 
 #include <eigen3/Eigen/Dense>
 #include <rm/range.hpp>
@@ -38,10 +38,11 @@ inline prec_t mean_reward_state(const SType& state, long index,
     return state.mean_reward(policies.first[index], policies.second[index]);
 }
 
+// TODO: this function should be called by the Bellman operator
 /// Helper function to deal with variable indexing
 template <class SType>
 inline prec_t mean_reward_state(const SType& state, long index, const indvec& policy) {
-    return state.mean_reward(policy[index]);
+    return state[policy[index]].mean_reward();
 }
 } // namespace internal
 
@@ -60,7 +61,7 @@ Constructs the transition (or its transpose) matrix for the policy.
 transition matrix. This is useful for computing occupancy frequencies
 */
 template <typename SType, typename Policies>
-inline MatrixXd transition_mat(const GRMDP<SType>& rmdp, const Policies& policies,
+inline MatrixXd transition_mat(const GMDP<SType>& rmdp, const Policies& policies,
                                bool transpose = false) {
     const size_t n = rmdp.state_count();
     MatrixXd result = MatrixXd::Zero(n, n);
@@ -96,7 +97,7 @@ Constructs the rewards vector for each state for the RMDP.
         a randomized policy
  */
 template <typename SType, typename Policy>
-inline numvec rewards_vec(const GRMDP<SType>& rmdp, const Policy& policies) {
+inline numvec rewards_vec(const GMDP<SType>& rmdp, const Policy& policies) {
 
     const auto n = rmdp.state_count();
     numvec rewards(n);
@@ -128,7 +129,7 @@ probabilities. This method may not scale well
         a randomized policy
 */
 template <typename SType, typename Policies>
-inline numvec occfreq_mat(const GRMDP<SType>& rmdp, const Transition& init,
+inline numvec occfreq_mat(const GMDP<SType>& rmdp, const Transition& init,
                           prec_t discount, const Policies& policies) {
     const auto n = rmdp.state_count();
 

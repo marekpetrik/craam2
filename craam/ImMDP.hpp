@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "craam/RMDP.hpp"
+#include "craam/GMDP.hpp"
 #include "craam/Transition.hpp"
 #include "craam/algorithms/nature_response.hpp"
 #include "craam/algorithms/occupancies.hpp"

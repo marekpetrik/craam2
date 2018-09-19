@@ -1,1 +1,1 @@
-#include <craam/RMDP.hpp>
+#include <craam/GMDP.hpp>
