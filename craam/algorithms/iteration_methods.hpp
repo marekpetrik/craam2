@@ -24,7 +24,7 @@
 #pragma once
 
 #include "craam/Solution.hpp"
-#include "craam/algorithms/occupancies.hpp"
+#include "craam/algorithms/matrices.hpp"
 
 #include <chrono>
 
@@ -235,7 +235,7 @@ below maxresidual_vi_rel * last_policy_residual
 
 @return Computed (approximate) solution
  */
-template <class ResponseType>
+/*template <class ResponseType>
 inline Solution<typename ResponseType::policy_type>
 pi(const ResponseType& response, prec_t discount, const numvec& valuefunction = numvec(0),
    unsigned long iterations_pi = MAXITER, prec_t maxresidual_pi = SOLPREC,
@@ -289,6 +289,6 @@ pi(const ResponseType& response, prec_t discount, const numvec& valuefunction = 
     chrono::duration<double> duration = finish - start;
     return Solution<policy_type>(move(targetvalue), move(policy), residual_pi, i,
                                  duration.count());
-}
+}*/
 
 }} // namespace craam::algorithms

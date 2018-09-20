@@ -25,8 +25,8 @@
 
 #include "craam/GMDP.hpp"
 #include "craam/Transition.hpp"
-#include "craam/algorithms/nature_response.hpp"
 #include "craam/algorithms/matrices.hpp"
+#include "craam/algorithms/nature_response.hpp"
 #include "craam/algorithms/values.hpp"
 #include "craam/modeltools.hpp"
 #include "craam/solvers.hpp"
@@ -463,7 +463,7 @@ public:
             (void)iter; // to remove the warning
 
             // compute state distribution
-            numvec importanceweights = occfreq_mat(*mdp, initial, discount, statepol);
+            numvec importanceweights = occupancies(*mdp, initial, discount, statepol);
             // update importance weights
             update_importance_weights(importanceweights);
             // compute solution of the robust MDP with the new weights
@@ -512,7 +512,7 @@ public:
             (void)iter; // to remove the warning
 
             // compute state distribution
-            numvec&& importanceweights = occfreq_mat(*mdp, initial, discount, statepol);
+            numvec&& importanceweights = occupancies(*mdp, initial, discount, statepol);
 
             // update importance weights
             update_importance_weights(importanceweights);

@@ -107,6 +107,23 @@ solve_mpi(const MDP& mdp, prec_t discount, const numvec& valuefunction = numvec(
                                iterations_vi, maxresidual_vi, print_progress);
 }
 
+/**
+Computes occupancy frequencies using matrix representation of transition
+probabilities. This method requires computing a matrix inverse.
+
+\param init Initial distribution (alpha)
+\param discount Discount factor (gamma)
+\param policies The policy (indvec) or a pair of the policy and the policy
+        of nature (pair<indvec,vector<numvec> >). The nature is typically
+        a randomized policy
+*/
+inline numvec occupancies(const MDP& mdp, const Transition& initial, prec_t discount,
+                          const indvec& policy) {
+
+    return algorithms::occfreq_mat(algorithms::PlainBellman(mdp), initial, discount,
+                                   policy);
+}
+
 // **************************************************************************
 // Robust MDP methods
 // **************************************************************************

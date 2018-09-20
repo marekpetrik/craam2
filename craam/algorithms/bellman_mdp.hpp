@@ -109,7 +109,15 @@ public:
 
     /** Returns a reference to the transition probabilities */
     const Transition& mean_transition(long stateid, const policy_type& action) const {
-        return static_cast<const Transition&>(mdp[stateid][action]);
+        const State& s = mdp[stateid];
+        if (s.is_terminal()) {
+            if (action < 0)
+                return Transition::empty_tran;
+            else
+                throw invalid_argument("Unknown action taken in a terminal state.");
+        } else {
+            return static_cast<const Transition&>(s[action]);
+        }
     }
 };
 

@@ -125,7 +125,7 @@ update_transition_mat(const BellmanResponse& response, MatrixXd& transitions,
                       bool transpose = false) {
 
     assert(transitions.rows() == transitions.cols());
-    assert(transitions.rows() == new_policy.size());
+    assert(size_t(transitions.rows()) == new_policy.size());
     assert(old_policy.empty() || new_policy.size() == old_policy.size());
 
     const size_t n = response.state_count();
@@ -164,10 +164,11 @@ transition_mat(const BellmanResponse& response,
                bool transpose = false) {
 
     const size_t n = response.state_count();
-    MatrixXd result(n, n);
+    MatrixXd result = MatrixXd::Zero(n, n);
 
     update_transition_mat(response, result, policy,
                           vector<typename BellmanResponse::policy_type>(0), transpose);
+    return result;
 }
 
 /**
@@ -201,22 +202,20 @@ inline numvec rewards_vec(const GMDP<SType>& rmdp, const Policy& policies) {
 
 /**
 Computes occupancy frequencies using matrix representation of transition
-probabilities. This method may not scale well
+probabilities. This method requires computing a matrix inverse.
 
+@tparam Methods for computing Bellman responses, similar to PlainBellman
 
-\tparam SType Type of the state in the MDP (regular vs robust)
-\tparam Policy Type of the policy. Either a single policy for
-                the standard MDP evaluation, or a pair of a deterministic
-                policy and a randomized policy of the nature
-\param init Initial distribution (alpha)
-\param discount Discount factor (gamma)
-\param policies The policy (indvec) or a pair of the policy and the policy
+@param init Initial distribution (alpha)
+@param discount Discount factor (gamma)
+@param policies The policy (indvec) or a pair of the policy and the policy
         of nature (pair<indvec,vector<numvec> >). The nature is typically
         a randomized policy
 */
-template <typename SType, typename Policies>
-inline numvec occfreq_mat(const GMDP<SType>& rmdp, const Transition& init,
-                          prec_t discount, const Policies& policies) {
+template <typename BellmanResponse,
+          typename policy_type = typename BellmanResponse::policy_type>
+inline numvec occfreq_mat(const BellmanResponse& rmdp, const Transition& init,
+                          prec_t discount, const policy_type& policy) {
     const auto n = rmdp.state_count();
 
     // initial distribution
@@ -225,7 +224,7 @@ inline numvec occfreq_mat(const GMDP<SType>& rmdp, const Transition& init,
 
     // get transition matrix and construct (I - gamma * P^T)
     MatrixXd t_mat =
-        MatrixXd::Identity(n, n) - discount * transition_mat(rmdp, policies, true);
+        MatrixXd::Identity(n, n) - discount * transition_mat(rmdp, policy, true);
 
     // solve set of linear equations
     numvec result(n, 0);
@@ -234,4 +233,5 @@ inline numvec occfreq_mat(const GMDP<SType>& rmdp, const Transition& init,
 
     return result;
 }
+
 }} // namespace craam::algorithms

@@ -76,8 +76,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 # use position-independent code
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 
-# use OpenMP if possible
-if (OPENMP_FOUND)
+# use OpenMP if possible and not debugging
+if (OPENMP_FOUND AND NOT (CMAKE_BUILD_TYPE STREQUAL "Debug") )
     set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
@@ -87,8 +87,8 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "4.9.0")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wuninitialized") #-Wpedantic
     endif()
-    set(CMAKE_CXX_FLAGS_DEBUG "-g -rdynamic") # -D_GLIBCXX_DEBUG -- incompatible with boost :(
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -mtune=native")
+    set(CMAKE_CXX_FLAGS_DEBUG "-g -rdynamic -pthread") # -D_GLIBCXX_DEBUG -- incompatible with boost :(
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -mtune=native -pthread")
 endif()
 
 # **** PROCESS CONFIGURATION FILE ****

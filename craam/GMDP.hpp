@@ -118,7 +118,7 @@ The regular value-function based methods are in the header
 
 These methods can be applied to eithen an MDP or an RMDP.
 
-The header `algorithms/occupancies.hpp` provides tools for converting the MDP to
+The header `algorithms/matrices.hpp` provides tools for converting the MDP to
 a transition matrix and computing the occupancy frequencies.
 
 There are tools for building simulators and sampling from simulations in the
