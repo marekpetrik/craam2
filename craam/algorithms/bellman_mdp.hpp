@@ -106,6 +106,11 @@ public:
                          const numvec& valuefunction, prec_t discount) const {
         return value_fix_state(mdp[stateid], valuefunction, discount, action);
     }
+
+    /** Returns a reference to the transition probabilities */
+    const Transition& mean_transition(long stateid, const policy_type& action) const {
+        return static_cast<const Transition&>(mdp[stateid][action]);
+    }
 };
 
 /**

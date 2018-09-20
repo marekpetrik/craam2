@@ -255,4 +255,8 @@ rsolve_mpi(const MDPO& mdp, prec_t discount, const algorithms::SANature&& nature
                                iterations_vi, maxresidual_vi, print_progress);
 }
 
+// **************************************************************************
+// Compute Occupancy Frequency
+// **************************************************************************
+
 } // namespace craam

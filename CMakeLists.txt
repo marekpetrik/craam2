@@ -124,7 +124,7 @@ set (SRCS
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/values_mdp.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/values_mdpo.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/nature_declarations.hpp          
-          ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/occupancies.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/matrices.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/nature_response.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/bellman_mdp.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/bellman_mdpo.hpp

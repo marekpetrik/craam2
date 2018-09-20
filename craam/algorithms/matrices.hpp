@@ -1,6 +1,30 @@
+// This file is part of CRAAM, a C++ library for solving plain
+// and robust Markov decision processes.
+//
+// MIT License
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #pragma once
 
 #include "craam/GMDP.hpp"
+#include "craam/Transition.hpp"
 
 #include <eigen3/Eigen/Dense>
 #include <rm/range.hpp>
@@ -85,6 +109,68 @@ inline MatrixXd transition_mat(const GMDP<SType>& rmdp, const Policies& policies
 }
 
 /**
+ * @brief Updates transition probabilities according to the provided policy.
+ * @param response BellmanOperator class (e.g. PlainBellman)
+ * @param transition Transition probabilities for @a old_policy
+ * @param new_policy Policy used to update transition probabilities
+ * @param old_policy Policy that corresponds to values in @a transition. The
+ *          parameter can be length 0 if the transitions matrix is invalid.
+ * @param transpose If true, transposes the probaility matrix
+ */
+template <typename BellmanResponse>
+inline void
+update_transition_mat(const BellmanResponse& response, MatrixXd& transitions,
+                      const vector<typename BellmanResponse::policy_type>& new_policy,
+                      const vector<typename BellmanResponse::policy_type>& old_policy,
+                      bool transpose = false) {
+
+    assert(transitions.rows() == transitions.cols());
+    assert(transitions.rows() == new_policy.size());
+    assert(old_policy.empty() || new_policy.size() == old_policy.size());
+
+    const size_t n = response.state_count();
+
+#pragma omp parallel for
+    for (size_t s = 0; s < n; s++) {
+        const Transition& t = response.mean_transition(s, new_policy[s]);
+
+        // if the policy has not changed then do nothing
+        if (!old_policy.empty() && old_policy[s] == new_policy[s]) continue;
+
+        // add transition probabilities to the matrix
+        const auto& indexes = t.get_indices();
+        const auto& probabilities = t.get_probabilities();
+
+        if (!transpose) {
+            for (size_t j = 0; j < t.size(); j++)
+                transitions(s, indexes[j]) = probabilities[j];
+        } else {
+            for (size_t j = 0; j < t.size(); j++)
+                transitions(indexes[j], s) = probabilities[j];
+        }
+    }
+}
+
+/**
+ * @brief Creates a transition probability matrix for the Bellman response operator
+ * @param response BellmanOperator class (e.g. PlainBellman)
+ * @param policy Policy used to construct transition probabilities
+ * @param transpose If true, transposes the probaility matrix
+ */
+template <typename BellmanResponse>
+inline MatrixXd
+transition_mat(const BellmanResponse& response,
+               const vector<typename BellmanResponse::policy_type>& policy,
+               bool transpose = false) {
+
+    const size_t n = response.state_count();
+    MatrixXd result(n, n);
+
+    update_transition_mat(response, result, policy,
+                          vector<typename BellmanResponse::policy_type>(0), transpose);
+}
+
+/**
 Constructs the rewards vector for each state for the RMDP.
 
 \tparam Policy Type of the policy. Either a single policy for
@@ -148,5 +234,4 @@ inline numvec occfreq_mat(const GMDP<SType>& rmdp, const Transition& init,
 
     return result;
 }
-
 }} // namespace craam::algorithms

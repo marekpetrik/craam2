@@ -1,6 +1,30 @@
+// This file is part of CRAAM, a C++ library for solving plain
+// and robust Markov decision processes.
+//
+// MIT License
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #pragma once
 
 #include "craam/Solution.hpp"
+#include "craam/algorithms/occupancies.hpp"
 
 #include <chrono>
 
@@ -36,13 +60,14 @@ inline Solution<typename ResponseType::policy_type>
 vi_gs(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(0),
       unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC) {
 
-    // time the computation
-    auto start = chrono::steady_clock::now();
-
     using policy_type = typename ResponseType::policy_type;
 
     // just quit if there are no states
     if (response.state_count() == 0) return Solution<policy_type>(0);
+
+    // time the computation
+    auto start = chrono::steady_clock::now();
+
     if (valuefunction.empty()) { valuefunction.resize(response.state_count(), 0.0); }
 
     vector<policy_type> policy(response.state_count());
@@ -96,8 +121,6 @@ below maxresidual_vi_rel * last_policy_residual
 
 @param print_progress Whether to report on progress during the computation
 
-be compatible with PlainBellman
-
 @return Computed (approximate) solution
  */
 template <class ResponseType>
@@ -107,13 +130,12 @@ mpi_jac(const ResponseType& response, prec_t discount,
         prec_t maxresidual_pi = SOLPREC, unsigned long iterations_vi = MAXITER,
         prec_t maxresidual_vi_rel = 0.9, bool print_progress = false) {
 
+    using policy_type = typename ResponseType::policy_type;
+    // just quit if there are no states
+    if (response.state_count() == 0) { return Solution<policy_type>(0); }
+
     // time the computation
     auto start = chrono::steady_clock::now();
-
-    using policy_type = typename ResponseType::policy_type;
-
-    // just quit if there are no states
-    if (response.state_count() == 0) return Solution<policy_type>(0);
 
     // intialize the policy
     vector<policy_type> policy(response.state_count());
@@ -178,6 +200,90 @@ mpi_jac(const ResponseType& response, prec_t discount,
                  << "    Residual (fixed policy): " << residual_vi << endl
                  << endl;
         }
+    }
+    auto finish = chrono::steady_clock::now();
+    chrono::duration<double> duration = finish - start;
+    return Solution<policy_type>(move(targetvalue), move(policy), residual_pi, i,
+                                 duration.count());
+}
+
+/**
+Policy iteration. See solve_pi for a simplified interface. In the value iteration
+step, both the action *and* the
+outcome are fixed.
+
+@tparam ResponseType Class responsible for computing the Bellman updates. Should
+        be compatible with PlainBellman
+
+Note that the total number of iterations will be bounded by iterations_pi *
+iterations_vi
+@param type Type of realization of the uncertainty
+@param discount Discount factor
+@param valuefunction Initial value function
+@param response Using PolicyResponce allows to specify a partial policy. Only
+the actions that not provided by the partial policy are included in the
+optimization. Using a class of a different types enables computing other
+objectives, such as robust or risk averse ones.
+@param iterations_pi Maximal number of policy iteration steps
+@param maxresidual_pi Stop the outer policy iteration when the residual drops
+below this threshold.
+@param iterations_vi Maximal number of inner loop value iterations
+@param maxresidual_vi_rel Stop policy evaluation when the policy residual drops
+below maxresidual_vi_rel * last_policy_residual
+
+@param print_progress Whether to report on progress during the computation
+
+@return Computed (approximate) solution
+ */
+template <class ResponseType>
+inline Solution<typename ResponseType::policy_type>
+pi(const ResponseType& response, prec_t discount, const numvec& valuefunction = numvec(0),
+   unsigned long iterations_pi = MAXITER, prec_t maxresidual_pi = SOLPREC,
+   bool print_progress = false) {
+
+    using policy_type = typename ResponseType::policy_type;
+
+    // just quit if there are no states
+    if (response.state_count() == 0) { return Solution<policy_type>(0); }
+
+    // time the computation
+    auto start = chrono::steady_clock::now();
+
+    // intialize the policy
+    vector<policy_type> policy(response.state_count());
+
+    // resize if the the value function is empty and initialize to 0
+    numvec sourcevalue = valuefunction;
+    if (sourcevalue.empty()) sourcevalue.resize(response.state_count(), 0.0);
+
+    numvec residuals(response.state_count());
+
+    // residual in the policy iteration part
+    prec_t residual_pi = numeric_limits<prec_t>::infinity();
+
+    size_t i; // defined here to be able to report the number of iterations
+
+    for (i = 0; i < iterations_pi; ++i) {
+
+        if (print_progress)
+            cout << "Policy iteration " << i << "/" << iterations_pi << ":" << endl;
+
+        prec_t residual_vi = numeric_limits<prec_t>::infinity();
+
+        // update policies
+#pragma omp parallel for
+        for (auto s = 0l; s < long(response.state_count()); s++) {
+            prec_t newvalue;
+            tie(newvalue, policy[s]) = response.policy_update(s, sourcevalue, discount);
+            residuals[s] = abs(sourcevalue[s] - newvalue);
+            targetvalue[s] = newvalue;
+        }
+        residual_pi = *max_element(residuals.cbegin(), residuals.cend());
+
+        if (print_progress) cout << "    Bellman residual: " << residual_pi << endl;
+
+        // the residual is sufficiently small
+        if (residual_pi <= maxresidual_pi) break;
     }
     auto finish = chrono::steady_clock::now();
     chrono::duration<double> duration = finish - start;

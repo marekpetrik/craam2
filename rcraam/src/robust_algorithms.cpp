@@ -1,5 +1,5 @@
 
-#include "craam/RMDP.hpp"
+#include "craam/MDP.hpp"
 #include "craam/modeltools.hpp"
 #include "craam/algorithms/values.hpp"
 #include "craam/algorithms/robust_values.hpp"
@@ -93,7 +93,7 @@ Rcpp::DataFrame example_mdp(Rcpp::String name){
 }
 
 /**
- * Parses a data frame  to an mdp
+ * Parses a data frame  to an MDP
  *
  * Also checks whether the values passed are consistent with the MDP definition.
  *

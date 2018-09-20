@@ -26,7 +26,7 @@
 #include "craam/MDP.hpp"
 #include "craam/MDPO.hpp"
 #include "craam/algorithms/nature_response.hpp"
-#include "craam/algorithms/occupancies.hpp"
+#include "craam/algorithms/matrices.hpp"
 #include "craam/algorithms/values.hpp"
 #include "craam/definitions.hpp"
 #include "craam/modeltools.hpp"
