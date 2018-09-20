@@ -353,13 +353,13 @@ public:
     string to_string() const {
         stringstream result;
 
-        for (size_t si : indices(states)) {
+        for (size_t si = 0; si < states.size(); ++si) {
             const auto& s = get_state(si);
             result << std::to_string(si);
             result << " : ";
             result << std::to_string(s.size());
             result << "\n";
-            for (size_t ai : indices(s)) {
+            for (size_t ai = 0; ai < s.size(); ++ai) {
                 result << "    ";
                 result << std::to_string(ai);
                 result << " : ";

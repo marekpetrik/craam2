@@ -25,6 +25,7 @@
 
 #include "craam/MDPO.hpp"
 #include "craam/algorithms/nature_declarations.hpp"
+#include "craam/algorithms/values.hpp"
 
 namespace craam { namespace algorithms {
 
@@ -44,18 +45,31 @@ namespace craam { namespace algorithms {
  * The update for a state value recomputes the worst case, which should ensure
  * the convergence of the modified policy policy iteration in robust cases.
  */
-template <class SType = State> class SARobustOutcomeBellman {
+class SARobustOutcomeBellman {
+protected:
+    const MDPO& mdpo;
+    /// How to combine the values from a robust solution
+    SANature nature;
+    /// Partial policy specification (action -1 is ignored and optimized)
+    const indvec initial_policy;
+
 public:
     /// Action index and distribution over outcomes
     using policy_type = std::pair<long, numvec>;
 
-    /// Constructs an empty object
-    SARobustOutcomeBellman() {}
-
     /**
-         * @param responses Possible responses for each state and action
-         */
-    SARobustOutcomeBellman(SANature nature) : nature(move(nature)) {}
+     * @param mdpo MDPO definition. Does not take ownership
+     * @param nature Natures response function to outcomes. Uses the mean
+     *              value by default.
+     * @param initial_policy Fix policy for some states. Negative value
+     *         means that the action is not provided and should be optimized
+     */
+    SARobustOutcomeBellman(const MDPO& mdpo, const SANature& nature = nats::average(),
+                           indvec initial_policy = indvec(0))
+        : mdpo(mdpo), nature(nature), initial_policy(move(initial_policy)) {}
+
+    /// @brief Number of states in the MDPO
+    size_t state_count() const { return mdpo.size(); }
 
     /**
      * Computes the Bellman update.
@@ -68,73 +82,39 @@ public:
      *
      * @returns Best value and action (decision maker and nature)
      */
-    pair<prec_t, policy_type> policy_update(const SType& state, long stateid,
-                                            const numvec& valuefunction,
+    pair<prec_t, policy_type> policy_update(long stateid, const numvec& valuefunction,
                                             prec_t discount) const {
-        assert(stateid >= 0 && stateid < responses.size());
-        // can finish immediately when the state is terminal
-        if (state.is_terminal()) return make_pair(-1, make_pair(-1, numvec()));
+        prec_t newvalue = 0;
+        policy_type action;
+        numvec transition;
 
-        // make sure that the number of natures is the same as the number of actions
-        prec_t maxvalue = -numeric_limits<prec_t>::infinity();
-
-        long result = -1;
-        numvec result_outcome;
-
-        for (size_t i = 0; i < state.size(); i++) {
-            const auto& action = state[i];
-
-            if (!state.is_valid(i))
-                throw invalid_argument("Cannot have an invalid action.");
-
-            auto value =
-                value_action(action, valuefunction, discount, stateid, long(i), nature);
-            if (value.second > maxvalue) {
-                maxvalue = value.second;
-                result = long(i);
-                result_outcome = move(value.first);
-            }
+        // check whether this state should only be evaluated or also optimized
+        // optimizing action
+        if (initial_policy.empty() || initial_policy[stateid] < 0) {
+            long actionid;
+            tie(actionid, transition, newvalue) =
+                value_max_state(mdpo[stateid], valuefunction, discount, stateid, nature);
+            action = make_pair(actionid, move(transition));
         }
-
-        // if the result has not been changed, that means that all actions are invalid
-        if (result == -1) throw invalid_argument("all actions are invalid.");
-
-        return make_pair(maxvalue, make_pair(result, result_outcome));
+        // fixed-action, do not copy
+        else {
+            prec_t newvalue;
+            const long actionid = initial_policy[stateid];
+            tie(transition, newvalue) = value_fix_state(
+                mdpo[stateid], valuefunction, discount, actionid, stateid, nature);
+            action = make_pair(actionid, move(transition));
+        }
+        return make_pair(newvalue, move(action));
     }
 
     /** Computes the Bellman update for a given policy.
             The function is called for the particular state. */
-    prec_t compute_value(const policy_type& action_pol, const SType& state, long stateid,
+    prec_t compute_value(const policy_type& action_pol, long stateid,
                          const numvec& valuefunction, prec_t discount) const {
-        assert(stateid >= 0 && stateid < responses.size());
 
-        long actionid = action_pol.first;
-        assert(actionid >= 0 && actionid < responses[stateid].size());
-
-        // this is the terminal state, return 0
-        if (state.is_terminal()) return 0;
-
-        assert(actionid >= 0 && actionid < long(state.size()));
-
-        if (actionid < 0 || actionid >= long(state.size()))
-            throw range_error("invalid actionid: " + to_string(actionid) +
-                              " for action count: " + to_string(state.size()));
-
-        const auto& action = state[actionid];
-        // cannot assume that the action is valid
-        if (!state.is_valid(actionid))
-            throw invalid_argument("Cannot take an invalid action");
-
-        return value_action(action, valuefunction, discount, stateid, actionid, nature);
+        return value_fix_state(mdpo[stateid], valuefunction, discount, action_pol.first,
+                               action_pol.second);
     }
-
-    vector<vector<ActionO>>& get_responses() { return responses; }
-
-protected:
-    /// Lists of outcomes for each state and action
-    vector<vector<ActionO>> responses;
-    /// How to combine the values from a robust solution
-    SANature nature;
 };
 
 }} // namespace craam::algorithms

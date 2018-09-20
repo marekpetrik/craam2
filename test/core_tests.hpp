@@ -23,10 +23,10 @@
 
 #pragma once
 
-#include "craam/GMDP.hpp"
+#include "craam/MDP.hpp"
+#include "craam/MDPO.hpp"
 #include "craam/algorithms/nature_response.hpp"
 #include "craam/algorithms/occupancies.hpp"
-#include "craam/algorithms/robust_values.hpp"
 #include "craam/algorithms/values.hpp"
 #include "craam/definitions.hpp"
 #include "craam/modeltools.hpp"
@@ -655,8 +655,7 @@ BOOST_AUTO_TEST_CASE(test_normalization) {
 }
 
 // ********************************************************************************
-// ***** Stochastic transition probabilities (L1)
-// *********************************
+// Stochastic transition probabilities (L1)
 // ********************************************************************************
 
 void test_randomized_threshold_average(const MDPO &rmdp,

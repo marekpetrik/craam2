@@ -73,7 +73,7 @@ greater than 0. The order of states is the same as in the underlying transition.
 @return Action value
 */
 inline prec_t value_action(const Action& action, const numvec& valuefunction,
-                           prec_t discount, numvec distribution) {
+                           prec_t discount, const numvec& distribution) {
     return action.value(valuefunction, discount, distribution);
 }
 
@@ -160,6 +160,40 @@ inline vector<numvec> compute_zvalues(const State& state, const numvec& valuefun
     for (const auto& action : state.get_actions()) {
         if (!action.is_valid()) throw invalid_argument("an action is invalid");
         result.push_back(compute_zvalues(action, valuefunction, discount));
+    }
+    return result;
+}
+
+/**
+Computes the value of a fixed action and fixed response of nature.
+
+@param state State to compute the value for
+@param valuefunction Value function to use in computing value of states.
+@param discount Discount factor
+@param actiondist Distribution over actions
+@param distribution New distribution over states with non-zero nominal
+probabilities
+
+@return Value of state, 0 if it's terminal regardless of the action index
+*/
+inline prec_t value_fix_state(const State& state, numvec const& valuefunction,
+                              prec_t discount, const numvec& actiondist,
+                              const numvec& distribution) {
+    // this is the terminal state, return 0
+    if (state.is_terminal()) return 0;
+
+    assert(actiondist.size() == state.size());
+    assert((1.0 - accumulate(actiondist.cbegin(), actiondist.cend(), 0.0) - 1.0) < 1e-5);
+
+    prec_t result = 0.0;
+    for (size_t actionid = 0; actionid < state.size(); actionid++) {
+        const auto& action = state[actionid];
+        // cannot assume that the action is valid
+        if (!state.is_valid(actionid))
+            throw invalid_argument("Cannot take an invalid action");
+
+        result += actiondist[actionid] *
+                  value_action(action, valuefunction, discount, distribution);
     }
     return result;
 }

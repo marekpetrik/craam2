@@ -24,9 +24,9 @@
 #pragma once
 
 #include "craam/GMDP.hpp"
-#include "craam/Simulation.hpp"
 #include "craam/algorithms/values.hpp"
 #include "craam/modeltools.hpp"
+#include "craam/simulation.hpp"
 #include "craam/simulators/invasive_species_simulation.hpp"
 #include "craam/simulators/inventory_simulation.hpp"
 

@@ -75,7 +75,7 @@ void solve_mdp(const cxxopts::Options &options, Solver solver) {
   numvec valuefunction;
 
   if (ambiguity.empty()) {
-    algorithms::DeterministicSolution sol;
+    algorithms::DetermSolution sol;
     if (solver == Solver::MPI) {
       sol = algorithms::solve_mpi(mdp, discount, numvec(0), indvec(0),
                                   iterations, precision, iterations, 0.5);

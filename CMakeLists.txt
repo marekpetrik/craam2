@@ -115,6 +115,7 @@ set (SRCS
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/GMDP.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/State.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/Transition.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/Solution.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/modeltools.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/optimization/optimization.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/optimization/bisection.hpp

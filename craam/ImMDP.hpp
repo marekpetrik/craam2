@@ -27,7 +27,6 @@
 #include "craam/Transition.hpp"
 #include "craam/algorithms/nature_response.hpp"
 #include "craam/algorithms/occupancies.hpp"
-#include "craam/algorithms/robust_values.hpp"
 #include "craam/algorithms/values.hpp"
 #include "craam/modeltools.hpp"
 

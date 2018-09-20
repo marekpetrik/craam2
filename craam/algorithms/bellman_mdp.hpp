@@ -88,7 +88,8 @@ public:
             prec_t newvalue;
             policy_type action;
 
-            tie(action, newvalue) = value_max_state(state, valuefunction, discount);
+            tie(action, newvalue) =
+                value_max_state(mdp[stateid], valuefunction, discount);
             return make_pair(newvalue, action);
         } else { // fixed-action, do not copy
             return {value_fix_state(mdp[stateid], valuefunction, discount,

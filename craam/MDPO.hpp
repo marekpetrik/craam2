@@ -25,6 +25,7 @@
 
 #include "craam/ActionO.hpp"
 #include "craam/GMDP.hpp"
+#include "craam/State.hpp"
 #include <csv.h>
 
 namespace craam {

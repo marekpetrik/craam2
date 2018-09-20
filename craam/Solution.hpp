@@ -23,12 +23,12 @@
 
 #pragma once
 
-#include "craam/definitions.hpp"
 #include "craam/Transition.hpp"
+#include "craam/definitions.hpp"
 
 #include <cmath>
 
-namespace craam{
+namespace craam {
 
 /**
  * A set of values that represent a solution to a plain MDP.
@@ -76,7 +76,7 @@ template <class PolicyType> struct Solution {
 };
 
 /// A solution with a deterministic policy
-using DeterministicSolution = Solution<long>;
+using DetermSolution = Solution<long>;
 
 /// Solution to an S,A rectangular robust problem to an MDP
 using SARobustSolution = Solution<pair<long, numvec>>;
@@ -84,6 +84,4 @@ using SARobustSolution = Solution<pair<long, numvec>>;
 /// Solution to an S-rectangular robust problem to an MDP
 using SRobustSolution = Solution<pair<numvec, vector<numvec>>>;
 
-
-}
-
+} // namespace craam

@@ -37,21 +37,6 @@ namespace craam { namespace algorithms { namespace nats {
 // *******************************************************
 
 /**
- * Average nature response (just compute the average of values).
- * Implements tha SANature concept.
- */
-struct average {
-    /// Implements the SANature iterface
-    pair<numvec, prec_t> operator()(long stateid, long actionid,
-                                    const numvec& nominalprob,
-                                    const numvec& zfunction) const {
-
-        return {nominalprob, std::inner_product(zfunction.cbegin(), zfunction.cend(),
-                                                nominalprob.cbegin(), 0.0)};
-    }
-};
-
-/**
  * L1 robust response. Implements the SANature concept.
  * @see rsolve_mpi, rsolve_vi
  */

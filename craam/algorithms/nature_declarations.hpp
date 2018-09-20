@@ -63,4 +63,22 @@ using SANature = function<pair<numvec, prec_t>(
 using SNature = function<tuple<numvec, vector<numvec>, prec_t>(
     long stateid, const vector<numvec>& nominalprobs, const vector<numvec>& zvalues)>;
 
+namespace nats {
+/**
+ * Average nature response (just compute the average of values).
+ * Implements tha SANature concept.
+ */
+struct average {
+    /// Implements the SANature iterface
+    pair<numvec, prec_t> operator()(long stateid, long actionid,
+                                    const numvec& nominalprob,
+                                    const numvec& zfunction) const {
+
+        return {nominalprob, std::inner_product(zfunction.cbegin(), zfunction.cend(),
+                                                nominalprob.cbegin(), 0.0)};
+    }
+};
+
+} // namespace nats
+
 }} // namespace craam::algorithms

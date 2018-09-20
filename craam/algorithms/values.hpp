@@ -25,6 +25,8 @@
 
 #include "craam/State.hpp"
 #include "craam/algorithms/nature_declarations.hpp"
+#include "craam/algorithms/values_mdp.hpp"
+#include "craam/algorithms/values_mdpo.hpp"
 
 namespace craam { namespace algorithms {
 // *******************************************************
@@ -109,7 +111,8 @@ probabilities
 */
 template <class AType>
 inline prec_t value_fix_state(const SAState<AType>& state, numvec const& valuefunction,
-                              prec_t discount, long actionid, numvec distribution) {
+                              prec_t discount, long actionid,
+                              const numvec& distribution) {
     // this is the terminal state, return 0
     if (state.is_terminal()) return 0;
 
@@ -132,40 +135,6 @@ Computes the value of a fixed action and fixed response of nature.
 @param valuefunction Value function to use in computing value of states.
 @param discount Discount factor
 @param actiondist Distribution over actions
-@param distribution New distribution over states with non-zero nominal
-probabilities
-
-@return Value of state, 0 if it's terminal regardless of the action index
-*/
-template <class AType>
-inline prec_t value_fix_state(const SAState<AType>& state, numvec const& valuefunction,
-                              prec_t discount, numvec actiondist, numvec distribution) {
-    // this is the terminal state, return 0
-    if (state.is_terminal()) return 0;
-
-    assert(actiondist.size() == state.size());
-    assert((1.0 - accumulate(actiondist.cbegin(), actiondist.cend(), 0.0) - 1.0) < 1e-5);
-
-    prec_t result = 0.0;
-    for (size_t actionid = 0; actionid < state.size(); actionid++) {
-        const auto& action = state[actionid];
-        // cannot assume that the action is valid
-        if (!state.is_valid(actionid))
-            throw invalid_argument("Cannot take an invalid action");
-
-        result += actiondist[actionid] *
-                  value_action(action, valuefunction, discount, distribution);
-    }
-    return result;
-}
-
-/**
-Computes the value of a fixed action and fixed response of nature.
-
-@param state State to compute the value for
-@param valuefunction Value function to use in computing value of states.
-@param discount Discount factor
-@param actiondist Distribution over actions
 @param distributions New distribution over states with non-zero nominal
 probabilities and for actions that have a positive actiondist probability
 
@@ -173,7 +142,7 @@ probabilities and for actions that have a positive actiondist probability
 */
 template <class AType>
 inline prec_t value_fix_state(const SAState<AType>& state, numvec const& valuefunction,
-                              prec_t discount, numvec actiondist,
+                              prec_t discount, const numvec& actiondist,
                               vector<numvec> distributions) {
     // this is the terminal state, return 0
     if (state.is_terminal()) return 0;
