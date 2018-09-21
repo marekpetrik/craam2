@@ -1,1 +1,1 @@
-#include <craam/GMDP.hpp>
+#include <craam/MDP.hpp>

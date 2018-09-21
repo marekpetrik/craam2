@@ -219,7 +219,7 @@ Note that the total number of iterations will be bounded by iterations_pi *
 iterations_vi
 @param type Type of realization of the uncertainty
 @param discount Discount factor
-@param valuefunction Initial value function
+@param valuefunction Initial value function. Used to compute the first policy
 @param response Using PolicyResponce allows to specify a partial policy. Only
 the actions that not provided by the partial policy are included in the
 optimization. Using a class of a different types enables computing other

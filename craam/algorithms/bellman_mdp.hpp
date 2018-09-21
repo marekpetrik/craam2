@@ -300,10 +300,10 @@ public:
     SRobustBellman(const MDP& mdp, const SNature& nature)
         : mdp(mdp), nature(nature), initial_policy(0) {}
 
+    // **** BEGIN: Bellman Interface Methods  ********
+
     /// Number of MDP states
     size_t state_count() const { return mdp.size(); }
-
-    // **** BEGIN: Bellman Interface Methods  ********
 
     /**
       Computes the Bellman update.
@@ -368,7 +368,49 @@ public:
                                action.second);
     }
 
+    /** Returns a reference to the transition probabilities
+     *
+     * @param stateid State for which to get the transition probabilites
+     * @param action Which action is taken
+     */
+    Transition transition(long stateid, const policy_type& action) const {
+        assert(stateid >= 0 && size_t(stateid) < state_count());
+        const State& s = mdp[stateid];
+        if (s.is_terminal()) {
+            return Transition::empty_tran;
+        } else {
+            // compute the weighted average of transition probabilies
+            Transition result;
+            assert(s.size() == action.first.size());
+            for (size_t ai = 0; ai < s.size(); ai++) {
+
+                result.probabilities_add(action.first[ai],
+                                         s[ai].mean_transition(action.second[ai]));
+            }
+            return result;
+        }
+    }
+
+    /** Returns the reward for the action
+     *
+     * @param stateid State for which to get the transition probabilites
+     * @param action Which action is taken
+     */
+    prec_t reward(long stateid, const policy_type& action) const {
+        const State& s = mdp[stateid];
+        if (s.is_terminal()) {
+            return 0;
+        } else {
+            prec_t result = 0;
+
+            assert(s.size() == action.first.size());
+            for (size_t ai = 0; ai < s.size(); ai++) {
+                result += action.first[ai] * s[ai].mean_reward(action.second[ai]);
+            }
+            return result;
+        }
+    }
+
     // **** END: Bellman Interface Methods  ********
 };
-
 }} // namespace craam::algorithms

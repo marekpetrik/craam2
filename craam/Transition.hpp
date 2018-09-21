@@ -51,20 +51,21 @@ const prec_t tolerance = 1e-5;
   with increasing IDs to prevent excessive performance degradation.
  */
 class Transition {
-
+    // TODO: Split the class into two: a base only with probabilities and a derived with
+    // both probabilities and rewards
 public:
     Transition() : indices(0), probabilities(0), rewards(0) {}
 
     /**
-  Creates a single transition from raw data.
+      Creates a single transition from raw data.
 
-  Because the transition indexes are stored increasingly sorted, this method
-  must sort (and aggregate duplicate) the indices.
+      Because the transition indexes are stored increasingly sorted, this method
+      must sort (and aggregate duplicate) the indices.
 
-  \param indices The indexes of states to transition to
-  \param probabilities The probabilities of transitions
-  \param rewards The associated rewards with each transition
-  */
+      \param indices The indexes of states to transition to
+      \param probabilities The probabilities of transitions
+      \param rewards The associated rewards with each transition
+      */
     Transition(const indvec& indices, const numvec& probabilities, const numvec& rewards)
         : Transition() {
 
@@ -77,14 +78,14 @@ public:
     }
 
     /**
-  Creates a single transition from raw data with uniformly zero rewards.
-
-  Because the transition indexes are stored increasingly sorted, this method
-  must sort (and aggregate duplicate) the indices.
-
-  \param indices The indexes of states to transition to
-  \param probabilities The probabilities of transitions
-  */
+     * Creates a single transition from raw data with uniformly zero rewards.
+     *
+     * Because the transition indexes are stored increasingly sorted, this method
+     * must sort (and aggregate duplicate) the indices.
+     *
+     * @param indices The indexes of states to transition to
+     * @param probabilities The probabilities of transitions
+     */
     Transition(const indvec& indices, const numvec& probabilities) : Transition() {
 
         if (indices.size() != probabilities.size())
@@ -96,45 +97,45 @@ public:
     }
 
     /**
-  Creates a single transition from raw data with uniformly zero rewards,
-  where destination states are indexed automatically starting with 0.
+      Creates a single transition from raw data with uniformly zero rewards,
+      where destination states are indexed automatically starting with 0.
 
-  \param probabilities The probabilities of transitions; indexes are implicit.
-  */
+      \param probabilities The probabilities of transitions; indexes are implicit.
+      */
     Transition(const numvec& probabilities) : Transition() {
         for (auto k : util::lang::indices(probabilities))
             add_sample(long(k), probabilities[k], 0.0);
     }
 
     /**
-  Adds a single transitions probability to the existing probabilities.
+      Adds a single transitions probability to the existing probabilities.
 
-  If the transition to a state does not exist, then it is simply added to the
-  list. If the transition to the desired state already exists, then the
-  transition probability is added and the reward is updated as a weighted
-  combination. Let \f$ p(s) \f$ and \f$ r(s) \f$ be the current transition
-  probability and reward respectively. The updated transition probability and
-  reward are:
-      - Probability:
-          \f[ p'(s) = p(s) + p \f]
-      - Reward:
-          \f[ r'(s) = \frac{p(s) \, r(s) + p \, r}{p'(s)} \f]
-  Here, \f$ p \f$ is the argument probability and \f$ r \f$ is the argument
-  reward.
+      If the transition to a state does not exist, then it is simply added to the
+      list. If the transition to the desired state already exists, then the
+      transition probability is added and the reward is updated as a weighted
+      combination. Let \f$ p(s) \f$ and \f$ r(s) \f$ be the current transition
+      probability and reward respectively. The updated transition probability and
+      reward are:
+          - Probability:
+              \f[ p'(s) = p(s) + p \f]
+          - Reward:
+              \f[ r'(s) = \frac{p(s) \, r(s) + p \, r}{p'(s)} \f]
+      Here, \f$ p \f$ is the argument probability and \f$ r \f$ is the argument
+      reward.
 
-  When the function is called multiple times with \f$ p_1 \ldots p_n \f$ and
-  \f$  r_1 \ldots r_n \f$ for a single \f$ s \f$ then:
-      - Probability:
-          \f[ p'(s) = \sum_{i=1}^{n} p_i \f]
-      - Reward:
-          \f[ r'(s) = \frac{  \sum_{i=1}^{n} p_i \, r_i}{p'(s)} \f]
+      When the function is called multiple times with \f$ p_1 \ldots p_n \f$ and
+      \f$  r_1 \ldots r_n \f$ for a single \f$ s \f$ then:
+          - Probability:
+              \f[ p'(s) = \sum_{i=1}^{n} p_i \f]
+          - Reward:
+              \f[ r'(s) = \frac{  \sum_{i=1}^{n} p_i \, r_i}{p'(s)} \f]
 
 
-  Transition probabilities are not checked to sum to one.
+      Transition probabilities are not checked to sum to one.
 
-  \param stateid ID of the target state
-  \param probability Probability of transitioning to this state
-  \param reward The reward associated with the transition
+      \param stateid ID of the target state
+      \param probability Probability of transitioning to this state
+      \param reward The reward associated with the transition
    */
     void add_sample(long stateid, prec_t probability, prec_t reward) {
 
@@ -214,16 +215,16 @@ public:
     }
 
     /**
-  Computes value for the transition and a value function.
+       Computes value for the transition and a value function.
 
-  When there are no target states, the function terminates with an error.
+       When there are no target states, the function terminates with an error.
 
-  \param valuefunction Value function, or an arbitrary vector of values
-  \param discount Discount factor, optional (default value 1)
-  \param probabilities Custom probability distribution. It must be of the same
-  length as the number of *nonzero* transition probabilities. The length is NOT
-  checked in a release build.
-   */
+      \param valuefunction Value function, or an arbitrary vector of values
+      \param discount Discount factor, optional (default value 1)
+      \param probabilities Custom probability distribution. It must be of the same
+      length as the number of *nonzero* transition probabilities. The length is NOT
+      checked in a release build.
+       */
     prec_t value(numvec const& valuefunction, prec_t discount,
                  numvec probabilities) const {
         assert(valuefunction.size() >= probabilities.size());
@@ -235,9 +236,8 @@ public:
                               "Cannot compute value.");
         prec_t value = 0.0;
 
-// Note: in simple benchmarks, the simd statement seems to speed up the
-// computation
-// by a factor of 2-4 with -march=native on a computer with AVX support
+        // Note: in simple benchmarks, the simd statement seems to speed up the
+        // computation by a factor of 2-4 with -march=native on a computer with AVX support
 #pragma omp simd reduction(+ : value)
         for (size_t c = 0; c < size(); c++) {
             value +=
@@ -247,20 +247,22 @@ public:
     }
 
     /**
-  Computes value for the transition and a value function.
-
-  When there are no target states, the function terminates with an error.
-
-  \param valuefunction Value function, or an arbitrary vector of values
-  \param discount Discount factor, optional (default value 1)
-   */
+     * Computes value for the transition and a value function.
+     *
+     * When there are no target states, the function terminates with an error.
+     *
+     * \param valuefunction Value function, or an arbitrary vector of values
+     * \param discount Discount factor, optional (default value 1)
+     */
     prec_t value(numvec const& valuefunction, prec_t discount = 1.0) const {
 
         return value(valuefunction, discount, probabilities);
     }
 
-    /** Computes the mean return from this transition with custom transition
-   * probabilities */
+    /**
+     * Computes the mean return from this transition with custom transition
+     * probabilities
+     */
     prec_t mean_reward(const numvec& probabilities) const {
         assert(probabilities.size() == size());
         if (indices.empty())
@@ -274,38 +276,38 @@ public:
     prec_t mean_reward() const { return mean_reward(probabilities); }
 
     /** Returns the number of target states with non-zero transition
-   * probabilities.  */
+     * probabilities.  */
     size_t size() const { return indices.size(); }
 
     /** Checks if the transition is empty. */
     bool empty() const { return indices.empty(); }
 
     /**
-  Returns the maximal indexes involved in the transition.
-  Returns -1 for and empty transition.
-  */
+      Returns the maximal indexes involved in the transition.
+      Returns -1 for and empty transition.
+      */
     long max_index() const { return indices.empty() ? -1 : indices.back(); }
 
     /**
-  Scales transition probabilities according to the provided parameter
-  and adds them to the provided vector. This method ignores rewards.
-  \param scale Multiplicative modification of transition probabilities
-  \param transition Transition probabilities being added to. This value
-                      is modified within the function.
-  */
+      Scales transition probabilities according to the provided parameter
+      and adds them to the provided vector. This method ignores rewards.
+      \param scale Multiplicative modification of transition probabilities
+      \param transition Transition probabilities being added to. This value
+                          is modified within the function.
+      */
     void probabilities_addto(prec_t scale, numvec& transition) const {
         for (size_t i : util::lang::indices(*this))
             transition[indices[i]] += scale * probabilities[i];
     }
 
     /**
-  Scales transition probabilities and rewards according to the provided
-  parameter and adds them to the provided vector.
-
-  \param scale Multiplicative modification of transition probabilities
-  \param transition Transition probabilities being added to. This value
-                      is modified within the function.
-  */
+     * Scales transition probabilities and rewards according to the provided
+     * parameter and adds them to the provided Transition.
+     *
+     * @param scale Multiplicative modification of transition probabilities
+     * @param transition Transition probabilities being added to. This value
+     *                     is modified within the function.
+     */
     void probabilities_addto(prec_t scale, Transition& transition) const {
         for (size_t i : util::lang::indices(*this))
             transition.add_sample(indices[i], scale * probabilities[i],
@@ -313,10 +315,24 @@ public:
     }
 
     /**
-  Constructs and returns a dense vector of probabilities, which
-  includes 0 transition probabilities.
-  \param size Size of the constructed vector
-  */
+     * Scales transition probabilities and rewards according to the provided
+     * parameter and adds them to this transition probability.
+     *
+     * @param scale Multiplicative modification of transition probabilities
+     * @param transition Transition probabilities being added to. This value
+     *                     is modified within the function.
+     */
+    void probabilities_add(prec_t scale, const Transition& transition) {
+        for (size_t i : util::lang::indices(transition))
+            this->add_sample(indices[i], scale * probabilities[i], scale * rewards[i]);
+    }
+
+    /**
+     * Constructs and returns a dense vector of probabilities, which
+     * includes 0 transition probabilities.
+     *
+     * @param size Size of the constructed vector
+     */
     numvec probabilities_vector(size_t size) const {
 
         if (max_index() >= 0 && static_cast<long>(size) <= max_index())
@@ -415,6 +431,6 @@ protected:
     numvec rewards;
 };
 
-const Transition Transition::empty_tran = Transition();
+inline const Transition Transition::empty_tran = Transition();
 
 } // namespace craam

@@ -253,6 +253,19 @@ rsolve_mpi(const MDP& mdp, prec_t discount, const algorithms::SANature&& nature,
 }
 
 /**
+ * @ingroup PolicyIteration
+ * Robust policy iteration with an s,a-rectangular nature.
+ */
+inline SARobustSolution
+rsolve_pi(const MDP& mdp, prec_t discount, const algorithms::SANature& nature,
+          numvec valuefunction = numvec(0), const indvec& policy = indvec(0),
+          unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC) {
+
+    return algorithms::pi(algorithms::SARobustBellman(mdp, move(nature), policy),
+                          discount, move(valuefunction), iterations, maxresidual);
+}
+
+/**
  * @ingroup ValueIteration
  * Robust value iteration with an s-rectangular nature.
  */
@@ -283,6 +296,18 @@ rsolve_s_mpi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
     return algorithms::mpi_jac(algorithms::SRobustBellman(mdp, nature, policy), discount,
                                valuefunction, iterations_pi, maxresidual_pi,
                                iterations_vi, maxresidual_vi, print_progress);
+}
+
+/**
+ * @ingroup ValueIteration
+ * Robust value iteration with an s-rectangular nature.
+ */
+inline SRobustSolution
+rsolve_s_pi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
+            numvec valuefunction = numvec(0), const indvec& policy = indvec(0),
+            unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC) {
+    return algorithms::pi(algorithms::SRobustBellman(mdp, nature, policy), discount,
+                          move(valuefunction), iterations, maxresidual);
 }
 
 // **************************************************************************
