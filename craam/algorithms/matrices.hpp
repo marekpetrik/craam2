@@ -34,80 +34,6 @@ namespace craam { namespace algorithms {
 using namespace std;
 using namespace Eigen;
 
-/// Internal helper functions
-namespace internal {
-
-/// Helper function to deal with variable indexing
-template <class SType>
-inline Transition mean_transition_state(const SType& state, long index,
-                                        const pair<indvec, vector<numvec>>& policies) {
-    return state.mean_transition(policies.first[index], policies.second[index]);
-}
-
-/// Helper function to deal with variable indexing
-template <class SType>
-inline Transition mean_transition_state(const SType& state, long index,
-                                        const indvec& policy) {
-    return state.mean_transition(policy[index]);
-}
-
-/// Helper function to deal with variable indexing
-/// \param state
-/// \param index
-/// \param policies
-template <class SType>
-inline prec_t mean_reward_state(const SType& state, long index,
-                                const pair<indvec, vector<numvec>>& policies) {
-
-    return state.mean_reward(policies.first[index], policies.second[index]);
-}
-
-// TODO: this function should be called by the Bellman operator
-/// Helper function to deal with variable indexing
-template <class SType>
-inline prec_t mean_reward_state(const SType& state, long index, const indvec& policy) {
-    return state[policy[index]].mean_reward();
-}
-} // namespace internal
-
-/**
-Constructs the transition (or its transpose) matrix for the policy.
-
-\tparam SType Type of the state in the MDP (regular vs robust)
-\tparam Policy Type of the policy. Either a single policy for
-                the standard MDP evaluation, or a pair of a deterministic
-                policy and a randomized policy of the nature
-\param rmdp Regular or robust MDP
-\param policies The policy (indvec) or the pair of the policy and the policy
-        of nature (pair<indvec,vector<numvec> >). The nature is typically
-        a randomized policy
-\param transpose (optional, false) Whether to return the transpose of the
-transition matrix. This is useful for computing occupancy frequencies
-*/
-template <typename SType, typename Policies>
-inline MatrixXd transition_mat(const GMDP<SType>& rmdp, const Policies& policies,
-                               bool transpose = false) {
-    const size_t n = rmdp.state_count();
-    MatrixXd result = MatrixXd::Zero(n, n);
-
-#pragma omp parallel for
-    for (size_t s = 0; s < n; s++) {
-        const Transition&& t = internal::mean_transition_state(rmdp[s], s, policies);
-
-        const auto& indexes = t.get_indices();
-        const auto& probabilities = t.get_probabilities();
-
-        if (!transpose) {
-            for (size_t j = 0; j < t.size(); j++)
-                result(s, indexes[j]) = probabilities[j];
-        } else {
-            for (size_t j = 0; j < t.size(); j++)
-                result(indexes[j], s) = probabilities[j];
-        }
-    }
-    return result;
-}
-
 /**
  * @brief Updates transition probabilities according to the provided policy.
  * @param response BellmanOperator class (e.g. PlainBellman)
@@ -132,7 +58,7 @@ update_transition_mat(const BellmanResponse& response, MatrixXd& transitions,
 
 #pragma omp parallel for
     for (size_t s = 0; s < n; s++) {
-        const Transition& t = response.mean_transition(s, new_policy[s]);
+        const Transition& t = response.transition(s, new_policy[s]);
 
         // if the policy has not changed then do nothing
         if (!old_policy.empty() && old_policy[s] == new_policy[s]) continue;
@@ -157,11 +83,11 @@ update_transition_mat(const BellmanResponse& response, MatrixXd& transitions,
  * @param policy Policy used to construct transition probabilities
  * @param transpose If true, transposes the probaility matrix
  */
-template <typename BellmanResponse>
-inline MatrixXd
-transition_mat(const BellmanResponse& response,
-               const vector<typename BellmanResponse::policy_type>& policy,
-               bool transpose = false) {
+template <typename BellmanResponse,
+          typename policy_type = typename BellmanResponse::policy_type>
+inline MatrixXd transition_mat(const BellmanResponse& response,
+                               const vector<policy_type>& policy,
+                               bool transpose = false) {
 
     const size_t n = response.state_count();
     MatrixXd result = MatrixXd::Zero(n, n);
@@ -183,19 +109,17 @@ Constructs the rewards vector for each state for the RMDP.
         of nature (pair<indvec,vector<numvec> >). The nature is typically
         a randomized policy
  */
-template <typename SType, typename Policy>
-inline numvec rewards_vec(const GMDP<SType>& rmdp, const Policy& policies) {
+template <typename BellmanResponse,
+          typename policy_type = typename BellmanResponse::policy_type>
+inline numvec rewards_vec(const BellmanResponse& response,
+                          const vector<policy_type>& policy) {
 
-    const auto n = rmdp.state_count();
+    const auto n = response.state_count();
     numvec rewards(n);
 
 #pragma omp parallel for
     for (size_t s = 0; s < n; s++) {
-        const SType& state = rmdp[s];
-        if (state.is_terminal())
-            rewards[s] = 0;
-        else
-            rewards[s] = internal::mean_reward_state(state, s, policies);
+        rewards[s] = response.reward(s, policy[s]);
     }
     return rewards;
 }

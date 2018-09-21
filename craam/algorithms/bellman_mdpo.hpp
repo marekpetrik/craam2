@@ -115,6 +115,41 @@ public:
         return value_fix_state(mdpo[stateid], valuefunction, discount, action_pol.first,
                                action_pol.second);
     }
+
+    /** Returns a reference to the transition probabilities
+     *
+     * @param stateid State for which to get the transition probabilites
+     * @param action Which action is taken
+     */
+    Transition transition(long stateid, const policy_type& action) const {
+        assert(stateid >= 0 && size_t(stateid) < state_count());
+        const StateO& s = mdpo[stateid];
+        if (s.is_terminal()) {
+            if (action.first < 0)
+                return Transition::empty_tran;
+            else
+                throw invalid_argument("Unknown action taken in a terminal state.");
+        } else {
+            return s[action.first].mean_transition(action.second);
+        }
+    }
+
+    /** Returns the reward for the action
+     *
+     * @param stateid State for which to get the transition probabilites
+     * @param action Which action is taken
+     */
+    prec_t reward(long stateid, const policy_type& action) {
+        const StateO& s = mdpo[stateid];
+        if (s.is_terminal()) {
+            if (action.first < 0)
+                return 0;
+            else
+                throw invalid_argument("Unknown action taken in a terminal state.");
+        } else {
+            return s[action.first].mean_reward(action.second);
+        }
+    }
 };
 
 }} // namespace craam::algorithms
