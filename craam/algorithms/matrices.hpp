@@ -48,7 +48,7 @@ inline void
 update_transition_mat(const BellmanResponse& response, MatrixXd& transitions,
                       const vector<typename BellmanResponse::policy_type>& new_policy,
                       const vector<typename BellmanResponse::policy_type>& old_policy,
-                      bool transpose = false) {
+                      bool transpose = false, prec_t discount = 1.0) {
 
     assert(transitions.rows() == transitions.cols());
     assert(size_t(transitions.rows()) == new_policy.size());
@@ -69,45 +69,44 @@ update_transition_mat(const BellmanResponse& response, MatrixXd& transitions,
 
         if (!transpose) {
             for (size_t j = 0; j < t.size(); j++)
-                transitions(s, indexes[j]) = probabilities[j];
+                transitions(s, indexes[j]) = discount * probabilities[j];
         } else {
             for (size_t j = 0; j < t.size(); j++)
-                transitions(indexes[j], s) = probabilities[j];
+                transitions(indexes[j], s) = discount * probabilities[j];
         }
     }
 }
 
 /**
  * @brief Creates a transition probability matrix for the Bellman response operator
+ *
  * @param response BellmanOperator class (e.g. PlainBellman)
  * @param policy Policy used to construct transition probabilities
- * @param transpose If true, transposes the probaility matrix
+ * @param transpose If yes, then the source states are columns (non-standard)
+ * @param discount An optional discount factor that multiplies each row
  */
 template <typename BellmanResponse,
           typename policy_type = typename BellmanResponse::policy_type>
 inline MatrixXd transition_mat(const BellmanResponse& response,
-                               const vector<policy_type>& policy,
-                               bool transpose = false) {
+                               const vector<policy_type>& policy, bool transpose = false,
+                               prec_t discount = 1.0) {
 
     const size_t n = response.state_count();
     MatrixXd result = MatrixXd::Zero(n, n);
 
     update_transition_mat(response, result, policy,
-                          vector<typename BellmanResponse::policy_type>(0), transpose);
+                          vector<typename BellmanResponse::policy_type>(0), transpose,
+                          discount);
     return result;
 }
 
 /**
-Constructs the rewards vector for each state for the RMDP.
-
-\tparam Policy Type of the policy. Either a single policy for
-                the standard MDP evaluation, or a pair of a deterministic
-                policy and a randomized policy of the nature
-
-\param rmdp Regular or robust MDP
-\param policies The policy (indvec) or the pair of the policy and the policy
-        of nature (pair<indvec,vector<numvec> >). The nature is typically
-        a randomized policy
+ * Constructs the rewards vector for each state for the RMDP.
+ *
+ * @tparam BellmanResponse An implementation similar to PlainBellman
+ *
+ * @param response An instance that generates rewards
+ * @param policy The current policy
  */
 template <typename BellmanResponse,
           typename policy_type = typename BellmanResponse::policy_type>
@@ -148,7 +147,7 @@ inline numvec occfreq_mat(const BellmanResponse& response, const Transition& ini
 
     // get transition matrix and construct (I - gamma * P^T)
     MatrixXd t_mat =
-        MatrixXd::Identity(n, n) - discount * transition_mat(response, policy, true);
+        MatrixXd::Identity(n, n) - transition_mat(response, policy, true, discount);
 
     // solve set of linear equations
     numvec result(n, 0);
@@ -160,6 +159,11 @@ inline numvec occfreq_mat(const BellmanResponse& response, const Transition& ini
 
 /**
  * Computes the value function of a policy by solving a system of linear equations
+ *
+ * @param response Bellman response that provides the transition probabilities and rewards
+ * @param discount discount factor
+ *
+ *
  */
 template <typename BellmanResponse,
           typename policy_type = typename BellmanResponse::policy_type>
@@ -173,7 +177,7 @@ inline numvec valuefunction_mat(const BellmanResponse& response, prec_t discount
 
     // get transition matrix and construct (I - gamma * P)
     MatrixXd t_mat =
-        MatrixXd::Identity(n, n) - discount * transition_mat(response, policy, true);
+        MatrixXd::Identity(n, n) - transition_mat(response, policy, true, discount);
 
     // solve set of linear equations
     numvec result(n, 0);

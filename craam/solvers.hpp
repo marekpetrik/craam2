@@ -29,12 +29,13 @@
 #include "craam/algorithms/bellman_mdp.hpp"
 #include "craam/algorithms/bellman_mdpo.hpp"
 #include "craam/algorithms/iteration_methods.hpp"
+#include "craam/algorithms/linprog.hpp"
 #include "craam/algorithms/nature_declarations.hpp"
 
 namespace craam {
 
 /**
- * @defgroup Value Iteration
+ * @defgroup ValueIteration
  *
  * Gauss-Seidel variant of value iteration (not parallelized).
  *
@@ -55,7 +56,9 @@ policy.
  */
 
 /**
- *  Modified policy iteration using Jacobi value iteration in the inner loop.
+ * @defgroup ModifiedPolicyIteration
+ *
+ * Modified policy iteration using Jacobi value iteration in the inner loop.
  * This method generalizes modified policy iteration to robust MDPs.
  * In the value iteration step, both the action *and* the outcome are fixed.
  *
@@ -72,6 +75,34 @@ policy.
  * @param iterations_vi Maximal number of inner loop value iterations
  * @param maxresidual_vi Stop policy evaluation when the policy residual drops
  * below maxresidual_vi * last_policy_residual
+ * @param print_progress Whether to report on progress during the computation
+ *
+ * @return Computed (approximate) solution
+ */
+
+/**
+ * @defgroup PolicyIteration
+ *
+ * Policy iteration using parallel action updated and Eigen to compute matrix
+ * inverse. Since this method is based on dense matrices, it does not scale
+ * particularly well.
+ *
+ * The method stop when the residual reaches the specified threshold or the policy
+ * no longer changes.
+ *
+ * This method generalizes modified policy iteration to robust MDPs.
+ * In the value iteration step, both the action *and* the outcome are fixed.
+ *
+ * Note that the total number of iterations will be bounded by iterations_pi *
+ * iterations_vi
+ * @param type Type of realization of the uncertainty
+ * @param discount Discount factor
+ * @param valuefunction Initial value function
+ * @param policy Partial policy specification. Optimize only actions that are
+ * policy[state] = -1
+ * @param iterations_pi Maximal number of policy iteration steps
+ * @param maxresidual_pi Stop the outer policy iteration when the residual drops
+ * below this threshold.
  * @param print_progress Whether to report on progress during the computation
  *
  * @return Computed (approximate) solution
@@ -123,6 +154,65 @@ inline numvec occupancies(const MDP& mdp, const Transition& initial, prec_t disc
     return algorithms::occfreq_mat(algorithms::PlainBellman(mdp), initial, discount,
                                    policy);
 }
+
+/**
+ * \ingroup PolicyIteration
+ */
+inline DetermSolution solve_pi(const MDP& mdp, prec_t discount,
+                               numvec valuefunction = numvec(0),
+                               const indvec& policy = indvec(0),
+                               unsigned long iterations = MAXITER,
+                               prec_t maxresidual = SOLPREC) {
+    return algorithms::pi(algorithms::PlainBellman(mdp, policy), discount,
+                          move(valuefunction), iterations, maxresidual);
+}
+
+#ifdef GUROBI_USE
+/**
+ * @brief get_gurobi Constructs a static instance of the gurobi object.
+ *          Probably should not be used concurrently!
+ * @return
+ */
+inline GRBEnv& get_gurobi() {
+    try {
+        static GRBEnv env = GRBEnv();
+        env.set(GRB_IntParam_OutputFlag, 0);
+        return env;
+    } catch (exception& e) {
+        cerr << "Problem constructing Gurobi object: " << endl << e.what() << endl;
+        throw e;
+    } catch (...) {
+        cerr << "Unknown exception while creating a gurobi object. Could be a "
+                "license problem."
+             << endl;
+        throw;
+    }
+}
+/**
+ * @brief Solves the MDP using the primal formulation (using value functions)
+ *
+ * Solves the linear program
+ * min_v  1^T v
+ * s.t.   P_a v >= r_a  for all a
+ *
+ * @param mdp Markov decision process
+ * @param discount Discount factor
+ *
+ * @return Solution
+ */
+inline DetermSolution solve_lp(const MDP& mdp, prec_t discount,
+                               const indvec& policy = indvec(0),
+                               GRBEnv& env = get_gurobi()) {
+
+    // TODO add support for this, the parameter is here only for
+    // future signature compatibility
+    if (policy.size() > 0) {
+        throw logic_error("Partial policy specification is not supported yet.");
+    }
+
+    return algorithms::solve_lp_primal(env, mdp, discount);
+}
+#endif // GUROBI_USE
 
 // **************************************************************************
 // Robust MDP methods

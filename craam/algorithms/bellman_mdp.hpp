@@ -116,10 +116,7 @@ public:
         assert(stateid >= 0 && size_t(stateid) < state_count());
         const State& s = mdp[stateid];
         if (s.is_terminal()) {
-            if (action < 0)
-                return Transition::empty_tran;
-            else
-                throw invalid_argument("Unknown action taken in a terminal state.");
+            return Transition::empty_tran;
         } else {
             return static_cast<const Transition&>(s[action]);
         }
@@ -133,10 +130,7 @@ public:
     prec_t reward(long stateid, const policy_type& action) const {
         const State& s = mdp[stateid];
         if (s.is_terminal()) {
-            if (action < 0)
-                return 0;
-            else
-                throw invalid_argument("Unknown action taken in a terminal state.");
+            return 0;
         } else {
             return s[action].mean_reward();
         }
@@ -245,10 +239,7 @@ public:
         assert(stateid >= 0 && size_t(stateid) < state_count());
         const State& s = mdp[stateid];
         if (s.is_terminal()) {
-            if (action.first < 0)
-                return Transition::empty_tran;
-            else
-                throw invalid_argument("Unknown action taken in a terminal state.");
+            return Transition::empty_tran;
         } else {
             return s[action.first].mean_transition(action.second);
         }
@@ -262,10 +253,7 @@ public:
     prec_t reward(long stateid, const policy_type& action) const {
         const State& s = mdp[stateid];
         if (s.is_terminal()) {
-            if (action.first < 0)
-                return 0;
-            else
-                throw invalid_argument("Unknown action taken in a terminal state.");
+            return 0;
         } else {
             return s[action.first].mean_reward(action.second);
         }

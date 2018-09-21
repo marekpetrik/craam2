@@ -235,60 +235,75 @@ below maxresidual_vi_rel * last_policy_residual
 
 @return Computed (approximate) solution
  */
-/*template <class ResponseType>
+template <class ResponseType>
 inline Solution<typename ResponseType::policy_type>
-pi(const ResponseType& response, prec_t discount, const numvec& valuefunction = numvec(0),
+pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(0),
    unsigned long iterations_pi = MAXITER, prec_t maxresidual_pi = SOLPREC,
    bool print_progress = false) {
 
+    const auto n = response.state_count();
+
     using policy_type = typename ResponseType::policy_type;
-
     // just quit if there are no states
-    if (response.state_count() == 0) { return Solution<policy_type>(0); }
-
+    if (n == 0) { return Solution<policy_type>(0); }
     // time the computation
     auto start = chrono::steady_clock::now();
-
     // intialize the policy
-    vector<policy_type> policy(response.state_count());
-
+    vector<policy_type> policy(n);
+    // keep the old policy around to detect no change
+    vector<policy_type> policy_old = policy;
     // resize if the the value function is empty and initialize to 0
-    numvec sourcevalue = valuefunction;
-    if (sourcevalue.empty()) sourcevalue.resize(response.state_count(), 0.0);
+    if (valuefunction.empty()) valuefunction.resize(n, 0.0);
 
-    numvec residuals(response.state_count());
+    numvec residuals(n);
 
     // residual in the policy iteration part
     prec_t residual_pi = numeric_limits<prec_t>::infinity();
-
     size_t i; // defined here to be able to report the number of iterations
 
-    for (i = 0; i < iterations_pi; ++i) {
+    // TODO: could be sped up by keeping I - gamma * P instead of transition probabilities
+    // **discounted** matrix of transition probabilities
+    MatrixXd trans_discounted = transition_mat(response, policy, false, discount);
 
+    for (i = 0; i < iterations_pi; ++i) {
         if (print_progress)
             cout << "Policy iteration " << i << "/" << iterations_pi << ":" << endl;
 
-        prec_t residual_vi = numeric_limits<prec_t>::infinity();
-
-        // update policies
+        // update policy
+        swap(policy, policy_old);
 #pragma omp parallel for
-        for (auto s = 0l; s < long(response.state_count()); s++) {
+        for (size_t s = 0; s < n; ++s) {
             prec_t newvalue;
-            tie(newvalue, policy[s]) = response.policy_update(s, sourcevalue, discount);
-            residuals[s] = abs(sourcevalue[s] - newvalue);
-            targetvalue[s] = newvalue;
+            tie(newvalue, policy[s]) = response.policy_update(s, valuefunction, discount);
+            residuals[s] = abs(valuefunction[s] - newvalue);
         }
+        // TODO: change this to a span seminorm (in all algorithms)
         residual_pi = *max_element(residuals.cbegin(), residuals.cend());
 
         if (print_progress) cout << "    Bellman residual: " << residual_pi << endl;
 
         // the residual is sufficiently small
-        if (residual_pi <= maxresidual_pi) break;
+        if (residual_pi <= maxresidual_pi || policy == policy_old) break;
+
+        // ** now compute the value function
+        // 1. update the transition probabilities
+        update_transition_mat(response, trans_discounted, policy, policy_old, false,
+                              discount);
+
+        const numvec rw = rewards_vec(response, policy);
+        // get transition matrix and construct (I - gamma * P)
+        // TODO: this step could be eliminated by keeping I - gamma P (this is an unnecessary copy)
+        MatrixXd t_mat =
+            MatrixXd::Identity(n, n) - transition_mat(response, policy, false, discount);
+        // compute and store the value function
+        Map<VectorXd, Unaligned>(valuefunction.data(), valuefunction.size()) =
+            HouseholderQR<MatrixXd>(t_mat).solve(
+                Map<const VectorXd, Unaligned>(rw.data(), rw.size()));
     }
     auto finish = chrono::steady_clock::now();
     chrono::duration<double> duration = finish - start;
-    return Solution<policy_type>(move(targetvalue), move(policy), residual_pi, i,
+    return Solution<policy_type>(move(valuefunction), move(policy), residual_pi, i,
                                  duration.count());
-}*/
+}
 
 }} // namespace craam::algorithms

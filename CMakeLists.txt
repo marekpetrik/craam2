@@ -87,7 +87,7 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "4.9.0")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wuninitialized") #-Wpedantic
     endif()
-    set(CMAKE_CXX_FLAGS_DEBUG "-g -rdynamic -pthread") # -D_GLIBCXX_DEBUG -- incompatible with boost :(
+    set(CMAKE_CXX_FLAGS_DEBUG "-g -rdynamic -pthread -Wno-unknown-pragmas") # -D_GLIBCXX_DEBUG -- incompatible with boost :(
     set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -mtune=native -pthread")
 endif()
 
@@ -117,6 +117,12 @@ set (SRCS
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/Transition.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/Solution.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/modeltools.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/solvers.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/simulation.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/Samples.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/ImMDP.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/MDP.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/MDPO.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/optimization/optimization.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/optimization/bisection.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/optimization/srect_gurobi.hpp
@@ -129,12 +135,7 @@ set (SRCS
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/bellman_mdp.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/bellman_mdpo.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/iteration_methods.hpp
-          ${CMAKE_CURRENT_SOURCE_DIR}/craam/solvers.hpp
-          ${CMAKE_CURRENT_SOURCE_DIR}/craam/simulation.hpp
-          ${CMAKE_CURRENT_SOURCE_DIR}/craam/Samples.hpp
-          ${CMAKE_CURRENT_SOURCE_DIR}/craam/ImMDP.hpp
-          ${CMAKE_CURRENT_SOURCE_DIR}/craam/MDP.hpp
-          ${CMAKE_CURRENT_SOURCE_DIR}/craam/MDPO.hpp)
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/linprog.hpp)
 
 
 set (TSTS ${CMAKE_CURRENT_SOURCE_DIR}/test/test.cpp

@@ -194,9 +194,29 @@ template <class Model> void test_simple_vi(const Model& rmdp) {
     numvec initial{0, 0, 0};
     indvec pol_rob{1, 1, 1};
 
-    // small number of iterations (not the true value function)
+    // small number of iterations (!!not the true value function)
     numvec val_rob{7.68072, 8.67072, 9.77072};
     auto re = solve_vi(rmdp, 0.9, initial, indvec(0), 20, 0);
+    CHECK_CLOSE_COLLECTION(val_rob, re.valuefunction, 1e-3);
+    BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re.policy.begin(),
+                                  re.policy.end());
+
+    // This is the true value functions
+    const numvec val_rob3{8.91, 9.9, 11.0};
+
+    if constexpr (std::is_same_v<Model, MDP>) {
+        auto re1_5 = solve_pi(rmdp, 0.9, initial, indvec(0), 20, 0);
+        CHECK_CLOSE_COLLECTION(val_rob3, re1_5.valuefunction, 1e-3);
+        BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(),
+                                      re1_5.policy.begin(), re1_5.policy.end());
+
+#ifdef GUROBI_USE
+        auto re1_7 = solve_lp(rmdp, 0.9);
+        CHECK_CLOSE_COLLECTION(val_rob3, re1_7.valuefunction, 1e-3);
+        BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(),
+                                      re1_7.policy.begin(), re1_7.policy.end());
+#endif // GUROBIUSE
+    }
 
     CHECK_CLOSE_COLLECTION(val_rob, re.valuefunction, 1e-3);
     BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re.policy.begin(),
@@ -212,7 +232,6 @@ template <class Model> void test_simple_vi(const Model& rmdp) {
                                   re2.policy.end());
 
     // many iterations
-    const numvec val_rob3{8.91, 9.9, 11.0};
     const numvec occ_freq3{0.333333333, 0.6333333333, 9.03333333333333};
     const prec_t ret_true = inner_product(val_rob3.cbegin(), val_rob3.cend(),
                                           init_d.get_probabilities().cbegin(), 0.0);
@@ -999,24 +1018,6 @@ BOOST_AUTO_TEST_CASE(s_rectangular_gurobi) {
 // ********************************************************************************
 //  Test optimization methods
 // ********************************************************************************
-
-#ifdef GUROBI_USE
-GRBEnv& get_gurobi() {
-    try {
-        static GRBEnv env = GRBEnv();
-        env.set(GRB_IntParam_OutputFlag, 0);
-        return env;
-    } catch (exception& e) {
-        cerr << "Problem constructing Gurobi object: " << endl << e.what() << endl;
-        throw e;
-    } catch (...) {
-        cerr << "Unknown exception while creating a gurobi object. Could be a "
-                "license problem."
-             << endl;
-        throw;
-    }
-}
-#endif
 
 BOOST_AUTO_TEST_CASE(test_piecewise_linear_f) {
     // make sure that the piecewise linear function is indeed linear between
