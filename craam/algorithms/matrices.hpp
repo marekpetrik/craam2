@@ -138,9 +138,9 @@ probabilities. This method requires computing a matrix inverse.
 */
 template <typename BellmanResponse,
           typename policy_type = typename BellmanResponse::policy_type>
-inline numvec occfreq_mat(const BellmanResponse& rmdp, const Transition& init,
+inline numvec occfreq_mat(const BellmanResponse& response, const Transition& init,
                           prec_t discount, const policy_type& policy) {
-    const auto n = rmdp.state_count();
+    const auto n = response.state_count();
 
     // initial distribution
     const numvec& ivec = init.probabilities_vector(n);
@@ -148,12 +148,37 @@ inline numvec occfreq_mat(const BellmanResponse& rmdp, const Transition& init,
 
     // get transition matrix and construct (I - gamma * P^T)
     MatrixXd t_mat =
-        MatrixXd::Identity(n, n) - discount * transition_mat(rmdp, policy, true);
+        MatrixXd::Identity(n, n) - discount * transition_mat(response, policy, true);
 
     // solve set of linear equations
     numvec result(n, 0);
     Map<VectorXd, Unaligned>(result.data(), result.size()) =
         HouseholderQR<MatrixXd>(t_mat).solve(initial_vec);
+
+    return result;
+}
+
+/**
+ * Computes the value function of a policy by solving a system of linear equations
+ */
+template <typename BellmanResponse,
+          typename policy_type = typename BellmanResponse::policy_type>
+inline numvec valuefunction_mat(const BellmanResponse& response, prec_t discount,
+                                const policy_type& policy) {
+
+    const auto n = response.state_count();
+    const numvec rewards = rewards_vec(response, policy);
+    const VectorXd rewards_vec =
+        Map<const VectorXd, Unaligned>(rewards.data(), rewards.size());
+
+    // get transition matrix and construct (I - gamma * P)
+    MatrixXd t_mat =
+        MatrixXd::Identity(n, n) - discount * transition_mat(response, policy, true);
+
+    // solve set of linear equations
+    numvec result(n, 0);
+    Map<VectorXd, Unaligned>(result.data(), result.size()) =
+        HouseholderQR<MatrixXd>(t_mat).solve(rewards_vec);
 
     return result;
 }
