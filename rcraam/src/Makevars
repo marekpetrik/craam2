@@ -1,6 +1,6 @@
 ## -*- mode: makefile; -*-
 
-PKG_CXXFLAGS = -I../../ -I../../include -fopenmp -DNDEBUG -O3
+PKG_CXXFLAGS = -I../../ -I../../include -fopenmp -DNDEBUG -O3 -march=native
 #PKG_CXXFLAGS = -I../../ -I../../include -fopenmp -g
 PKG_LIBS= -fopenmp -L../../lib/gurobi -lgurobi_g++5.2 -lgurobi80
 
