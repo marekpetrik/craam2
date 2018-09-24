@@ -108,7 +108,7 @@ protected:
     prec_t budget;
 
 public:
-    robust_l1u(prec_t budget) : budget(move(budget)) {}
+    robust_l1u(prec_t budget) : budget(budget) {}
 
     /**
    * @brief Implements SANature interface
