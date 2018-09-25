@@ -50,7 +50,7 @@ public:
     /// Type of state: current population
     using State = long;
     /// Type of actions: whether to apply control/treatment or not
-    using Action = bool;
+    using Action = long;
 
     /// The type of the growth model
     enum class Growth { Exponential, Logistic };
