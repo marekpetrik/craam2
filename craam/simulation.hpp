@@ -277,18 +277,18 @@ public:
     using Action = typename Sim::Action;
 
     /**
-  Initializes randomized polices, transition probabilities
-  for each state. The policy is applicable only to simulators that
-  have:
+      Initializes randomized polices, transition probabilities
+      for each state. The policy is applicable only to simulators that
+      have:
 
-    1) At most as many states as probabilities.size()
-    2) At least as many actions are max(probabilities[i].size() | i)
+        1) At most as many states as probabilities.size()
+        2) At least as many actions are max(probabilities[i].size() | i)
 
 
-  \param sim Simulator used with the policy. The reference is retained,
-              the object should not be deleted
-  \param probabilities List of action probabilities for each state
-  */
+      \param sim Simulator used with the policy. The reference is retained,
+                  the object should not be deleted
+      \param probabilities List of action probabilities for each state
+      */
     RandomizedPolicy(const Sim& sim, const vector<numvec>& probabilities,
                      random_device::result_type seed = random_device{}())
         : gen(seed), distributions(probabilities.size()), sim(sim) {

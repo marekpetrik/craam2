@@ -135,7 +135,9 @@ set (SRCS
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/bellman_mdp.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/bellman_mdpo.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/iteration_methods.hpp
-          ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/linprog.hpp)
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/linprog.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/simulators/inventory.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/simulators/population.hpp)
 
 
 set (TSTS ${CMAKE_CURRENT_SOURCE_DIR}/test/test.cpp

@@ -23,9 +23,7 @@
 
 #pragma once
 
-#include "craam/GMDP.hpp"
-#include "craam/definitions.hpp"
-#include "craam/modeltools.hpp"
+#include "craam/MDP.hpp"
 
 #include <cassert>
 #include <functional>
@@ -634,57 +632,5 @@ protected:
     vector<vector<prec_t>> state_action_weights;
 };
 
-/*
-Constructs a robust MDP from integer samples.
-
-In integer samples each decision state, expectation state,
-and action are identified by an integer.
-
-There is some extra memory penalty in this class over a plain MDP since it
-stores the number of samples observed for each state and action.
-
-Important: Actions that are not sampled (no samples per that state
-and action pair) are labeled as invalid and are not included in the computation
-of value function or the solution.
-
-*/
-// template<typename Model>
-// class SampledRMDP{
-// public:
-//
-//    /** Constructs an empty MDP from discrete samples */
-//    SampledRMDP();
-//
-//    /**
-//    Constructs or adds states and actions based on the provided samples.
-//    Transition probabilities of the existing samples are normalized.
-//
-//    \param samples Source of the samples
-//    */
-//    void add_samples(const DiscreteSamples& samples);
-//
-//    /** \returns A constant pointer to the internal MDP */
-//    shared_ptr<const Model> get_rmdp() const {return const_pointer_cast<const
-//    Model>(mdp);}
-//
-//    /** \returns A modifiable pointer to the internal MDP.
-//    Take care when changing. */
-//    shared_ptr<Model> get_rmdp_mod() {return mdp;}
-//
-//    /** Initial distribution */
-//    Transition get_initial() const {return initial;}
-//
-// protected:
-//
-//    /** Internal MDP representation */
-//    shared_ptr<Model> mdp;
-//
-//    /** Initial distribution */
-//    Transition initial;
-//
-//    /** Sample counts */
-//    vector<vector<size_t>> state_action_counts;
-//};
-
-} // end namespace msen
-} // end namespace craam
+} // namespace msen
+} // namespace craam

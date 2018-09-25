@@ -22,48 +22,43 @@
 
 #pragma once
 
-#include "../Samples.hpp"
-#include "../definitions.hpp"
+#include "craam/Samples.hpp"
+#include "craam/definitions.hpp"
 
-#include <utility>
-#include <vector>
-#include <memory>
-#include <random>
-#include <functional>
-#include <cmath>
 #include <algorithm>
 #include <cmath>
+#include <functional>
+#include <memory>
+#include <random>
 #include <string>
+#include <utility>
+#include <vector>
 
-
-namespace craam{
-namespace msen {
+namespace craam { namespace msen {
 
 using namespace std;
 using namespace util::lang;
 
-template<class Sim>
-class InventoryPolicy{
+template <class Sim> class InventoryPolicy {
 
 public:
     using State = typename Sim::State;
     using Action = typename Sim::Action;
 
     InventoryPolicy(const Sim& sim, long max_inventory,
-                    random_device::result_type seed = random_device{}()) :
-                sim(sim), max_inventory(max_inventory), gen(seed){
-    }
+                    random_device::result_type seed = random_device{}())
+        : sim(sim), max_inventory(max_inventory), gen(seed) {}
 
     /** Returns an action accrding to the S,s policy, orders required amount to have
     the inventory to max level. */
-    long operator() (long current_state){
-        return max(0l, max_inventory-current_state);
+    long operator()(State current_state) {
+        return max(0l, max_inventory - current_state);
     }
 
 private:
     /// Internal reference to the originating simulator
     const Sim& sim;
-    long max_inventory;
+    State max_inventory;
     /// Random number engine
     default_random_engine gen;
 };
@@ -72,7 +67,7 @@ private:
 A simulator that generates inventory data.
 
 */
-class InventorySimulator{
+class InventorySimulator {
 
 public:
     /// Type of states: invenotry level
@@ -84,68 +79,73 @@ public:
     Build a model simulator for the inventory problem
     @param initial Initial inventory level
     */
-    InventorySimulator(long initial, prec_t prior_mean, prec_t prior_std, prec_t demand_std, prec_t purchase_cost,
-                       prec_t sale_price, prec_t delivery_cost, prec_t holding_cost, prec_t backlog_cost,
-                       long max_inventory, long max_backlog, long max_order, random_device::result_type seed = random_device{}()) :
-                initial(initial), prior_mean(prior_mean), prior_std(prior_std), demand_std(demand_std),
-                purchase_cost(purchase_cost), sale_price(sale_price), delivery_cost(delivery_cost), holding_cost(holding_cost),
-                backlog_cost(backlog_cost), max_inventory(max_inventory), max_backlog(max_backlog), max_order(max_order),
-                gen(seed) {
+    InventorySimulator(long initial, prec_t prior_mean, prec_t prior_std,
+                       prec_t demand_std, prec_t purchase_cost, prec_t sale_price,
+                       prec_t delivery_cost, prec_t holding_cost, prec_t backlog_cost,
+                       long max_inventory, long max_backlog, long max_order,
+                       random_device::result_type seed = random_device{}())
+        : initial(initial), prior_mean(prior_mean), prior_std(prior_std),
+          demand_std(demand_std), purchase_cost(purchase_cost), sale_price(sale_price),
+          delivery_cost(delivery_cost), holding_cost(holding_cost),
+          backlog_cost(backlog_cost), max_inventory(max_inventory),
+          max_backlog(max_backlog), max_order(max_order), gen(seed) {
 
-                init_demand_distribution();
+        init_demand_distribution();
     }
 
     /**
      * Build a model simulator
      */
-    InventorySimulator(long initial, prec_t prior_mean, prec_t prior_std, prec_t demand_std, prec_t purchase_cost,
-                       prec_t sale_price, long max_inventory, random_device::result_type seed = random_device{}()) :
+    InventorySimulator(long initial, prec_t prior_mean, prec_t prior_std,
+                       prec_t demand_std, prec_t purchase_cost, prec_t sale_price,
+                       long max_inventory,
+                       random_device::result_type seed = random_device{}())
+        :
 
-        initial(initial), prior_mean(prior_mean), prior_std(prior_std), demand_std(demand_std), purchase_cost(purchase_cost),
-        sale_price(sale_price), max_inventory(max_inventory), gen(seed) {
+          initial(initial), prior_mean(prior_mean), prior_std(prior_std),
+          demand_std(demand_std), purchase_cost(purchase_cost), sale_price(sale_price),
+          max_inventory(max_inventory), gen(seed) {
 
         init_demand_distribution();
     }
 
-    long init_state() const{
-        return initial;
-    }
+    /// Returns the initial state
+    long init_state() const { return initial; }
 
-    void init_demand_distribution(){
-        normal_distribution<prec_t> prior_distribution(prior_mean,prior_std);
+    void init_demand_distribution() {
+        normal_distribution<prec_t> prior_distribution(prior_mean, prior_std);
         demand_mean = prior_distribution(gen);
         demand_distribution = normal_distribution<prec_t>(demand_mean, demand_std);
     }
 
-    bool end_condition(State inventory) const
-        {return inventory < 0;}
+    bool end_condition(State inventory) const { return inventory < 0; }
 
     /**
-    Returns a sample of the reward and a decision state following a state
-    \param current_inventory Current inventory level
-    \param action_order Action obtained from the policy
-    \returns a pair of reward & next inventory level
-    */
-    pair<double,int> transition(long current_inventory, long action_order){
+     * Returns a sample of the reward and a decision state following a state
+     * @param current_inventory Current inventory level
+     * @param action_order Action obtained from the policy
+     * @returns a pair of reward & next inventory level
+     */
+    pair<prec_t, State> transition(State current_inventory, Action action_order) {
 
-        assert(current_inventory >= 0 );
+        assert(current_inventory >= 0);
         assert(action_order >= 0);
-		
+
         // Generate demand from the normal demand distribution
-        long demand = max( 0l, (long) demand_distribution(gen) );
-        
+        long demand = max(0l, (long)demand_distribution(gen));
+
         // Compute the next inventory level
         long next_inventory = action_order + current_inventory - demand;
-        
+
         // Back calculate how many items were sold
         long sold_amount = current_inventory - next_inventory + action_order;
-        
+
         // Compute the obtained revenue
         prec_t revenue = sold_amount * sale_price;
-        
+
         // Compute the expense
         prec_t expense = action_order * purchase_cost;
-        
+
         // Reward is equivalent to the profit & obtained from revenue & total expense
         prec_t reward = revenue - expense;
 
@@ -154,7 +154,7 @@ public:
 
 protected:
     /// initial state
-    long initial;
+    State initial;
     /// Distribution for the demand
     normal_distribution<prec_t> demand_distribution;
     /// Distribution parameters
@@ -163,11 +163,9 @@ protected:
     long max_inventory, max_backlog, max_order;
     /// Random number engine
     default_random_engine gen;
-
 };
 
 ///Inventory policy to be used
 using ModelInventoryPolicy = InventoryPolicy<InventorySimulator>;
 
-} // end namespace msen
-} // end namespace craam
+}} // namespace craam::msen
