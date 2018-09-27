@@ -125,7 +125,7 @@ public:
         assert(stateid >= 0 && size_t(stateid) < state_count());
         const StateO& s = mdpo[stateid];
         if (s.is_terminal()) {
-            return Transition::empty_tran;
+            return Transition::empty_tran();
         } else {
             return s[action.first].mean_transition(action.second);
         }

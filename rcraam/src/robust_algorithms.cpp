@@ -260,8 +260,11 @@ Rcpp::List pack_actions(Rcpp::DataFrame mdp) {
 }
 
 /**
+ * Note of actions are packed, the policy may be recoverd
+ * from the output parameter action_map
+ *
  * @param options
- *          algorithm: "mpi", "vi"
+ *          algorithm: "mpi", "vi", "vi_j", "pi"
  *          pack_actions: bool
  *          iterations: int
  *          precision: double
@@ -289,7 +292,7 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::List options) {
         Rcpp::as<string>(options["algorithm"]) == "mpi") {
         // Modified policy iteration
         sol = solve_mpi(m, discount, numvec(0), indvec(0), sqrt(iterations),
-                                    precision, sqrt(iterations), 0.9);
+                                    precision, std::min(sqrt(iterations),1000.0), 0.9);
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi_j") {
         // Jacobian value iteration
         sol = solve_mpi(m, discount, numvec(0), indvec(0), iterations,

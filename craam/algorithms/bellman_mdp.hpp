@@ -116,7 +116,7 @@ public:
         assert(stateid >= 0 && size_t(stateid) < state_count());
         const State& s = mdp[stateid];
         if (s.is_terminal()) {
-            return Transition::empty_tran;
+            return Transition::empty_tran();
         } else {
             return static_cast<const Transition&>(s[action]);
         }
@@ -239,7 +239,7 @@ public:
         assert(stateid >= 0 && size_t(stateid) < state_count());
         const State& s = mdp[stateid];
         if (s.is_terminal()) {
-            return Transition::empty_tran;
+            return Transition::empty_tran();
         } else {
             return s[action.first].mean_transition(action.second);
         }
@@ -377,7 +377,7 @@ public:
         assert(stateid >= 0 && size_t(stateid) < state_count());
         const State& s = mdp[stateid];
         if (s.is_terminal()) {
-            return Transition::empty_tran;
+            return Transition::empty_tran();
         } else {
             // compute the weighted average of transition probabilies
             Transition result;

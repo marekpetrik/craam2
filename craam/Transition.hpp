@@ -344,11 +344,11 @@ public:
     }
 
     /**
-  Constructs and returns a dense vector of rewards, which
-  includes 0 transition probabilities. Rewards for indices with
-  zero transition probability are zero.
-  \param size Size of the constructed vector
-  */
+     * Constructs and returns a dense vector of rewards, which
+     * includes 0 transition probabilities. Rewards for indices with
+     * zero transition probability are zero.
+     * \param size Size of the constructed vector
+     */
     numvec rewards_vector(size_t size) const {
 
         if (max_index() >= 0 && static_cast<long>(size) <= max_index())
@@ -374,12 +374,10 @@ public:
   */
     const numvec& get_probabilities() const { return probabilities; };
 
-    void set_probabilities(numvec probabilities) { this->probabilities = probabilities; }
-
     /**
-  Rewards for indices with positive probabilities returned by
-  get_indices. See also rewards_vector.
-  */
+     * Rewards for indices with positive probabilities returned by
+     * get_indices. See also rewards_vector.
+     */
     const numvec& get_rewards() const { return rewards; };
 
     /** Sets the reward for a transition to a particular state */
@@ -391,8 +389,10 @@ public:
         return rewards[sampleid];
     };
 
-    /** Returns a json representation of transition probabilities
-  \param outcomeid Includes also outcome id*/
+    /**
+     * Returns a json representation of transition probabilities
+     * @param outcomeid Includes also outcome id
+     */
     string to_json(long outcomeid = -1) const {
         string result{"{"};
         result += "\"outcomeid\" : ";
@@ -419,8 +419,13 @@ public:
         return result;
     }
 
-    /// An empty transition used for convenience
-    static const Transition empty_tran;
+    /// An empty transition used for a convenience
+    /// when a reference to an empty transition needs
+    /// to be return
+    static const Transition& empty_tran() {
+        static Transition empty;
+        return empty;
+    }
 
 protected:
     /// List of state indices
@@ -430,7 +435,5 @@ protected:
     /// List of rewards associated with transitions
     numvec rewards;
 };
-
-inline const Transition Transition::empty_tran = Transition();
 
 } // namespace craam
