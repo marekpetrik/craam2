@@ -18,7 +18,7 @@ set (GUROBI_USE TRUE)
 # enable colors in the output
 SET(CMAKE_COLOR_MAKEFILE ON)
 # And optionally
-#SET(CMAKE_VERBOSE_MAKEFILE ON)
+SET(CMAKE_VERBOSE_MAKEFILE ON)
 
 # **** Build type ****
 if(NOT CMAKE_BUILD_TYPE)

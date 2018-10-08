@@ -100,7 +100,8 @@ public:
      * Build a model simulator for the inventory problem. The default
      * behavior is to start with an empty inventory level
      *
-     * @param demands Probabilities of discrete demand values
+     * @param demands Probabilities of discrete demand values. Use set_min_demand
+     *                  to offset the demands (if needed)
      * @param costs List of costs: 0. variable, 1. fixed, 2. holding, 3. backlog
      * @param sale_price Price of the sale of the product
      * @param limits List of 0. maximum inventory, 1. maximum backlog, 2. maximum order size
@@ -120,6 +121,9 @@ public:
 
     /// Sets the seed
     void set_seed(random_device::result_type seed = random_device{}()) { gen.seed(seed); }
+
+    /// Sets the offset of all demand values
+    void set_min_demand(long min_demand) { this->min_demand = min_demand; }
 
     /// Returns the initial state which corresponds to the
     /// empty inventory (and no backlog)
@@ -141,7 +145,7 @@ public:
      */
     pair<prec_t, State> transition(State current_state, Action action_order) noexcept {
         // Generate demand from the normal demand distribution
-        long demand = demand_dist(gen);
+        long demand = demand_dist(gen) + min_demand;
         // call the transition that computes the demand
         return transition_dem(current_state, action_order, demand);
     }
@@ -214,13 +218,15 @@ public:
     template <class F> void build_mdp(F&& f) const {
         for (State statefrom = 0; statefrom < state_count(); ++statefrom) {
             for (Action action = 0; action < action_count(); ++action) {
-                for (size_t demand = 0; demand < demands_prob.size(); ++demand) {
+                for (size_t demand = min_demand;
+                     demand < min_demand + demands_prob.size(); ++demand) {
                     State stateto;
                     prec_t reward;
                     // simulate a single step of the transition probabilities
                     std::tie(reward, stateto) = transition_dem(statefrom, action, demand);
                     const prec_t probability = demands_prob[demand];
-
+                    // run the method that add the transition probability
+                    // and possibly update progress
                     f(statefrom, action, stateto, probability, reward);
                 }
             }
@@ -240,6 +246,8 @@ protected:
     long max_inventory, max_backlog, max_order;
     /// Random number engine
     default_random_engine gen;
+    /// Minimum demand if an offset is needed
+    long min_demand = 0;
 };
 
 ///Inventory policy to be used

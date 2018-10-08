@@ -133,17 +133,20 @@ public:
 
       Transition probabilities are not checked to sum to one.
 
-      \param stateid ID of the target state
-      \param probability Probability of transitioning to this state
-      \param reward The reward associated with the transition
+      @param stateid ID of the target state
+      @param probability Probability of transitioning to this state
+      @param reward The reward associated with the transition
+      @param force Whether to force adding the probability even when it is 0 or even
+                    negative
    */
-    void add_sample(long stateid, prec_t probability, prec_t reward) {
+    void add_sample(long stateid, prec_t probability, prec_t reward, bool force = false) {
 
         if (probability < -0.001)
             throw invalid_argument("probabilities must be non-negative.");
         if (stateid < 0) throw invalid_argument("State id must be non-negative.");
         // if the probability is 0 or negative, just do not add the sample
-        if (probability <= 0) return;
+        // unless forcing the addition
+        if (probability <= 0 && !force) return;
 
         // test for the last index; the index is not in the transition yet and
         // belong to the end
