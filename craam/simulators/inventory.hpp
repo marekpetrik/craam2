@@ -39,17 +39,17 @@ namespace craam { namespace msen {
 using namespace std;
 using namespace util::lang;
 
-template <class Sim> class InventoryPolicy {
+template <class Sim> class ThresholdPolicy {
 
 public:
     using State = typename Sim::State;
     using Action = typename Sim::Action;
 
-    InventoryPolicy(const Sim& sim, long max_inventory,
+    ThresholdPolicy(const Sim& sim, long max_inventory,
                     random_device::result_type seed = random_device{}())
         : sim(sim), max_inventory(max_inventory), gen(seed) {}
 
-    /** Returns an action accrding to the S,s policy, orders required amount to have
+    /** Returns an action accrding to the s,S policy, orders required amount to have
     the inventory to max level. */
     long operator()(State current_state) {
         return max(0l, max_inventory - current_state);
@@ -63,10 +63,31 @@ private:
     default_random_engine gen;
 };
 
-/**
-A simulator that generates inventory data.
+/// Behaves like a vector of continuous values from 0 to n
+class LightArray {
+public:
+    /// @param n Size of the array
+    LightArray(size_t n) : n(n) {}
 
-*/
+    /// Size of the array`
+    size_t size() const noexcept { return n; }
+
+    /// Just returns the same value back
+    long operator[](long index) const noexcept {
+        assert(index >= 0 && size_t(index) < n);
+        return index;
+    }
+
+protected:
+    size_t n;
+};
+
+/**
+ * A simple inventory model simulator allowing for fixed and variable costs,
+ * inventory levels and demands.
+ *
+ * State 0 represents the maximum possible backlog
+ */
 class InventorySimulator {
 
 public:
@@ -76,96 +97,152 @@ public:
     using Action = long;
 
     /**
-    Build a model simulator for the inventory problem
-    @param initial Initial inventory level
-    */
-    InventorySimulator(long initial, prec_t prior_mean, prec_t prior_std,
-                       prec_t demand_std, prec_t purchase_cost, prec_t sale_price,
-                       prec_t delivery_cost, prec_t holding_cost, prec_t backlog_cost,
-                       long max_inventory, long max_backlog, long max_order,
-                       random_device::result_type seed = random_device{}())
-        : initial(initial), prior_mean(prior_mean), prior_std(prior_std),
-          demand_std(demand_std), purchase_cost(purchase_cost), sale_price(sale_price),
-          delivery_cost(delivery_cost), holding_cost(holding_cost),
-          backlog_cost(backlog_cost), max_inventory(max_inventory),
-          max_backlog(max_backlog), max_order(max_order), gen(seed) {
-
-        init_demand_distribution();
-    }
-
-    /**
-     * Build a model simulator
+     * Build a model simulator for the inventory problem. The default
+     * behavior is to start with an empty inventory level
+     *
+     * @param demands Probabilities of discrete demand values
+     * @param costs List of costs: 0. variable, 1. fixed, 2. holding, 3. backlog
+     * @param sale_price Price of the sale of the product
+     * @param limits List of 0. maximum inventory, 1. maximum backlog, 2. maximum order size
+     *                  The limits are inclusive (include the last inventory)
      */
-    InventorySimulator(long initial, prec_t prior_mean, prec_t prior_std,
-                       prec_t demand_std, prec_t purchase_cost, prec_t sale_price,
-                       long max_inventory,
-                       random_device::result_type seed = random_device{}())
-        :
+    InventorySimulator(numvec demands, array<prec_t, 4> costs, prec_t sale_price,
+                       array<long, 3> limits)
+        : demand_dist(demands.cbegin(), demands.cend()), demands_prob(move(demands)),
+          purchase_cost(costs[0]), delivery_cost(costs[1]), holding_cost(costs[2]),
+          backlog_cost(costs[3]), sale_price(sale_price), max_inventory(limits[0]),
+          max_backlog(limits[1]), max_order(limits[2]) {
 
-          initial(initial), prior_mean(prior_mean), prior_std(prior_std),
-          demand_std(demand_std), purchase_cost(purchase_cost), sale_price(sale_price),
-          max_inventory(max_inventory), gen(seed) {
-
-        init_demand_distribution();
+        assert(abs(1.0 - accumulate(demands_prob.cbegin(), demands_prob.cend(), 0.0)) <=
+                   EPSILON &&
+               "Demand distribution must sum to 1.0");
     }
 
-    /// Returns the initial state
-    long init_state() const { return initial; }
+    /// Sets the seed
+    void set_seed(random_device::result_type seed = random_device{}()) { gen.seed(seed); }
 
-    void init_demand_distribution() {
-        normal_distribution<prec_t> prior_distribution(prior_mean, prior_std);
-        demand_mean = prior_distribution(gen);
-        demand_distribution = normal_distribution<prec_t>(demand_mean, demand_std);
-    }
+    /// Returns the initial state which corresponds to the
+    /// empty inventory (and no backlog)
+    State init_state() const { return max_backlog; }
 
     bool end_condition(State inventory) const { return inventory < 0; }
 
     /**
-     * Returns a sample of the reward and a decision state following a state
-     * @param current_inventory Current inventory level
+     * Returns a sample of the reward and a state following
+     * a state using random demand distribution.
+     *
+     * See @a transition_dem for details.
+     *
+     * @param current_state Current state. The inventory level is
+     *                      current_state - max_backlog
      * @param action_order Action obtained from the policy
+     *
      * @returns a pair of reward & next inventory level
      */
-    pair<prec_t, State> transition(State current_inventory, Action action_order) {
-
-        assert(current_inventory >= 0);
-        assert(action_order >= 0);
-
+    pair<prec_t, State> transition(State current_state, Action action_order) noexcept {
         // Generate demand from the normal demand distribution
-        long demand = max(0l, (long)demand_distribution(gen));
+        long demand = demand_dist(gen);
+        // call the transition that computes the demand
+        return transition_dem(current_state, action_order, demand);
+    }
 
-        // Compute the next inventory level
-        long next_inventory = action_order + current_inventory - demand;
+    /**
+     * Returns the next state for a given demand value.
+     *
+     * Assumes that the order arrives before any of the purchases are made.
+     * Holding and backlog costs are applied using the inventory levels in
+     * the next state. Sale price s received at the time of sale even if
+     * the sale is back-logged.
+     *
+     * Selling more than is available is simply clamped to the inventory level
+     *
+     * @param current_state Current state. The inventory level is
+     *                      current_state - max_backlog
+     * @param action_order Action obtained from the policy
+     * @param demand Demand level to assume
+     *
+     * @returns a pair of reward & next inventory level
+     */
+    pair<prec_t, State> transition_dem(State current_state, Action action_order,
+                                       long demand) const noexcept {
+        assert(current_state >= 0 && current_state < state_count());
+        assert(action_order >= 0 && action_order <= max_order);
+        assert(demand >= 0);
 
-        // Back calculate how many items were sold
-        long sold_amount = current_inventory - next_inventory + action_order;
+        const long current_inventory = current_state - max_backlog;
 
+        // Compute the next inventory level.
+        long next_inventory =
+            max(action_order + current_inventory - demand, -max_backlog);
+        // Back-calculate how many items were sold
+        const long sold_amount = current_inventory - next_inventory + action_order;
+        // Clamp the inventory from above to make sure that anything unsold that does not fit is discarded
+        next_inventory = min(next_inventory, max_inventory);
         // Compute the obtained revenue
-        prec_t revenue = sold_amount * sale_price;
-
-        // Compute the expense
-        prec_t expense = action_order * purchase_cost;
-
+        const prec_t revenue = sold_amount * sale_price;
+        // Compute the expense of purchase, holding cost, and backlog cost
+        const prec_t expense = action_order * purchase_cost +
+                               holding_cost * max(next_inventory, 0l) +
+                               backlog_cost * -min(next_inventory, 0l);
         // Reward is equivalent to the profit & obtained from revenue & total expense
-        prec_t reward = revenue - expense;
+        const prec_t reward = revenue - expense;
 
-        return make_pair(reward, next_inventory);
+        return {reward, next_inventory + max_backlog};
+    }
+
+    /// Returns the number of states
+    long state_count() const noexcept { return max_inventory + 1 + max_backlog; }
+
+    /// Returns the number of actions
+    long action_count() const noexcept { return max_order; }
+
+    /// Returns an element that supports size and []
+    LightArray get_valid_actions(State s) const noexcept {
+        return LightArray(action_count());
+    }
+
+    /**
+     * Calls the function F for all transition probabilities. Can be used to
+     * construct an MDP with the transition probabilities that correspond to
+     * this inventory management problem.
+     *
+     * @tparam F A type that can be called as
+     * (long fromid, long actionid, long toid, prec_t probability, prec_t reward)
+     *
+     * @param f MDP construction function
+     */
+    template <class F> void build_mdp(F&& f) const {
+        for (State statefrom = 0; statefrom < state_count(); ++statefrom) {
+            for (Action action = 0; action < action_count(); ++action) {
+                for (size_t demand = 0; demand < demands_prob.size(); ++demand) {
+                    State stateto;
+                    prec_t reward;
+                    // simulate a single step of the transition probabilities
+                    std::tie(reward, stateto) = transition_dem(statefrom, action, demand);
+                    const prec_t probability = demands_prob[demand];
+
+                    f(statefrom, action, stateto, probability, reward);
+                }
+            }
+        }
     }
 
 protected:
-    /// initial state
-    State initial;
     /// Distribution for the demand
-    normal_distribution<prec_t> demand_distribution;
-    /// Distribution parameters
-    prec_t prior_mean, prior_std, demand_std, demand_mean;
-    prec_t purchase_cost, sale_price, delivery_cost, holding_cost, backlog_cost;
+    discrete_distribution<long> demand_dist;
+    /// Discrete distribution of demands
+    numvec demands_prob;
+    // cost structure
+    prec_t purchase_cost, delivery_cost, holding_cost, backlog_cost;
+    // price to sell the good
+    prec_t sale_price;
+    // limits on inventory levels
     long max_inventory, max_backlog, max_order;
     /// Random number engine
     default_random_engine gen;
 };
 
 ///Inventory policy to be used
-using ModelInventoryPolicy = InventoryPolicy<InventorySimulator>;
+using ModelInventoryPolicy = ThresholdPolicy<InventorySimulator>;
 
 }} // namespace craam::msen

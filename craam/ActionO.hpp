@@ -27,9 +27,6 @@ public:
     /** Initializes with a list of outcomes */
     OutcomeManagement(const vector<Transition>& outcomes) : outcomes(outcomes) {}
 
-    /** Empty virtual destructor */
-    virtual ~OutcomeManagement() {}
-
     /**
       Adds a sufficient number of empty outcomes for the outcomeid to be a valid
       identifier. This method is virtual to make overloading safer.

@@ -69,7 +69,8 @@ public:
       \param mdp A non-robust base MDP model.
       \param state2observ Maps each state to the index of the corresponding
       observation. A valid policy will take the same action in all states with a
-      single observation. The index is 0-based. \param initial A representation of
+      single observation. The index is 0-based.
+      \param initial A representation of
       the initial distribution. The rewards in this transition are ignored (and
       should be 0).
       */
@@ -104,7 +105,8 @@ public:
                   direct modification.
       \param state2observ Maps each state to the index of the corresponding
       observation. A valid policy will take the same action in all states with a
-      single observation. The index is 0-based. \param initial A representation of
+      single observation. The index is 0-based.
+      \param initial A representation of
       the initial distribution. The rewards in this transition are ignored (and
       should be 0).
       */

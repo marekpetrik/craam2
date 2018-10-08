@@ -413,29 +413,50 @@ BOOST_AUTO_TEST_CASE(simulate_mdp) {
 #endif // _cplusplus >= 201703L
 
 BOOST_AUTO_TEST_CASE(inventory_simulator) {
-    long horizon = 10, num_runs = 5, initial = 0, max_inventory = 15;
+    // make sure that solving an MDP constructed from simulation and samples
+    // returns the same solution as the MDP that is constructed directly
+
+    long horizon = 100, num_runs = 500, initial = 0, max_inventory = 15;
     long rand_seed = 7;
-    prec_t purchase_cost = 2, sale_price = 3, prior_mean = 4, prior_std = 1,
-           demand_std = 1.3;
+    prec_t purchase_cost = 2, sale_price = 3;
+    double discount = 0.9;
 
-    InventorySimulator simulator(initial, prior_mean, prior_std, demand_std,
-                                 purchase_cost, sale_price, max_inventory, rand_seed);
-    ModelInventoryPolicy rp(simulator, max_inventory, rand_seed);
+    numvec demand_probabilities{0.1, 0.2, 0.3, 0.3, 0.1};
+    std::array<prec_t, 4> costs{purchase_cost, 0.0, 0.2, 0.1};
+    std::array<long, 3> limits{max_inventory, 0l, 5l};
 
+    InventorySimulator simulator(demand_probabilities, costs, sale_price, limits);
+    simulator.set_seed(rand_seed);
+
+    RandomPolicy rp(simulator, rand_seed);
+    //ModelInventoryPolicy rp(simulator, max_inventory, rand_seed);
+
+    // solve a sampled-version of the MDP
     auto samples = simulate(simulator, rp, horizon, num_runs, -1, 0.0, rand_seed);
-    BOOST_CHECK_EQUAL(samples.size(), 50); // horizon*num_runs
+    BOOST_CHECK_EQUAL(samples.size(), horizon * num_runs);
 
     SampledMDP smdp;
     smdp.add_samples(samples);
     // get a copy
     MDP newmdp = *smdp.get_mdp();
-    newmdp.pack_actions();
-    auto solution = solve_mpi(newmdp, 0.9);
+    newmdp.pack_actions(); // remove actions that have no samples
+    auto solution = solve_mpi(newmdp, discount);
     Transition init({initial}, {1.0});
 
     // Need to know what the exact return should be to make the below test
     // meaningful.
-    BOOST_CHECK_CLOSE(solution.total_return(init), 29.5768, 1e-2);
+    ///BOOST_CHECK_CLOSE(solution.total_return(init), 29.5768, 1e-2);
+
+    // solve the generated version of the problem
+    MDP fullmdp;
+    simulator.build_mdp(
+        [&fullmdp](long statefrom, long action, long stateto, prec_t prob, prec_t rew) {
+            add_transition(fullmdp, statefrom, action, stateto, prob, rew);
+        });
+
+    auto solution2 = solve_mpi(fullmdp, discount);
+
+    BOOST_CHECK_CLOSE(solution.total_return(init), solution2.total_return(init), 3.0);
 }
 
 BOOST_AUTO_TEST_CASE(population_simulator) {
@@ -450,7 +471,7 @@ BOOST_AUTO_TEST_CASE(population_simulator) {
     PopulationPol rp(simulator, threshold_control, prob_control, rand_seed);
 
     auto samples = simulate(simulator, rp, horizon, num_runs, -1, 0.0, rand_seed);
-    BOOST_CHECK_EQUAL(samples.size(), 50); // horizon*num_runs
+    BOOST_CHECK_EQUAL(samples.size(), horizon * num_runs);
 
     SampledMDP smdp;
     smdp.add_samples(samples);
