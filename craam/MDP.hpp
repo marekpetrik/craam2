@@ -70,7 +70,7 @@ idstatefrom, idaction, idstateto, probability, reward
 The file must have a header.
 
  */
-inline MDP mdp_from_csv(io::CSVReader<5> in) {
+inline MDP mdp_from_csv(io::CSVReader<5>& in) {
     long idstatefrom, idaction, idstateto;
     double probability, reward;
 
@@ -86,11 +86,13 @@ inline MDP mdp_from_csv(io::CSVReader<5> in) {
 }
 
 inline MDP mdp_from_csv(const string& file_name) {
-    return mdp_from_csv(io::CSVReader<5>(file_name));
+    io::CSVReader<5> reader(file_name);
+    return mdp_from_csv(reader);
 }
 
 inline MDP mdp_from_csv(istream& input) {
-    return mdp_from_csv(io::CSVReader<5>("temp_file", input));
+    io::CSVReader<5> reader("temp_file", input);
+    return mdp_from_csv(reader);
 }
 
 /**

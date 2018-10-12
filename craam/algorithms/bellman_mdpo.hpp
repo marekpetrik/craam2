@@ -136,7 +136,7 @@ public:
      * @param stateid State for which to get the transition probabilites
      * @param action Which action is taken
      */
-    prec_t reward(long stateid, const policy_type& action) {
+    prec_t reward(long stateid, const policy_type& action) const {
         const StateO& s = mdpo[stateid];
         if (s.is_terminal()) {
             return 0;

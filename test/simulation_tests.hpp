@@ -428,9 +428,11 @@ BOOST_AUTO_TEST_CASE(inventory_simulator) {
     InventorySimulator simulator(demand_probabilities, costs, sale_price, limits);
     simulator.set_seed(rand_seed);
 
+#if __cplusplus >= 201703L
     RandomPolicy rp(simulator, rand_seed);
-    //ModelInventoryPolicy rp(simulator, max_inventory, rand_seed);
-
+#else
+    RandomPolicy<InventorySimulator> rp(simulator, rand_seed);
+#endif
     // solve a sampled-version of the MDP
     auto samples = simulate(simulator, rp, horizon, num_runs, -1, 0.0, rand_seed);
     BOOST_CHECK_EQUAL(samples.size(), horizon * num_runs);

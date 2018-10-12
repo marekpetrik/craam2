@@ -68,7 +68,7 @@ idstatefrom, idaction, idoutcome, idstateto, probability, reward
 The file must have a header.
 
  */
-inline MDPO mdpo_from_csv(io::CSVReader<6> in) {
+inline MDPO mdpo_from_csv(io::CSVReader<6>& in) {
     long idstatefrom, idaction, idoutcome, idstateto;
     double probability, reward;
 
@@ -88,11 +88,13 @@ inline MDPO mdpo_from_csv(io::CSVReader<6> in) {
 }
 
 inline MDPO mdpo_from_csv(const string& file_name) {
-    return mdpo_from_csv(io::CSVReader<6>(file_name));
+    io::CSVReader<6> reader(file_name);
+    return mdpo_from_csv(reader);
 }
 
 inline MDPO mdpo_from_csv(istream& input) {
-    return mdpo_from_csv(io::CSVReader<6>("temp_file", input));
+    io::CSVReader<6> reader("temp_file", input);
+    return mdpo_from_csv(reader);
 }
 
 /**
