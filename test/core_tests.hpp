@@ -57,11 +57,12 @@ inline void add_transition(MDPO& mdp, long fromid, long actionid, long toid,
 }
 
 /// A helper function to address template issues
-inline PlainBellman make_bellman(const MDP& mdp) { return PlainBellman(mdp); };
+inline PlainBellman make_bellman(const MDP& mdp) { return PlainBellman(mdp); }
+
 /// A helper function to address template issues
 inline SARobustOutcomeBellman make_bellman(const MDPO& mdpo) {
     return SARobustOutcomeBellman(mdpo);
-};
+}
 
 // ********************************************************************************
 // ***** Model construction methods

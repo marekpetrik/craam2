@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <assert.h>
+#include <cmath>
 #include <numeric>
 #include <stdexcept>
 #include <string>
