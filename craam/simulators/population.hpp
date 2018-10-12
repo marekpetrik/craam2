@@ -75,7 +75,7 @@ public:
         : initial_population(initial_population), carrying_capacity(carrying_capacity),
           mean_growth_rate(mean_growth_rate), std_growth_rate(std_growth_rate),
           std_observation(std_observation), beta_1(beta_1), beta_2(beta_2), n_hat(n_hat),
-          gen(seed), growth_model(Growth::Exponential) {}
+          growth_model(Growth::Exponential), gen(seed) {}
 
     /// Rteurns the initial state
     long init_state() const { return initial_population; }
@@ -150,6 +150,7 @@ protected:
     long n_hat;
     /// Growth model
     Growth growth_model;
+    /// Used for simulation purposes
     default_random_engine gen;
 };
 
