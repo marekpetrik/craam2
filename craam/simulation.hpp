@@ -232,7 +232,10 @@ simulate_return(Sim& sim, prec_t discount,
 A random policy with state-dependent action sets which are discrete.
 
 Important: Retains the reference to the simulator from which it comes. If the
-simulator is destroyed in the meantime, the behavior is not defined.
+simulator is destroyed in the meantime, a memory leak ensues.
+
+The simulator must have an function get_valid_actions(State) that returns an
+object that supports indexing and size.
 
 \tparam Sim Simulator class for which the policy is to be constructed.
             Must implement an instance method actions(State).
@@ -246,9 +249,14 @@ public:
     RandomPolicy(const Sim& sim, random_device::result_type seed = random_device{}())
         : sim(sim), gen(seed){};
 
-    /** Returns a random action */
-    Action operator()(State state) {
-        vector<Action> valid_actions = sim.get_valid_actions(state);
+    /** Returns a random action.
+        The action may be copied. */
+    Action operator()(const State& state) {
+        // the rvalue here should be able to bind to a const reference
+        const auto&& valid_actions = sim.get_valid_actions(state);
+        if (valid_actions.size() < 1) {
+            throw invalid_argument("No actions available in a non-terminal state");
+        }
         uniform_int_distribution<long> dst(0, valid_actions.size() - 1);
         return valid_actions[dst(gen)];
     };
@@ -266,8 +274,8 @@ vector of probabilities.
 
 Action probabilities must sum to one for each state.
 
-State must be convertible to a long index; that is must support
-    (explicit) operator long
+State must be convertible to a long index; that is it must support
+    the (explicit) operator long
 Actions also have to be indexed. See the definition of simulate.
 */
 template <typename Sim> class RandomizedPolicy {

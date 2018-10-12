@@ -40,22 +40,24 @@ typedef SAState<Action> State;
 using MDP = GMDP<State>;
 
 /**
-Adds a transition probability and reward for an MDP model.
-
-\param mdp model to add the transition to
-\param fromid Starting state ID
-\param actionid Action ID
-\param toid Destination ID
-\param probability Probability of the transition (must be non-negative)
-\param reward The reward associated with the transition.
+ * Adds a transition probability and reward for an MDP model.
+ *
+ * @param mdp model to add the transition to
+ * @param fromid Starting state ID
+ * @param actionid Action ID
+ * @param toid Destination ID
+ * @param probability Probability of the transition (must be non-negative)
+ * @param reward The reward associated with the transition.
+ * @param force Whether to force adding the probability even when it is 0 or even
+ *                negative
 */
 inline void add_transition(MDP& mdp, long fromid, long actionid, long toid,
-                           prec_t probability, prec_t reward) {
+                           prec_t probability, prec_t reward, bool force = false) {
     // make sure that the destination state exists
     mdp.create_state(toid);
     auto& state_from = mdp.create_state(fromid);
     auto& action = state_from.create_action(actionid);
-    action.add_sample(toid, probability, reward);
+    action.add_sample(toid, probability, reward, force);
 }
 
 /**
@@ -68,7 +70,7 @@ idstatefrom, idaction, idstateto, probability, reward
 The file must have a header.
 
  */
-inline MDP mdp_from_csv(io::CSVReader<5> in) {
+inline MDP mdp_from_csv(io::CSVReader<5>& in) {
     long idstatefrom, idaction, idstateto;
     double probability, reward;
 
@@ -84,11 +86,13 @@ inline MDP mdp_from_csv(io::CSVReader<5> in) {
 }
 
 inline MDP mdp_from_csv(const string& file_name) {
-    return mdp_from_csv(io::CSVReader<5>(file_name));
+    io::CSVReader<5> reader(file_name);
+    return mdp_from_csv(reader);
 }
 
 inline MDP mdp_from_csv(istream& input) {
-    return mdp_from_csv(io::CSVReader<5>("temp_file", input));
+    io::CSVReader<5> reader("temp_file", input);
+    return mdp_from_csv(reader);
 }
 
 /**
@@ -104,8 +108,8 @@ action/transitions will not be exported if there are no actions for the state.
 However, when there is data for action 1 and action 3, action 2 will be created
 with no outcomes, but will be marked as invalid in the state.
 
-\param output Output for the stream
-\param header Whether the header should be written as the
+@param output Output for the stream
+@param header Whether the header should be written as the
       first line of the file represents the header.
 */
 inline void to_csv(const MDP& mdp, ostream& output, bool header = true) {

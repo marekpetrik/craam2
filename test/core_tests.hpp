@@ -204,7 +204,9 @@ template <class Model> void test_simple_vi(const Model& rmdp) {
     // This is the true value functions
     const numvec val_rob3{8.91, 9.9, 11.0};
 
+#if __cplusplus >= 201703L
     if constexpr (std::is_same_v<Model, MDP>) {
+
         auto re1_5 = solve_pi(rmdp, 0.9, initial, indvec(0), 20, 0);
         CHECK_CLOSE_COLLECTION(val_rob3, re1_5.valuefunction, 1e-3);
         BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(),
@@ -217,6 +219,7 @@ template <class Model> void test_simple_vi(const Model& rmdp) {
                                       re1_7.policy.begin(), re1_7.policy.end());
 #endif // GUROBIUSE
     }
+#endif // __cplusplus >= 201703L
 
     CHECK_CLOSE_COLLECTION(val_rob, re.valuefunction, 1e-3);
     BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re.policy.begin(),
@@ -282,6 +285,7 @@ template <class Model> void test_simple_vi(const Model& rmdp) {
     // check the computed returns
     BOOST_CHECK_CLOSE(re8.total_return(init_d), ret_true, 1e-2);
 
+#if __cplusplus >= 201703L
     if constexpr (std::is_same_v<Model, MDP>) {
         // check if we get the same return from the solution as from the
         // occupancy frequencies
@@ -293,6 +297,7 @@ template <class Model> void test_simple_vi(const Model& rmdp) {
             inner_product(rewards.begin(), rewards.end(), occupancy_freq.begin(), 0.0);
         BOOST_CHECK_CLOSE(cmp_tr, ret_true, 1e-3);
     }
+#endif //__cplusplus >= 201703L
 }
 
 BOOST_AUTO_TEST_CASE(simple_mdp_vi_of_nonrobust) {

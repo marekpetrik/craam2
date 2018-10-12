@@ -5,10 +5,6 @@ worstcase_l1 <- function(z, q, t) {
     .Call(`_rcraam_worstcase_l1`, z, q, t)
 }
 
-example_mdp <- function(name) {
-    .Call(`_rcraam_example_mdp`, name)
-}
-
 pack_actions <- function(mdp) {
     .Call(`_rcraam_pack_actions`, mdp)
 }
@@ -23,5 +19,13 @@ rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, options) {
 
 rsolve_mdp_s <- function(mdp, discount, nature, nature_par, options) {
     .Call(`_rcraam_rsolve_mdp_s`, mdp, discount, nature, nature_par, options)
+}
+
+mdp_example <- function(name) {
+    .Call(`_rcraam_mdp_example`, name)
+}
+
+mdp_inventory <- function(params) {
+    .Call(`_rcraam_mdp_inventory`, params)
 }
 

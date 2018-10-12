@@ -1,13 +1,12 @@
-#define GUROBI_USE
+#include "utils.hpp"
 
-#include "craam/MDP.hpp"
 #include "craam/algorithms/nature_declarations.hpp"
 #include "craam/algorithms/nature_response.hpp"
 #include "craam/definitions.hpp"
 #include "craam/optimization/optimization.hpp"
 #include "craam/solvers.hpp"
 
-#include <Rcpp.h>
+
 #include <iostream>
 #include <stdexcept>
 #include <tuple>
@@ -33,63 +32,7 @@ Rcpp::List worstcase_l1(Rcpp::NumericVector z, Rcpp::NumericVector q, double t) 
     return result;
 }
 
-/**
- * A very simple test MDP.
- */
-MDP create_test_mdp() {
-    MDP rmdp(3);
 
-    // nonrobust and deterministic
-    // action 1 is optimal, with transition matrix [[0,1,0],[0,0,1],[0,0,1]] and rewards [0,0,1.1]
-    // action 0 has a transition matrix [[1,0,0],[1,0,0], [0,1,0]] and rewards [0,1.0,1.0]
-    add_transition(rmdp, 0, 1, 1, 1.0, 0.0);
-    add_transition(rmdp, 1, 1, 2, 1.0, 0.0);
-    add_transition(rmdp, 2, 1, 2, 1.0, 1.1);
-
-    add_transition(rmdp, 0, 0, 0, 1.0, 0.0);
-    add_transition(rmdp, 1, 0, 0, 1.0, 1.0);
-    add_transition(rmdp, 2, 0, 1, 1.0, 1.0);
-
-    return rmdp;
-}
-
-/**
- * Constructs a data frame from the MDP definition
- */
-Rcpp::DataFrame mdp_to_dataframe(const MDP& mdp) {
-    indvec idstatefrom, idaction, idstateto;
-    numvec probability, reward;
-
-    for (size_t i = 0l; i < mdp.size(); i++) {
-        const auto& state = mdp[i];
-        //idaction
-        for (size_t j = 0; j < state.size(); j++) {
-            const auto& tran = state[j];
-
-            auto& indices = tran.get_indices();
-            const auto& rewards = tran.get_rewards();
-            const auto& probabilities = tran.get_probabilities();
-            //idstateto
-            for (size_t l = 0; l < tran.size(); l++) {
-                idstatefrom.push_back(i);
-                idaction.push_back(j);
-                idstateto.push_back(indices[l]);
-                probability.push_back(probabilities[l]);
-                reward.push_back(rewards[l]);
-            }
-        }
-    }
-
-    return Rcpp::DataFrame::create(
-        Rcpp::_["idstatefrom"] = idstatefrom, Rcpp::_["idaction"] = idaction,
-        Rcpp::_["idstateto"] = idstateto, Rcpp::_["probability"] = probability,
-        Rcpp::_["reward"] = reward);
-}
-
-//[[Rcpp::export]]
-Rcpp::DataFrame example_mdp(Rcpp::String name) {
-    return mdp_to_dataframe(create_test_mdp());
-}
 
 /**
  * Parses a data frame  to an MDP
@@ -291,20 +234,17 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::List options) {
     if (!options.containsElementNamed("algorithm") ||
         Rcpp::as<string>(options["algorithm"]) == "mpi") {
         // Modified policy iteration
-        sol = solve_mpi(m, discount, numvec(0), indvec(0), sqrt(iterations),
-                                    precision, std::min(sqrt(iterations),1000.0), 0.9);
+        sol = solve_mpi(m, discount, numvec(0), indvec(0), sqrt(iterations), precision,
+                        std::min(sqrt(iterations), 1000.0), 0.9);
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi_j") {
         // Jacobian value iteration
-        sol = solve_mpi(m, discount, numvec(0), indvec(0), iterations,
-                                    precision, 1, 0.9);
+        sol = solve_mpi(m, discount, numvec(0), indvec(0), iterations, precision, 1, 0.9);
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
         // Gauss-seidel value iteration
-        sol = solve_vi(m, discount, numvec(0), indvec(0), iterations,
-                                   precision);
+        sol = solve_vi(m, discount, numvec(0), indvec(0), iterations, precision);
     } else if (Rcpp::as<string>(options["algorithm"]) == "pi") {
         // Gauss-seidel value iteration
-        sol = solve_pi(m, discount, numvec(0), indvec(0), iterations,
-                                   precision);
+        sol = solve_pi(m, discount, numvec(0), indvec(0), iterations, precision);
 #ifdef GUROBI_USE
     } else if (Rcpp::as<string>(options["algorithm"]) == "lp") {
         // Gauss-seidel value iteration
@@ -343,7 +283,6 @@ algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
             parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]), 1.0);
         return algorithms::nats::robust_l1w(budgets, weights);
     }
-// ----- gurobi only -----
 #ifdef GUROBI_USE
     if (nature == "l1_g") {
         vector<numvec> values =
@@ -358,13 +297,14 @@ algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
             parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]), 1.0);
         return algorithms::nats::robust_l1w_gurobi(budgets, weights);
     }
-#endif
-    // ---- end gurobi -----
+#endif // end gurobi
     else {
         Rcpp::stop("unknown nature");
     }
 }
-
+/**
+ * Solves a robust MDP version of the problem with sa-rectangular ambiguity
+ */
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String nature,
                          SEXP nature_par, Rcpp::List options) {
@@ -388,16 +328,15 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
     algorithms::SANature natparsed = parse_nature_sa(m, nature, nature_par);
     if (!options.containsElementNamed("algorithm") ||
         Rcpp::as<string>(options["algorithm"]) == "mpi") {
-        sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0),
-                                     indvec(0), sqrt(iterations), precision,
-                                     sqrt(iterations), 0.5);
+        sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+                         sqrt(iterations), precision, sqrt(iterations), 0.5);
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
-        sol = rsolve_vi(m, discount, std::move(natparsed), numvec(0),
-                                    indvec(0), iterations, precision);
+        sol = rsolve_vi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+                        iterations, precision);
 
     } else if (Rcpp::as<string>(options["algorithm"]) == "pi") {
-        sol = rsolve_pi(m, discount, std::move(natparsed), numvec(0),
-                                    indvec(0), iterations, precision);
+        sol = rsolve_pi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+                        iterations, precision);
 
     } else {
         Rcpp::stop("Unknown solver type.");
@@ -450,7 +389,9 @@ algorithms::SNature parse_nature_s(const MDP& mdp, const string& nature,
         Rcpp::stop("unknown nature");
     }
 }
-
+/**
+ * Solves a robust MDP version of the problem with s-rectangular ambiguity
+ */
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String nature,
                         SEXP nature_par, Rcpp::List options) {
@@ -474,15 +415,14 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     algorithms::SNature natparsed = parse_nature_s(m, nature, nature_par);
     if (!options.containsElementNamed("algorithm") ||
         Rcpp::as<string>(options["algorithm"]) == "mpi") {
-        sol = rsolve_s_mpi(m, discount, std::move(natparsed), numvec(0),
-                                         indvec(0), sqrt(iterations), precision,
-                                         sqrt(iterations), 0.5);
+        sol = rsolve_s_mpi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+                           sqrt(iterations), precision, sqrt(iterations), 0.5);
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
-        sol = rsolve_s_vi(m, discount, std::move(natparsed), numvec(0),
-                                      indvec(0), iterations, precision);
+        sol = rsolve_s_vi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+                          iterations, precision);
     } else if (Rcpp::as<string>(options["algorithm"]) == "pi") {
-        sol = rsolve_s_pi(m, discount, std::move(natparsed), numvec(0),
-                                      indvec(0), iterations, precision);
+        sol = rsolve_s_pi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+                          iterations, precision);
     } else {
         Rcpp::stop("Unknown solver type.");
     }
