@@ -132,7 +132,7 @@ public:
         assert(action_order >= 0);
 
         // Generate demand from the normal demand distribution
-        long demand = max(0l, (long)demand_distribution(gen));
+        long demand = max(0l, long(demand_distribution(gen)));
 
         // Compute the next inventory level
         long next_inventory = action_order + current_inventory - demand;
@@ -151,6 +151,8 @@ public:
 
         return make_pair(reward, next_inventory);
     }
+
+    //template <class method> generate_model() {}
 
 protected:
     /// initial state
