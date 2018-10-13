@@ -6,7 +6,6 @@
 #include "craam/optimization/optimization.hpp"
 #include "craam/solvers.hpp"
 
-
 #include <iostream>
 #include <stdexcept>
 #include <tuple>
@@ -31,8 +30,6 @@ Rcpp::List worstcase_l1(Rcpp::NumericVector z, Rcpp::NumericVector q, double t) 
 
     return result;
 }
-
-
 
 /**
  * Parses a data frame  to an MDP
@@ -346,7 +343,14 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
     result["residual"] = sol.residual;
     result["time"] = sol.time;
 
+#if __cplusplus >= 201703L
     auto [dec_pol, nat_pol] = unzip(sol.policy);
+#else
+    craam::indvec dec_pol;
+    std::vector<craam::numvec> nat_pol;
+    std::tie(dec_pol, nat_pol) = unzip(sol.policy);
+#endif
+
     result["policy"] = move(dec_pol);
     result["policy.nature"] = move(nat_pol);
     result["valuefunction"] = move(sol.valuefunction);
@@ -431,7 +435,14 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     result["residual"] = sol.residual;
     result["time"] = sol.time;
 
+#if __cplusplus >= 201703L
     auto [dec_pol, nat_pol] = unzip(sol.policy);
+#else
+    std::vector<craam::numvec> dec_pol;
+    std::vector<std::vector<craam::numvec>> nat_pol;
+    std::tie(dec_pol, nat_pol) = unzip(sol.policy);
+#endif
+
     result["policy"] = move(dec_pol);
     result["policy.nature"] = move(nat_pol);
     result["valuefunction"] = move(sol.valuefunction);

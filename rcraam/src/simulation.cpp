@@ -20,8 +20,6 @@ inline Type getopt(const Rcpp::List& list, const std::string& name, Type&& defva
 	return list.containsElementNamed(name.c_str()) ? Rcpp::as<Type>(list[name]) : std::forward(defval);
 }
 
-craam::MDP create_mdp_inventory(Rcpp::List )
-
 /**
  * Creates an inventory MDP description
  *
