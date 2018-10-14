@@ -21,6 +21,10 @@ rsolve_mdp_s <- function(mdp, discount, nature, nature_par, options) {
     .Call(`_rcraam_rsolve_mdp_s`, mdp, discount, nature, nature_par, options)
 }
 
+set_rcraam_threads <- function(n) {
+    invisible(.Call(`_rcraam_set_rcraam_threads`, n))
+}
+
 mdp_example <- function(name) {
     .Call(`_rcraam_mdp_example`, name)
 }

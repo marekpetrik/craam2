@@ -73,6 +73,16 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// set_rcraam_threads
+void set_rcraam_threads(int n);
+RcppExport SEXP _rcraam_set_rcraam_threads(SEXP nSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    set_rcraam_threads(n);
+    return R_NilValue;
+END_RCPP
+}
 // mdp_example
 Rcpp::DataFrame mdp_example(Rcpp::String name);
 RcppExport SEXP _rcraam_mdp_example(SEXP nameSEXP) {
@@ -102,6 +112,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_rcraam_solve_mdp", (DL_FUNC) &_rcraam_solve_mdp, 3},
     {"_rcraam_rsolve_mdp_sa", (DL_FUNC) &_rcraam_rsolve_mdp_sa, 5},
     {"_rcraam_rsolve_mdp_s", (DL_FUNC) &_rcraam_rsolve_mdp_s, 5},
+    {"_rcraam_set_rcraam_threads", (DL_FUNC) &_rcraam_set_rcraam_threads, 1},
     {"_rcraam_mdp_example", (DL_FUNC) &_rcraam_mdp_example, 1},
     {"_rcraam_mdp_inventory", (DL_FUNC) &_rcraam_mdp_inventory, 1},
     {NULL, NULL, 0}

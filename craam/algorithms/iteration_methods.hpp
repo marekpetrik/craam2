@@ -30,6 +30,13 @@
 
 namespace craam { namespace algorithms {
 
+namespace internal {
+
+/// An empty progress function, always returns true
+inline bool empty_progress(size_t iteration, prec_t residual) { return true; }
+
+} // namespace internal
+
 /**
 Gauss-Seidel variant of value iteration (not parallelized). See solve_vi for a
 simplified interface.
@@ -51,6 +58,8 @@ modified. Optional, use all zeros when not provided. Ignored when size is 0.
 objectives, such as robust or risk averse ones.
 @param iterations Maximal number of iterations to run
 @param maxresidual Stop when the maximal residual falls below this value.
+@param progress An optional function for reporting progress and can
+                return false to stop computation
 
 @returns Solution that can be used to compute the total return, or the optimal
 policy.
@@ -58,8 +67,8 @@ policy.
 template <class ResponseType>
 inline Solution<typename ResponseType::policy_type>
 vi_gs(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(0),
-      unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC) {
-
+      unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
+      const std::function<bool(size_t, prec_t)>& progress = internal::empty_progress) {
     using policy_type = typename ResponseType::policy_type;
 
     // just quit if there are no states
@@ -76,7 +85,7 @@ vi_gs(const ResponseType& response, prec_t discount, numvec valuefunction = numv
     prec_t residual = numeric_limits<prec_t>::infinity();
     size_t i; // iterations defined outside to make them reportable
 
-    for (i = 0; i < iterations && residual > maxresidual; i++) {
+    for (i = 0; i < iterations && residual > maxresidual && progress(i, residual); i++) {
         residual = 0;
 
         for (size_t s = 0l; s < response.state_count(); s++) {
@@ -118,8 +127,8 @@ below this threshold.
 @param iterations_vi Maximal number of inner loop value iterations
 @param maxresidual_vi_rel Stop policy evaluation when the policy residual drops
 below maxresidual_vi_rel * last_policy_residual
-
-@param print_progress Whether to report on progress during the computation
+@param progress An optional function for reporting progress and can
+                return false to stop computation
 
 @return Computed (approximate) solution
  */
@@ -128,8 +137,8 @@ inline Solution<typename ResponseType::policy_type>
 mpi_jac(const ResponseType& response, prec_t discount,
         const numvec& valuefunction = numvec(0), unsigned long iterations_pi = MAXITER,
         prec_t maxresidual_pi = SOLPREC, unsigned long iterations_vi = MAXITER,
-        prec_t maxresidual_vi_rel = 0.9, bool print_progress = false) {
-
+        prec_t maxresidual_vi_rel = 0.9,
+        const std::function<bool(size_t, prec_t)>& progress = internal::empty_progress) {
     using policy_type = typename ResponseType::policy_type;
     // just quit if there are no states
     if (response.state_count() == 0) { return Solution<policy_type>(0); }
@@ -154,9 +163,6 @@ mpi_jac(const ResponseType& response, prec_t discount,
 
     for (i = 0; i < iterations_pi; i++) {
 
-        if (print_progress)
-            cout << "Policy iteration " << i << "/" << iterations_pi << ":" << endl;
-
         // this should use move semantics and therefore be very efficient
         swap(targetvalue, sourcevalue);
 
@@ -172,17 +178,13 @@ mpi_jac(const ResponseType& response, prec_t discount,
         }
         residual_pi = *max_element(residuals.cbegin(), residuals.cend());
 
-        if (print_progress) cout << "    Bellman residual: " << residual_pi << endl;
-
         // the residual is sufficiently small
-        if (residual_pi <= maxresidual_pi) break;
+        if (residual_pi <= maxresidual_pi || !progress(i, residual_pi)) break;
 
-        if (print_progress) cout << "    Value iteration: " << flush;
         // compute values using value iteration
 
         for (size_t j = 0;
              j < iterations_vi && residual_vi > maxresidual_vi_rel * residual_pi; j++) {
-            if (print_progress) cout << "." << flush;
 
             swap(targetvalue, sourcevalue);
 
@@ -194,11 +196,6 @@ mpi_jac(const ResponseType& response, prec_t discount,
                 targetvalue[s] = newvalue;
             }
             residual_vi = *max_element(residuals.begin(), residuals.end());
-        }
-        if (print_progress) {
-            cout << endl
-                 << "    Residual (fixed policy): " << residual_vi << endl
-                 << endl;
         }
     }
     auto finish = chrono::steady_clock::now();
@@ -230,8 +227,9 @@ below this threshold.
 @param iterations_vi Maximal number of inner loop value iterations
 @param maxresidual_vi_rel Stop policy evaluation when the policy residual drops
 below maxresidual_vi_rel * last_policy_residual
+@param progress An optional function for reporting progress and can
+                return false to stop computation
 
-@param print_progress Whether to report on progress during the computation
 
 @return Computed (approximate) solution
  */
@@ -239,8 +237,7 @@ template <class ResponseType>
 inline Solution<typename ResponseType::policy_type>
 pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(0),
    unsigned long iterations_pi = MAXITER, prec_t maxresidual_pi = SOLPREC,
-   bool print_progress = false) {
-
+   const std::function<bool(size_t, prec_t)>& progress = internal::empty_progress) {
     const auto n = response.state_count();
 
     using policy_type = typename ResponseType::policy_type;
@@ -266,8 +263,6 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
     MatrixXd trans_discounted = transition_mat(response, policy, false, discount);
 
     for (i = 0; i < iterations_pi; ++i) {
-        if (print_progress)
-            cout << "Policy iteration " << i << "/" << iterations_pi << ":" << endl;
 
         // update policy
         swap(policy, policy_old);
@@ -280,10 +275,10 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
         // TODO: change this to a span seminorm (in all algorithms)
         residual_pi = *max_element(residuals.cbegin(), residuals.cend());
 
-        if (print_progress) cout << "    Bellman residual: " << residual_pi << endl;
-
         // the residual is sufficiently small
-        if (residual_pi <= maxresidual_pi || policy == policy_old) break;
+        if (residual_pi <= maxresidual_pi || policy == policy_old ||
+            !progress(i, residual_pi))
+            break;
 
         // ** now compute the value function
         // 1. update the transition probabilities

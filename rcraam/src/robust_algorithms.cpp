@@ -6,6 +6,10 @@
 #include "craam/optimization/optimization.hpp"
 #include "craam/solvers.hpp"
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif // _OPENMP
+
 #include <iostream>
 #include <stdexcept>
 #include <tuple>
@@ -448,3 +452,17 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     result["valuefunction"] = move(sol.valuefunction);
     return result;
 }
+
+
+/**
+ * Sets the number of threads for parallelization.
+ */
+// [[Rcpp::export]]
+void set_rcraam_threads(int n){
+#ifdef _OPENMP
+    omp_set_num_threads(n);
+#else
+    Rcpp::stop("Compiled without OPENMP support, cannot set the number of threads.");
+#endif
+}
+

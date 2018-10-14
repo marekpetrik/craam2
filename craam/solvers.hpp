@@ -50,6 +50,8 @@ namespace craam {
  * @param policy Partial policy specification. Optimize only actions that are policy[state] = -1
  * @param iterations Maximal number of iterations to run
  * @param maxresidual Stop when the maximal residual falls below this value.
+ * @param progress An optional function for reporting progress and can
+                return false to stop computation
  *
  * @returns Solution that can be used to compute the total return, or the optimal
 policy.
@@ -75,7 +77,8 @@ policy.
  * @param iterations_vi Maximal number of inner loop value iterations
  * @param maxresidual_vi Stop policy evaluation when the policy residual drops
  * below maxresidual_vi * last_policy_residual
- * @param print_progress Whether to report on progress during the computation
+ * @param progress An optional function for reporting progress and can
+                return false to stop computation
  *
  * @return Computed (approximate) solution
  */
@@ -103,7 +106,8 @@ policy.
  * @param iterations_pi Maximal number of policy iteration steps
  * @param maxresidual_pi Stop the outer policy iteration when the residual drops
  * below this threshold.
- * @param print_progress Whether to report on progress during the computation
+ * @param progress An optional function for reporting progress and can
+                return false to stop computation
  *
  * @return Computed (approximate) solution
  */
@@ -119,9 +123,11 @@ inline DetermSolution solve_vi(const MDP& mdp, prec_t discount,
                                numvec valuefunction = numvec(0),
                                const indvec& policy = indvec(0),
                                unsigned long iterations = MAXITER,
-                               prec_t maxresidual = SOLPREC) {
+                               prec_t maxresidual = SOLPREC,
+                               const std::function<bool(size_t, prec_t)>& progress =
+                                   algorithms::internal::empty_progress) {
     return algorithms::vi_gs(algorithms::PlainBellman(mdp, policy), discount,
-                             move(valuefunction), iterations, maxresidual);
+                             move(valuefunction), iterations, maxresidual, progress);
 }
 
 /**
@@ -131,11 +137,13 @@ inline DetermSolution
 solve_mpi(const MDP& mdp, prec_t discount, const numvec& valuefunction = numvec(0),
           const indvec& policy = indvec(0), unsigned long iterations_pi = MAXITER,
           prec_t maxresidual_pi = SOLPREC, unsigned long iterations_vi = MAXITER,
-          prec_t maxresidual_vi = 0.9, bool print_progress = false) {
+          prec_t maxresidual_vi = 0.9,
+          const std::function<bool(size_t, prec_t)>& progress =
+              algorithms::internal::empty_progress) {
 
     return algorithms::mpi_jac(algorithms::PlainBellman(mdp, policy), discount,
                                valuefunction, iterations_pi, maxresidual_pi,
-                               iterations_vi, maxresidual_vi, print_progress);
+                               iterations_vi, maxresidual_vi, progress);
 }
 
 /**
@@ -225,10 +233,13 @@ inline DetermSolution solve_lp(const MDP& mdp, prec_t discount,
 inline SARobustSolution
 rsolve_vi(const MDP& mdp, prec_t discount, const algorithms::SANature& nature,
           numvec valuefunction = numvec(0), const indvec& policy = indvec(0),
-          unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC) {
+          unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
+          const std::function<bool(size_t, prec_t)>& progress =
+              algorithms::internal::empty_progress) {
 
     return algorithms::vi_gs(algorithms::SARobustBellman(mdp, move(nature), policy),
-                             discount, move(valuefunction), iterations, maxresidual);
+                             discount, move(valuefunction), iterations, maxresidual,
+                             progress);
 }
 
 /**
@@ -246,10 +257,11 @@ rsolve_mpi(const MDP& mdp, prec_t discount, const algorithms::SANature&& nature,
            const numvec& valuefunction = numvec(0), const indvec& policy = indvec(0),
            unsigned long iterations_pi = MAXITER, prec_t maxresidual_pi = SOLPREC,
            unsigned long iterations_vi = MAXITER, prec_t maxresidual_vi = 0.9,
-           bool print_progress = false) {
+           const std::function<bool(size_t, prec_t)>& progress =
+               algorithms::internal::empty_progress) {
     return algorithms::mpi_jac(algorithms::SARobustBellman(mdp, nature, policy), discount,
                                valuefunction, iterations_pi, maxresidual_pi,
-                               iterations_vi, maxresidual_vi, print_progress);
+                               iterations_vi, maxresidual_vi, progress);
 }
 
 /**
@@ -259,10 +271,13 @@ rsolve_mpi(const MDP& mdp, prec_t discount, const algorithms::SANature&& nature,
 inline SARobustSolution
 rsolve_pi(const MDP& mdp, prec_t discount, const algorithms::SANature& nature,
           numvec valuefunction = numvec(0), const indvec& policy = indvec(0),
-          unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC) {
+          unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
+          const std::function<bool(size_t, prec_t)>& progress =
+              algorithms::internal::empty_progress) {
 
     return algorithms::pi(algorithms::SARobustBellman(mdp, move(nature), policy),
-                          discount, move(valuefunction), iterations, maxresidual);
+                          discount, move(valuefunction), iterations, maxresidual,
+                          progress);
 }
 
 /**
@@ -272,9 +287,11 @@ rsolve_pi(const MDP& mdp, prec_t discount, const algorithms::SANature& nature,
 inline SRobustSolution
 rsolve_s_vi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
             numvec valuefunction = numvec(0), const indvec& policy = indvec(0),
-            unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC) {
+            unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
+            const std::function<bool(size_t, prec_t)>& progress =
+                algorithms::internal::empty_progress) {
     return algorithms::vi_gs(algorithms::SRobustBellman(mdp, nature, policy), discount,
-                             move(valuefunction), iterations, maxresidual);
+                             move(valuefunction), iterations, maxresidual, progress);
 }
 
 /**
@@ -292,10 +309,11 @@ rsolve_s_mpi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
              const numvec& valuefunction = numvec(0), const indvec& policy = indvec(0),
              unsigned long iterations_pi = MAXITER, prec_t maxresidual_pi = SOLPREC,
              unsigned long iterations_vi = MAXITER, prec_t maxresidual_vi = 0.9,
-             bool print_progress = false) {
+             const std::function<bool(size_t, prec_t)>& progress =
+                 algorithms::internal::empty_progress) {
     return algorithms::mpi_jac(algorithms::SRobustBellman(mdp, nature, policy), discount,
                                valuefunction, iterations_pi, maxresidual_pi,
-                               iterations_vi, maxresidual_vi, print_progress);
+                               iterations_vi, maxresidual_vi, progress);
 }
 
 /**
@@ -305,9 +323,11 @@ rsolve_s_mpi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
 inline SRobustSolution
 rsolve_s_pi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
             numvec valuefunction = numvec(0), const indvec& policy = indvec(0),
-            unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC) {
+            unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
+            const std::function<bool(size_t, prec_t)>& progress =
+                algorithms::internal::empty_progress) {
     return algorithms::pi(algorithms::SRobustBellman(mdp, nature, policy), discount,
-                          move(valuefunction), iterations, maxresidual);
+                          move(valuefunction), iterations, maxresidual, progress);
 }
 
 // **************************************************************************
@@ -321,10 +341,12 @@ inline DetermSolution solve_vi(const MDPO& mdp, prec_t discount,
                                numvec valuefunction = numvec(0),
                                const indvec& policy = indvec(0),
                                unsigned long iterations = MAXITER,
-                               prec_t maxresidual = SOLPREC) {
+                               prec_t maxresidual = SOLPREC,
+                               const std::function<bool(size_t, prec_t)>& progress =
+                                   algorithms::internal::empty_progress) {
     auto solution = algorithms::vi_gs(
         algorithms::SARobustOutcomeBellman(mdp, algorithms::nats::average(), policy),
-        discount, move(valuefunction), iterations, maxresidual);
+        discount, move(valuefunction), iterations, maxresidual, progress);
 
     return DetermSolution(solution.valuefunction, unzip(solution.policy).first,
                           solution.residual, solution.iterations, solution.time);
@@ -337,12 +359,14 @@ inline DetermSolution
 solve_mpi(const MDPO& mdp, prec_t discount, const numvec& valuefunction = numvec(0),
           const indvec& policy = indvec(0), unsigned long iterations_pi = MAXITER,
           prec_t maxresidual_pi = SOLPREC, unsigned long iterations_vi = MAXITER,
-          prec_t maxresidual_vi = 0.9, bool print_progress = false) {
+          prec_t maxresidual_vi = 0.9, bool print_progress = false,
+          const std::function<bool(size_t, prec_t)>& progress =
+              algorithms::internal::empty_progress) {
 
     auto solution = algorithms::mpi_jac(
         algorithms::SARobustOutcomeBellman(mdp, algorithms::nats::average(), policy),
         discount, valuefunction, iterations_pi, maxresidual_pi, iterations_vi,
-        maxresidual_vi, print_progress);
+        maxresidual_vi, progress);
 
     return DetermSolution(solution.valuefunction, unzip(solution.policy).first,
                           solution.residual, solution.iterations, solution.time);
@@ -359,11 +383,13 @@ solve_mpi(const MDPO& mdp, prec_t discount, const numvec& valuefunction = numvec
 inline SARobustSolution
 rsolve_vi(const MDPO& mdp, prec_t discount, const algorithms::SANature& nature,
           numvec valuefunction = numvec(0), const indvec& policy = indvec(0),
-          unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC) {
+          unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
+          const std::function<bool(size_t, prec_t)>& progress =
+              algorithms::internal::empty_progress) {
 
     return algorithms::vi_gs(
         algorithms::SARobustOutcomeBellman(mdp, move(nature), policy), discount,
-        move(valuefunction), iterations, maxresidual);
+        move(valuefunction), iterations, maxresidual, progress);
 }
 
 /**
@@ -381,10 +407,11 @@ rsolve_mpi(const MDPO& mdp, prec_t discount, const algorithms::SANature&& nature
            const numvec& valuefunction = numvec(0), const indvec& policy = indvec(0),
            unsigned long iterations_pi = MAXITER, prec_t maxresidual_pi = SOLPREC,
            unsigned long iterations_vi = MAXITER, prec_t maxresidual_vi = 0.9,
-           bool print_progress = false) {
+           const std::function<bool(size_t, prec_t)>& progress =
+               algorithms::internal::empty_progress) {
     return algorithms::mpi_jac(algorithms::SARobustOutcomeBellman(mdp, nature, policy),
                                discount, valuefunction, iterations_pi, maxresidual_pi,
-                               iterations_vi, maxresidual_vi, print_progress);
+                               iterations_vi, maxresidual_vi, progress);
 }
 
 // **************************************************************************
