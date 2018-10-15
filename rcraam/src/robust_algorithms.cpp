@@ -310,55 +310,61 @@ algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
 Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String nature,
                          SEXP nature_par, Rcpp::List options) {
 
-    MDP m = mdp_from_dataframe(mdp);
-    Rcpp::List result;
+    try {
 
-    if (options.containsElementNamed("pack_actions") &&
-        Rcpp::as<bool>(options["pack_actions"])) {
-        result["action_map"] = m.pack_actions();
-    }
+        MDP m = mdp_from_dataframe(mdp);
+        Rcpp::List result;
 
-    long iterations = options.containsElementNamed("iterations")
-                          ? Rcpp::as<long>(options["iterations"])
-                          : 1000000;
-    double precision = options.containsElementNamed("precision")
-                           ? Rcpp::as<long>(options["precision"])
-                           : 0.0001;
+        if (options.containsElementNamed("pack_actions") &&
+            Rcpp::as<bool>(options["pack_actions"])) {
+            result["action_map"] = m.pack_actions();
+        }
 
-    SARobustSolution sol;
-    algorithms::SANature natparsed = parse_nature_sa(m, nature, nature_par);
-    if (!options.containsElementNamed("algorithm") ||
-        Rcpp::as<string>(options["algorithm"]) == "mpi") {
-        sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), indvec(0),
-                         sqrt(iterations), precision, sqrt(iterations), 0.5);
-    } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
-        sol = rsolve_vi(m, discount, std::move(natparsed), numvec(0), indvec(0),
-                        iterations, precision);
+        long iterations = options.containsElementNamed("iterations")
+                              ? Rcpp::as<long>(options["iterations"])
+                              : 1000000;
+        double precision = options.containsElementNamed("precision")
+                               ? Rcpp::as<long>(options["precision"])
+                               : 0.0001;
 
-    } else if (Rcpp::as<string>(options["algorithm"]) == "pi") {
-        sol = rsolve_pi(m, discount, std::move(natparsed), numvec(0), indvec(0),
-                        iterations, precision);
+        SARobustSolution sol;
+        algorithms::SANature natparsed = parse_nature_sa(m, nature, nature_par);
+        if (!options.containsElementNamed("algorithm") ||
+            Rcpp::as<string>(options["algorithm"]) == "mpi") {
+            sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+                             sqrt(iterations), precision, sqrt(iterations), 0.5);
+        } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
+            sol = rsolve_vi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+                            iterations, precision);
 
-    } else {
-        Rcpp::stop("Unknown solver type.");
-    }
+        } else if (Rcpp::as<string>(options["algorithm"]) == "pi") {
+            sol = rsolve_pi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+                            iterations, precision);
 
-    result["iters"] = sol.iterations;
-    result["residual"] = sol.residual;
-    result["time"] = sol.time;
+        } else {
+            Rcpp::stop("Unknown solver type.");
+        }
+
+        result["iters"] = sol.iterations;
+        result["residual"] = sol.residual;
+        result["time"] = sol.time;
 
 #if __cplusplus >= 201703L
-    auto [dec_pol, nat_pol] = unzip(sol.policy);
+        auto [dec_pol, nat_pol] = unzip(sol.policy);
 #else
-    craam::indvec dec_pol;
-    std::vector<craam::numvec> nat_pol;
-    std::tie(dec_pol, nat_pol) = unzip(sol.policy);
+        craam::indvec dec_pol;
+        std::vector<craam::numvec> nat_pol;
+        std::tie(dec_pol, nat_pol) = unzip(sol.policy);
 #endif
 
-    result["policy"] = move(dec_pol);
-    result["policy.nature"] = move(nat_pol);
-    result["valuefunction"] = move(sol.valuefunction);
-    return result;
+        result["policy"] = move(dec_pol);
+        result["policy.nature"] = move(nat_pol);
+        result["valuefunction"] = move(sol.valuefunction);
+        return result;
+    } catch (std::exception& ex) { forward_exception_to_r(ex); } catch (...) {
+        ::Rf_error("c++ exception (unknown reason)");
+    }
+    return Rcpp::List();
 }
 
 /**
@@ -453,16 +459,14 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     return result;
 }
 
-
 /**
  * Sets the number of threads for parallelization.
  */
 // [[Rcpp::export]]
-void set_rcraam_threads(int n){
+void set_rcraam_threads(int n) {
 #ifdef _OPENMP
     omp_set_num_threads(n);
 #else
     Rcpp::stop("Compiled without OPENMP support, cannot set the number of threads.");
 #endif
 }
-

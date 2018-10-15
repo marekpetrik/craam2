@@ -70,7 +70,8 @@ public:
     /** Returns the mean transition probabilities. Ignore rewards.
       @param natpolicy Nature can choose a non-zero state to go to
       */
-    Transition mean_transition(numvec natpolicy) const {
+    Transition mean_transition(const numvec& natpolicy) const {
+        assert(natpolicy.size() == get_indices().size());
         return Transition(get_indices(), natpolicy, numvec(size(), 0.0));
     }
 

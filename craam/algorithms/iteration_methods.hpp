@@ -259,6 +259,7 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
     size_t i; // defined here to be able to report the number of iterations
 
     // TODO: could be sped up by keeping I - gamma * P instead of transition probabilities
+
     // **discounted** matrix of transition probabilities
     MatrixXd trans_discounted = transition_mat(response, policy, false, discount);
 

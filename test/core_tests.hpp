@@ -66,7 +66,6 @@ inline SARobustOutcomeBellman make_bellman(const MDPO& mdpo) {
 
 // ********************************************************************************
 // ***** Model construction methods
-// ***********************************************
 // ********************************************************************************
 template <class Model> Model create_test_mdp() {
     Model rmdp(3);
@@ -88,7 +87,6 @@ template <class Model> Model create_test_mdp() {
 
 // ********************************************************************************
 // ***** L1 worst case
-// ************************************************************
 // ********************************************************************************
 
 BOOST_AUTO_TEST_CASE(test_l1_worst_case) {
@@ -130,7 +128,6 @@ BOOST_AUTO_TEST_CASE(test_l1_worst_case) {
 
 // ********************************************************************************
 // ***** Basic solution tests
-// **********************************************************
 // ********************************************************************************
 
 BOOST_AUTO_TEST_CASE(empty_test) {
@@ -183,7 +180,6 @@ BOOST_AUTO_TEST_CASE(basic_tests) {
 
 // ********************************************************************************
 // ***** MDP value iteration
-// ****************************************************
 // ********************************************************************************
 
 template <class Model> void test_simple_vi(const Model& rmdp) {
@@ -311,9 +307,23 @@ BOOST_AUTO_TEST_CASE(simple_rmdpd_vi_of_nonrobust) {
     test_simple_vi<MDPO>(robustify(rmdp));
 }
 
+BOOST_AUTO_TEST_CASE(inventory_robust_policy_iteration) {
+    MDP fullmdp = create_test_mdp<MDP>();
+
+    /*simulator.build_mdp(
+        [&fullmdp](long statefrom, long action, long stateto, prec_t prob, prec_t rew) {
+            add_transition(fullmdp, statefrom, action, stateto, prob, rew);
+        });
+    */
+
+    double discount = 0.99;
+
+    auto solution1 = solve_pi(fullmdp, discount);
+    auto solution2 = rsolve_pi(fullmdp, discount, algorithms::nats::robust_l1u(0.0));
+}
+
 // ********************************************************************************
 // ***** Model resize
-// *************************************************************
 // ********************************************************************************
 
 BOOST_AUTO_TEST_CASE(test_check_add_transition_m) {
@@ -455,7 +465,6 @@ BOOST_AUTO_TEST_CASE(test_check_add_transition_r) {
 
 // ********************************************************************************
 // ***** Save and load
-// ************************************************************
 // ********************************************************************************
 
 BOOST_AUTO_TEST_CASE(simple_mdp_save_load_mdp) {
@@ -527,7 +536,6 @@ void test_simple_mdp_save_load_save_load() {
 
 // ********************************************************************************
 // ***** Value function
-// ***********************************************************
 // ********************************************************************************
 
 template <class Model> void test_value_function(const Model& rmdp) {
@@ -568,7 +576,6 @@ BOOST_AUTO_TEST_CASE(test_value_function_rmdp) {
 
 // ********************************************************************************
 // ***** L1 value function
-// ********************************************************
 // ********************************************************************************
 
 void test_value_function_thr(double threshold, numvec expected) {
@@ -610,7 +617,6 @@ BOOST_AUTO_TEST_CASE(test_value_function_rmdpl1) {
 
 // ********************************************************************************
 // ***** String output
-// ************************************************************
 // ********************************************************************************
 
 BOOST_AUTO_TEST_CASE(test_string_mdp) {
@@ -641,7 +647,6 @@ BOOST_AUTO_TEST_CASE(test_string_rmdpl1) {
 
 // ********************************************************************************
 // ***** Normalization
-// ************************************************************
 // ********************************************************************************
 
 BOOST_AUTO_TEST_CASE(test_normalization) {
@@ -788,7 +793,6 @@ BOOST_AUTO_TEST_CASE(test_randomized_mdp) {
 
 // ********************************************************************************
 // ***** Test terminal state
-// ******************************************************
 // ********************************************************************************
 
 BOOST_AUTO_TEST_CASE(test_randomized_mdp_with_terminal_state) {
@@ -894,7 +898,6 @@ BOOST_AUTO_TEST_CASE(test_create_outcome) {
 
 // ********************************************************************************
 // ***** Test CSV
-// *****************************************************************
 // ********************************************************************************
 
 BOOST_AUTO_TEST_CASE(test_parameter_read_write) {
