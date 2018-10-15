@@ -186,6 +186,7 @@ public:
         const prec_t revenue = sold_amount * sale_price;
         // Compute the expense of purchase, holding cost, and backlog cost
         const prec_t expense = action_order * purchase_cost +
+                               (action_order > 0 ? delivery_cost : 0.0) +
                                holding_cost * max(next_inventory, 0l) +
                                backlog_cost * -min(next_inventory, 0l);
         // Reward is equivalent to the profit & obtained from revenue & total expense

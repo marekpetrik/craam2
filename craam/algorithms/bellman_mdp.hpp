@@ -45,6 +45,7 @@ The class also allows to use an initial policy specification. See the
 constructor for the definition.
 
 The class does not own the MDP.
+
 */
 class PlainBellman {
 protected:
@@ -55,9 +56,9 @@ protected:
 
 public:
     /**
-      * Provides the type of policy for each state (int represents a deterministic
-      *  policy)
-      */
+     * Provides the type of policy for each state (int represents a deterministic
+     * policy)
+     */
     using policy_type = long;
     /// Type of the state
     using state_type = State;
@@ -67,7 +68,8 @@ public:
 
     /**
      * A partial policy that can be used to fix some actions
-     *  @param policy policy[s] = -1 means that the action should be optimized in
+     *
+     * @param policy policy[s] = -1 means that the action should be optimized in
      * the state policy of length 0 means that all actions will be optimized
      */
     PlainBellman(const MDP& mdp, indvec policy)
@@ -77,8 +79,8 @@ public:
     size_t state_count() const { return mdp.size(); }
 
     /**
-     *  Computes the Bellman update and returns the optimal action.
-     *  @returns New value for the state and the policy
+     * Computes the Bellman update and returns the optimal action.
+     * @returns New value for the state and the policy
      */
     pair<prec_t, policy_type> policy_update(long stateid, const numvec& valuefunction,
                                             prec_t discount) const {
@@ -99,9 +101,9 @@ public:
     }
 
     /**
-   *  Computes value function update using the current policy
-   * @returns New value for the state
-   */
+     *  Computes value function update using the current policy
+     * @returns New value for the state
+     */
     prec_t compute_value(const policy_type& action, long stateid,
                          const numvec& valuefunction, prec_t discount) const {
         return value_fix_state(mdp[stateid], valuefunction, discount, action);
@@ -144,6 +146,9 @@ public:
  *
  * The class does not own the MDP and nature.
  *
+ * When nature's vector is of length 0, this means that the nominal probability
+ * should be followed.
+ *
  * @see PlainBellman for a plain implementation
  */
 class SARobustBellman {
@@ -181,15 +186,17 @@ public:
     size_t state_count() const { return mdp.size(); }
 
     /**
-      Computes the Bellman update and updates the action in the solution to the best
-      response It does not update the value function in the solution.
-      @param solution Solution to update
-      @param state State for which to compute the Bellman update
-      @param stateid  Index of the state
-      @param valuefunction Value function
-      @param discount Discount factor
-      @returns New value for the state
-      */
+     * Computes the Bellman update and updates the action in the solution to the best
+     * response It does not update the value function in the solution.
+     *
+     * @param solution Solution to update
+     * @param state State for which to compute the Bellman update
+     * @param stateid  Index of the state
+     * @param valuefunction Value function
+     * @param discount Discount factor
+     *
+     * @returns New value for the state
+     */
     pair<prec_t, policy_type> policy_update(long stateid, const numvec& valuefunction,
                                             prec_t discount) const {
         prec_t newvalue = 0;
@@ -216,11 +223,12 @@ public:
     }
 
     /**
-      Computes value function using the provided policy. Used in policy evaluation.
-      @param solution Solution used to infer the current policy
-      @param state State for which to compute the Bellman update
-      @param stateid Index of the state
-      @param valuefunction Value function
+     * Computes value function using the provided policy. Used in policy evaluation.
+     *
+     * @param solution Solution used to infer the current policy
+     * @param state State for which to compute the Bellman update
+     * @param stateid Index of the state
+     * @param valuefunction Value function
       @param discount Discount factor
       @returns New value for the state
       */
@@ -240,8 +248,11 @@ public:
         const State& s = mdp[stateid];
         if (s.is_terminal()) {
             return Transition::empty_tran();
-        } else {
+        } else if (!action.second.empty()) {
+            // if not empty, use the transition probabilities from the policy
             return s[action.first].mean_transition(action.second);
+        } else {
+            return s[action.first].mean_transition();
         }
     }
 
@@ -254,8 +265,10 @@ public:
         const State& s = mdp[stateid];
         if (s.is_terminal()) {
             return 0;
-        } else {
+        } else if (!action.second.empty()) {
             return s[action.first].mean_reward(action.second);
+        } else {
+            return s[action.first].mean_reward();
         }
     }
 };

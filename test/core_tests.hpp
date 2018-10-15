@@ -320,6 +320,10 @@ BOOST_AUTO_TEST_CASE(inventory_robust_policy_iteration) {
 
     auto solution1 = solve_pi(fullmdp, discount);
     auto solution2 = rsolve_pi(fullmdp, discount, algorithms::nats::robust_l1u(0.0));
+
+    BOOST_CHECK_EQUAL_COLLECTIONS(
+        solution1.valuefunction.cbegin(), solution1.valuefunction.cend(),
+        solution2.valuefunction.cbegin(), solution2.valuefunction.cend());
 }
 
 // ********************************************************************************
