@@ -291,6 +291,57 @@ public:
 // *******************************************************
 
 /**
+ * L1 robust response with a untiform budget/threshold
+ *
+ * @see rsolve_s_mpi, rsolve_s_vi. rsolve_s_pi
+ */
+class robust_s_l1u {
+protected:
+    prec_t budget;
+
+public:
+    robust_s_l1u(prec_t budget) : budget(budget) {}
+
+    /**
+     * Implements SNature interface
+     */
+    tuple<numvec, vector<numvec>, prec_t>
+    operator()(long stateid, const vector<numvec>& nominalprobs,
+               const vector<numvec>& zvalues) const {
+
+        // TODO: refactor this out and the robust_s_l1 to the same method
+
+        assert(stateid >= 0 && stateid < long(budgets.size()));
+        assert(nominalprobs.size() == zvalues.size());
+
+        prec_t outcome;
+        numvec actiondist, sa_budgets;
+
+        // compute the distribution of actions and the optimal budgets
+        tie(outcome, actiondist, sa_budgets) =
+            solve_srect_bisection(zvalues, nominalprobs, budget);
+
+        assert(actiondist.size() == zvalues.size());
+        assert(sa_budgets.size() == actiondist.size());
+
+        // compute actual worst-case responses for all actions
+        // and aggregate them in a sparse transition probability
+        vector<numvec> new_probability;
+        new_probability.reserve(actiondist.size());
+        for (size_t a = 0; a < nominalprobs.size(); a++) {
+            // skip the ones that have not transition probability
+            if (actiondist[a] > EPSILON) {
+                new_probability.push_back(
+                    worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
+            } else {
+                new_probability.push_back(numvec(0));
+            }
+        }
+        return make_tuple(move(actiondist), move(new_probability), outcome);
+    }
+};
+
+/**
  * S-rectangular L1 constraint with a single budget for every state
  * and optional weights for each action for each state.
  *
@@ -309,8 +360,8 @@ public:
         : budgets(move(budgets)), weights_a(move(weights_a)) {}
 
     /**
-   * Implements SNature interface
-   */
+     * Implements SNature interface
+     */
     tuple<numvec, vector<numvec>, prec_t>
     operator()(long stateid, const vector<numvec>& nominalprobs,
                const vector<numvec>& zvalues) const {
@@ -318,8 +369,7 @@ public:
         assert(nominalprobs.size() == zvalues.size());
 
         prec_t outcome;
-        numvec actiondist;
-        numvec sa_budgets;
+        numvec actiondist, sa_budgets;
 
         // compute the distribution of actions and the optimal budgets
         if (!weights_a.empty()) {
@@ -338,11 +388,12 @@ public:
         new_probability.reserve(actiondist.size());
         for (size_t a = 0; a < nominalprobs.size(); a++) {
             // skip the ones that have not transition probability
-            if (actiondist[a] > EPSILON)
+            if (actiondist[a] > EPSILON) {
                 new_probability.push_back(
                     worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
-            else
+            } else {
                 new_probability.push_back(numvec(0));
+            }
         }
         return make_tuple(move(actiondist), move(new_probability), outcome);
     }

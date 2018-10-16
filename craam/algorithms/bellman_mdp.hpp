@@ -248,12 +248,13 @@ public:
         const State& s = mdp[stateid];
         if (s.is_terminal()) {
             return Transition::empty_tran();
-        } else if (!action.second.empty()) {
-            // if not empty, use the transition probabilities from the policy
+        } else /*if (!action.second.empty()) */ {
+            assert(action.first < s.size() && action.first >= 0);
             return s[action.first].mean_transition(action.second);
-        } else {
+        } /*else {
+            // if empty, use the transition probabilities from the policy
             return s[action.first].mean_transition();
-        }
+        }*/
     }
 
     /** Returns the reward for the action
@@ -265,11 +266,13 @@ public:
         const State& s = mdp[stateid];
         if (s.is_terminal()) {
             return 0;
-        } else if (!action.second.empty()) {
+        } else /*if (!action.second.empty())*/ {
+            assert(action.first < s.size() && action.first >= 0);
             return s[action.first].mean_reward(action.second);
-        } else {
+        } /*else {
+            // if empty, use the transition probabilities from the policy
             return s[action.first].mean_reward();
-        }
+        }*/
     }
 };
 
@@ -347,7 +350,6 @@ public:
             tie(action, transitions, newvalue) =
                 nature(stateid, compute_probabilities(state),
                        compute_zvalues(state, valuefunction, discount));
-
         }
         // fixed-action, do not copy
         else {
@@ -393,10 +395,9 @@ public:
             return Transition::empty_tran();
         } else {
             // compute the weighted average of transition probabilies
-            Transition result;
             assert(s.size() == action.first.size());
+            Transition result;
             for (size_t ai = 0; ai < s.size(); ai++) {
-
                 result.probabilities_add(action.first[ai],
                                          s[ai].mean_transition(action.second[ai]));
             }

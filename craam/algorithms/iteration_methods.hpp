@@ -260,10 +260,26 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
 
     // TODO: could be sped up by keeping I - gamma * P instead of transition probabilities
 
+    // first udate the policy
+#pragma omp parallel for
+    for (size_t s = 0; s < n; ++s) {
+        tie(std::ignore, policy[s]) = response.policy_update(s, valuefunction, discount);
+    }
+
     // **discounted** matrix of transition probabilities
     MatrixXd trans_discounted = transition_mat(response, policy, false, discount);
 
     for (i = 0; i < iterations_pi; ++i) {
+
+        const numvec rw = rewards_vec(response, policy);
+        // get transition matrix and construct (I - gamma * P)
+        // TODO: this step could be eliminated by keeping I - gamma P (this is an unnecessary copy)
+        MatrixXd t_mat =
+            MatrixXd::Identity(n, n) - transition_mat(response, policy, false, discount);
+        // compute and store the value function
+        Map<VectorXd, Unaligned>(valuefunction.data(), valuefunction.size()) =
+            HouseholderQR<MatrixXd>(t_mat).solve(
+                Map<const VectorXd, Unaligned>(rw.data(), rw.size()));
 
         // update policy
         swap(policy, policy_old);
@@ -285,16 +301,6 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
         // 1. update the transition probabilities
         update_transition_mat(response, trans_discounted, policy, policy_old, false,
                               discount);
-
-        const numvec rw = rewards_vec(response, policy);
-        // get transition matrix and construct (I - gamma * P)
-        // TODO: this step could be eliminated by keeping I - gamma P (this is an unnecessary copy)
-        MatrixXd t_mat =
-            MatrixXd::Identity(n, n) - transition_mat(response, policy, false, discount);
-        // compute and store the value function
-        Map<VectorXd, Unaligned>(valuefunction.data(), valuefunction.size()) =
-            HouseholderQR<MatrixXd>(t_mat).solve(
-                Map<const VectorXd, Unaligned>(rw.data(), rw.size()));
     }
     auto finish = chrono::steady_clock::now();
     chrono::duration<double> duration = finish - start;
