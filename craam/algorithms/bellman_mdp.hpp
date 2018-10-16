@@ -248,13 +248,14 @@ public:
         const State& s = mdp[stateid];
         if (s.is_terminal()) {
             return Transition::empty_tran();
-        } else /*if (!action.second.empty()) */ {
-            assert(action.first < s.size() && action.first >= 0);
+        } else if (!action.second.empty()) {
+            assert(size_t(action.first) < s.size() && action.first >= 0);
             return s[action.first].mean_transition(action.second);
-        } /*else {
+        } else {
             // if empty, use the transition probabilities from the policy
+            throw invalid_argument("Empty policies of nature not supported currently.");
             return s[action.first].mean_transition();
-        }*/
+        }
     }
 
     /** Returns the reward for the action
@@ -266,13 +267,14 @@ public:
         const State& s = mdp[stateid];
         if (s.is_terminal()) {
             return 0;
-        } else /*if (!action.second.empty())*/ {
-            assert(action.first < s.size() && action.first >= 0);
+        } else if (!action.second.empty()) {
+            assert(size_t(action.first) < s.size() && action.first >= 0);
             return s[action.first].mean_reward(action.second);
-        } /*else {
+        } else {
             // if empty, use the transition probabilities from the policy
+            throw invalid_argument("Empty policies of nature not supported currently.");
             return s[action.first].mean_reward();
-        }*/
+        }
     }
 };
 
@@ -322,7 +324,8 @@ public:
     size_t state_count() const { return mdp.size(); }
 
     /**
-      Computes the Bellman update.
+      Computes the Bellman update. If an action is not taken then the transitions for the corresponding
+      action will have length 0.
 
       @param solution Solution to update
       @param state State for which to compute the Bellman update
@@ -335,7 +338,6 @@ public:
     pair<prec_t, policy_type> policy_update(long stateid, const numvec& valuefunction,
                                             prec_t discount) const {
         prec_t newvalue = 0;
-        policy_type action_response;
         numvec action;
         vector<numvec> transitions;
 
@@ -364,8 +366,8 @@ public:
         }
 
         assert(action.size() == state.size());
-        action_response = make_pair(move(action), move(transitions));
-        return make_pair(newvalue, action_response);
+        policy_type action_response = make_pair(move(action), move(transitions));
+        return make_pair(newvalue, move(action_response));
     }
 
     /**
@@ -398,8 +400,11 @@ public:
             assert(s.size() == action.first.size());
             Transition result;
             for (size_t ai = 0; ai < s.size(); ai++) {
-                result.probabilities_add(action.first[ai],
-                                         s[ai].mean_transition(action.second[ai]));
+                // make sure that the action is being taken
+                if (action.first[ai] > EPSILON) {
+                    result.probabilities_add(action.first[ai],
+                                             s[ai].mean_transition(action.second[ai]));
+                }
             }
             return result;
         }
@@ -419,7 +424,10 @@ public:
 
             assert(s.size() == action.first.size());
             for (size_t ai = 0; ai < s.size(); ai++) {
-                result += action.first[ai] * s[ai].mean_reward(action.second[ai]);
+                // only consider actions that have non-zero transition probabilities
+                if (action.first[ai] > EPSILON) {
+                    result += action.first[ai] * s[ai].mean_reward(action.second[ai]);
+                }
             }
             return result;
         }

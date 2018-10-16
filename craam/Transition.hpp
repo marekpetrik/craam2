@@ -326,8 +326,10 @@ public:
      *                     is modified within the function.
      */
     void probabilities_add(prec_t scale, const Transition& transition) {
-        for (size_t i : util::lang::indices(transition))
-            this->add_sample(indices[i], scale * probabilities[i], scale * rewards[i]);
+        for (size_t i = 0; i < transition.size(); ++i) {
+            add_sample(transition.indices[i], scale * transition.probabilities[i],
+                       scale * transition.rewards[i]);
+        }
     }
 
     /**

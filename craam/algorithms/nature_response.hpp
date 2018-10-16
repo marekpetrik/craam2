@@ -311,7 +311,7 @@ public:
 
         // TODO: refactor this out and the robust_s_l1 to the same method
 
-        assert(stateid >= 0 && stateid < long(budgets.size()));
+        assert(stateid >= 0);
         assert(nominalprobs.size() == zvalues.size());
 
         prec_t outcome;

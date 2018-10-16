@@ -158,6 +158,7 @@ inline prec_t value_fix_state(const SAState<AType>& state, numvec const& valuefu
         if (!state.is_valid(actionid))
             throw invalid_argument("Cannot take an invalid action");
 
+        // skip actions with 0 probability
         if (actiondist[actionid] <= EPSILON) continue;
 
         result += actiondist[actionid] *
