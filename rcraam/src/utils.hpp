@@ -1,11 +1,11 @@
 #pragma once
+
 #define GUROBI_USE
 
 #include "craam/MDP.hpp"
 
 #include <Rcpp.h>
 #include <string>
-
 
 /**
  * A very simple test MDP.
@@ -27,7 +27,6 @@ inline craam::MDP create_test_mdp() {
 
     return rmdp;
 }
-
 
 /**
  * Constructs a data frame from the MDP definition

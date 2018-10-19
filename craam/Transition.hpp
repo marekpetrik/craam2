@@ -28,7 +28,6 @@
 #include <algorithm>
 #include <cmath>
 #include <numeric>
-#include <rm/range.hpp>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -36,7 +35,6 @@
 namespace craam {
 
 using namespace std;
-using namespace util::lang;
 
 /** tolerance for checking whether a transition probability is normalized */
 const prec_t tolerance = 1e-5;
@@ -103,7 +101,7 @@ public:
       \param probabilities The probabilities of transitions; indexes are implicit.
       */
     Transition(const numvec& probabilities) : Transition() {
-        for (auto k : util::lang::indices(probabilities))
+        for (size_t k = 0; k < probabilities.size(); ++k)
             add_sample(long(k), probabilities[k], 0.0);
     }
 
