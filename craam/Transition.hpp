@@ -297,7 +297,7 @@ public:
                           is modified within the function.
       */
     void probabilities_addto(prec_t scale, numvec& transition) const {
-        for (size_t i : util::lang::indices(*this))
+        for (size_t i = 0; i < size(); ++i)
             transition[indices[i]] += scale * probabilities[i];
     }
 
@@ -310,7 +310,7 @@ public:
      *                     is modified within the function.
      */
     void probabilities_addto(prec_t scale, Transition& transition) const {
-        for (size_t i : util::lang::indices(*this))
+        for (size_t i = 0; i < size(); ++i)
             transition.add_sample(indices[i], scale * probabilities[i],
                                   scale * rewards[i]);
     }
@@ -341,7 +341,7 @@ public:
         if (max_index() >= 0 && static_cast<long>(size) <= max_index())
             throw range_error("Size must be greater than the maximal index");
         numvec result(size, 0.0);
-        for (size_t i : util::lang::indices(indices))
+        for (size_t i = 0; i < indices.size(); ++i)
             result[indices[i]] = probabilities[i];
         return result;
     }
@@ -357,7 +357,7 @@ public:
         if (max_index() >= 0 && static_cast<long>(size) <= max_index())
             throw range_error("Size must be greater than the maximal index");
         numvec result(size, 0.0);
-        for (size_t i : util::lang::indices(indices))
+        for (size_t i = 0; i < indices.size(); ++i)
             result[indices[i]] = rewards[i];
         return result;
     }

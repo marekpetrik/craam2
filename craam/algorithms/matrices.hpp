@@ -87,12 +87,12 @@ update_transition_mat(const BellmanResponse& response, MatrixXd& transitions,
  */
 template <typename BellmanResponse,
           typename policy_type = typename BellmanResponse::policy_type>
-inline MatrixXd transition_mat(const BellmanResponse& response,
-                               const vector<policy_type>& policy, bool transpose = false,
-                               prec_t discount = 1.0) {
+inline Eigen::MatrixXd transition_mat(const BellmanResponse& response,
+                                      const vector<policy_type>& policy,
+                                      bool transpose = false, prec_t discount = 1.0) {
 
     const size_t n = response.state_count();
-    MatrixXd result = MatrixXd::Zero(n, n);
+    Eigen::MatrixXd result = MatrixXd::Zero(n, n);
 
     update_transition_mat(response, result, policy,
                           vector<typename BellmanResponse::policy_type>(0), transpose,

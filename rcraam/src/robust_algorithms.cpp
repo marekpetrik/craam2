@@ -6,8 +6,8 @@
 #include "craam/optimization/optimization.hpp"
 #include "craam/solvers.hpp"
 
-#include "craam/algorithms/matrices.hpp"
 #include "craam/algorithms/bellman_mdp.hpp"
+#include "craam/algorithms/matrices.hpp"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -233,6 +233,10 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::List options) {
                            ? Rcpp::as<long>(options["precision"])
                            : 0.0001;
 
+    bool output_mat = options.containsElementNamed("output_tran")
+                          ? Rcpp::as<bool>(options["output_tran"])
+                          : false;
+
     DetermSolution sol;
 
     if (!options.containsElementNamed("algorithm") ||
@@ -258,21 +262,13 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::List options) {
         Rcpp::stop("Unknown algorithm type.");
     }
 
-    auto pb = craam::algorithms::PlainBellman(m);
-    auto tmat = craam::algorithms::transition_mat(pb, sol.policy);
-    auto rew = craam::algorithms::rewards_vec(pb, sol.policy);
-
-
-    Rcpp::NumericMatrix tmat2(tmat.rows(), tmat.cols());
-
-    for(size_t i = 0; i < tmat.rows(); i++){
-        for(size_t j = 0; j < tmat.cols(); j++){
-            tmat2(i,j) = tmat(i,j);
-        }
+    if (output_mat) {
+        auto pb = craam::algorithms::PlainBellman(m);
+        auto tmat = craam::algorithms::transition_mat(pb, sol.policy);
+        auto rew = craam::algorithms::rewards_vec(pb, sol.policy);
+        result["mat"] = as_matrix(tmat);
+        result["rew"] = rew;
     }
-
-    result["mat"] = tmat2;
-    result["rew"] = rew;
 
     result["iters"] = sol.iterations;
     result["residual"] = sol.residual;

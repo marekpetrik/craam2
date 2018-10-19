@@ -318,7 +318,7 @@ public:
         result << "\"actionid\" : ";
         result << std::to_string(actionid);
         result << ",\"outcomes\" : [";
-        for (auto oi : indices(outcomes)) {
+        for (size_t oi = 0; oi < outcomes.size(); ++oi) {
             const auto& o = outcomes[oi];
             result << o.to_json(oi);
             result << ",";

@@ -30,7 +30,6 @@
 #include <cmath>
 #include <limits>
 #include <numeric>
-#include <rm/range.hpp>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -40,7 +39,6 @@
 namespace craam {
 
 using namespace std;
-using namespace util::lang;
 
 // **************************************************************************************
 // *** Regular action

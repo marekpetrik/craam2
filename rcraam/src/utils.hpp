@@ -5,6 +5,8 @@
 #include "craam/MDP.hpp"
 
 #include <Rcpp.h>
+#include <eigen3/Eigen/Dense>
+
 #include <string>
 
 /**
@@ -59,4 +61,19 @@ inline Rcpp::DataFrame mdp_to_dataframe(const craam::MDP& mdp) {
         Rcpp::_["idstatefrom"] = idstatefrom, Rcpp::_["idaction"] = idaction,
         Rcpp::_["idstateto"] = idstateto, Rcpp::_["probability"] = probability,
         Rcpp::_["reward"] = reward);
+}
+
+/**
+ * Constructs an R matrix from an Eigen matrix. All matrices are dense and the data is
+ * copied. This method is not suitable for large matrices.
+ */
+inline Rcpp::NumericMatrix as_matrix(const Eigen::MatrixXd& matrix) {
+    Rcpp::NumericMatrix result(matrix.rows(), matrix.cols());
+
+    for (size_t i = 0; i < matrix.rows(); i++) {
+        for (size_t j = 0; j < matrix.cols(); j++) {
+            result(i, j) = matrix(i, j);
+        }
+    }
+    return result;
 }

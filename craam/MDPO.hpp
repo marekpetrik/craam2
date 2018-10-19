@@ -170,9 +170,9 @@ Sets the distribution for outcomes for each state and
 action to be uniform.
 */
 inline void set_uniform_outcome_dst(MDPO& mdp) {
-    for (const auto si : indices(mdp)) {
+    for (size_t si = 0; si < mdp.size(); ++si) {
         auto& s = mdp[si];
-        for (const auto ai : indices(s)) {
+        for (size_t ai = 0; ai < s.size(); ++ai) {
             auto& a = s[ai];
             numvec distribution(a.size(), 1.0 / static_cast<prec_t>(a.size()));
 
@@ -199,9 +199,9 @@ This function only applies to models that have outcomes, such as ones using
 
 */
 inline bool is_outcome_dst_normalized(const MDPO& mdp) {
-    for (auto si : indices(mdp)) {
+    for (size_t si = 0; si < mdp.size(); ++si) {
         auto& state = mdp[si];
-        for (auto ai : indices(state)) {
+        for (size_t ai = 0; ai < state.size(); ++ai) {
             if (!state[ai].is_distribution_normalized()) return false;
         }
     }
@@ -215,9 +215,9 @@ This function only applies to models that have outcomes, such as ones using
 "ActionO" or its derivatives.
 */
 inline void normalize_outcome_dst(MDPO& mdp) {
-    for (auto si : indices(mdp)) {
+    for (size_t si = 0; si < mdp.size(); ++si) {
         auto& state = mdp[si];
-        for (auto ai : indices(state))
+        for (size_t ai = 0; ai < state.size(); ++ai)
             state[ai].normalize_distribution();
     }
 }
