@@ -394,24 +394,24 @@ algorithms::SNature parse_nature_s(const MDP& mdp, const string& nature,
         numvec values = parse_s_values(mdp, Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0);
         return algorithms::nats::robust_s_l1(values);
     }
-    /*if(nature == "l1w"){
+    if(nature == "l1w"){
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
-        auto budgets = parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["budgets"]),0.0);
+        auto budgets = parse_s_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["budgets"]),0.0);
         auto weights = parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]), 1.0);
-        return algorithms::nats::robust_l1w(budgets, weights);
-    }*/
+        return algorithms::nats::robust_s_l1w(budgets, weights);
+    }
     // ----- gurobi only -----
 #ifdef GUROBI_USE
     if (nature == "l1_g") {
         numvec values = parse_s_values(mdp, Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0);
         return algorithms::nats::robust_s_l1_gurobi(values);
     }
-    /*if(nature == "l1w_g"){
+    if(nature == "l1w_g"){
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
-        auto budgets = parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["budgets"]),0.0);
+        auto budgets = parse_s_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["budgets"]),0.0);
         auto weights = parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]), 1.0);
-        return algorithms::nats::robust_l1w_gurobi(budgets, weights);
-    }*/
+        return algorithms::nats::robust_s_l1w_gurobi(budgets, weights);
+    }
 #endif
     // ---- end gurobi -----
     else {

@@ -42,6 +42,7 @@ namespace craam { namespace algorithms { namespace nats {
  */
 class robust_l1 {
 protected:
+    /// Budget for each state and action
     vector<numvec> budgets;
 
 public:
@@ -345,8 +346,7 @@ public:
  * S-rectangular L1 constraint with a single budget for every state
  * and optional weights for each action for each state.
  *
- * The state-action weights are used as follows:
- *
+ * This class does not support using weighted L1 norms
  */
 class robust_s_l1 {
 protected:
@@ -399,11 +399,71 @@ public:
     }
 };
 
+/**
+ * S-rectangular L1 constraint with a single budget for every state
+ * and support for weighted L1 norms.
+ */
+class robust_s_l1w {
+
+protected:
+    /// one budget value per state
+    numvec budgets;
+    /// one vector of weights per each state and action
+    vector<numvecvec> weights;
+
+public:
+    /**
+     * Initialize with weights and budgets
+     * @param budgets Must have one budget for each state
+     * @param weights Must have one vector of weights for each state and action. The number of
+     * weights must match the number of state transition with positive probabilities.
+     */
+    robust_s_l1w(numvec budgets, vector<numvecvec> weights)
+        : budgets(move(budgets)), weights(move(weights)) {
+        assert(this->weights.size() == this->budgets.size());
+    }
+
+    /**
+     * Implements SNature interface
+     */
+    tuple<numvec, vector<numvec>, prec_t>
+    operator()(long stateid, const vector<numvec>& nominalprobs,
+               const vector<numvec>& zvalues) const {
+        assert(stateid >= 0 && stateid < long(budgets.size()));
+        assert(nominalprobs.size() == zvalues.size());
+
+        prec_t outcome;
+        numvec actiondist, sa_budgets;
+
+        // compute the distribution of actions and the optimal budgets
+
+        tie(outcome, actiondist, sa_budgets) = solve_srect_bisection(
+            zvalues, nominalprobs, budgets[stateid], numvec(0), weights[stateid]);
+
+        assert(actiondist.size() == zvalues.size());
+        assert(sa_budgets.size() == actiondist.size());
+
+        // compute actual worst-case responses for all actions
+        // and aggregate them in a sparse transition probability
+        vector<numvec> new_probability;
+        new_probability.reserve(actiondist.size());
+        for (size_t a = 0; a < nominalprobs.size(); a++) {
+            // skip the ones that have not transition probability
+            if (actiondist[a] > EPSILON) {
+                new_probability.push_back(
+                    worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
+            } else {
+                new_probability.push_back(numvec(0));
+            }
+        }
+        return make_tuple(move(actiondist), move(new_probability), outcome);
+    }
+};
+
 #ifdef GUROBI_USE
 
 /**
- * S-rectangular L1 constraint with a single budget for every state
- * and optional weights for each action for each state.
+ * S-rectangular L1 constraint with a single budget for every state.
  *
  * The state-action weights are used as follows:
  *
@@ -460,6 +520,78 @@ public:
     }
 };
 
-#endif
+/**
+ * S-rectangular L1 constraint with a single budget for every state
+ * and optional weights for each action for each state.
+ *
+ * The state-action weights are used as follows:
+ *
+ * WARNING: does not compute the probaility distributions of policies and will
+ * therefore fail when used in modified policy iteration
+ */
+class robust_s_l1w_gurobi {
 
-}}} // namespace craam::algorithms::nats
+protected:
+    /// each budget is for each individual state
+    numvec budgets;
+    /// The weights are optional, if empty then uniform weights are used.
+    /// The elements are over states, actions, and then next state values
+    vector<numvecvec> weights;
+    shared_ptr<GRBEnv> env;
+
+public:
+    /**
+   * Automatically constructs a gurobi environment object. Weights are
+   * considered to be uniform.
+   * @param budgets Budgets, with a single value for each MDP state and action
+   * @param weights State weights used in the L1 norm. One set of vectors for
+   * each state and action. Use and empty vector to specify uniform weights.
+   */
+    robust_s_l1w_gurobi(numvec budgets, vector<vector<numvec>> weights)
+        : budgets(move(budgets)), weights(move(weights)) {
+
+        assert(this->weights.size() == this->budgets.size());
+
+        env = make_shared<GRBEnv>();
+        // make sure it is run in a single thread so it can be parallelized
+        env->set(GRB_IntParam_OutputFlag, 0);
+        env->set(GRB_IntParam_Threads, 1);
+    };
+
+    /**
+   * @param budgets Budgets, with a single value for each MDP state and action
+   * @param grbenv Gurobi environment that will be used. Should be
+   * single-threaded and probably disable printout. This environment is NOT
+   *                thread-safe.
+   */
+    robust_s_l1w_gurobi(numvec budgets, vector<vector<numvec>> weights,
+                        const shared_ptr<GRBEnv>& grbenv)
+        : budgets(move(budgets)), weights(move(weights)), env(grbenv) {
+        assert(this->weights.size() == this->budgets.size());
+    };
+
+    /**
+   * Implements the SNature interface
+   */
+    tuple<numvec, vector<numvec>, prec_t> operator()(long stateid,
+                                                     const numvecvec& nominalprobs,
+                                                     const numvecvec& zvalues) const {
+        assert(stateid >= 0 && stateid < long(budgets.size()));
+        assert(nominalprobs.size() == zvalues.size());
+
+        prec_t outcome;
+        numvec actiondist;
+
+        // compute the distribution of actions and the optimal budgets
+
+        tie(actiondist, outcome) = srect_solve_gurobi(*env, zvalues, nominalprobs,
+                                                      budgets[stateid], weights[stateid]);
+
+        assert(actiondist.size() == zvalues.size());
+
+        vector<numvec> new_probability(actiondist.size());
+        return make_tuple(move(actiondist), move(new_probability), outcome);
+    };
+};
+#endif // GUROBI_USE
+}}}    // namespace craam::algorithms::nats

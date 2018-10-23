@@ -37,7 +37,6 @@ regular MDPs.
 namespace craam { namespace algorithms {
 
 using namespace std;
-using namespace util::lang;
 
 // *******************************************************
 // Plain Action
