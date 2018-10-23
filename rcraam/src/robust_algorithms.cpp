@@ -183,6 +183,7 @@ vector<vector<numvec>> parse_sas_values(const MDP& mdp, const Rcpp::DataFrame& f
             Rcpp::stop("idaction must be smaller than the number of actions for the "
                        "corresponding state");
         if (idstateto < 0) Rcpp::stop("idstateto must be non-negative");
+
         if (idstateto > mdp[idstatefrom][idaction].size())
             Rcpp::stop("idstateto must be smaller than the number of positive transition "
                        "probabilites");
