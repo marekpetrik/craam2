@@ -78,6 +78,9 @@ template <class PolicyType> struct Solution {
 /// A solution with a deterministic policy
 using DetermSolution = Solution<long>;
 
+/// A solution to an MDP with a stochastic policy
+using RandSolution = Solution<numvec>;
+
 /// Solution to an S,A rectangular robust problem to an MDP
 using SARobustSolution = Solution<pair<long, numvec>>;
 

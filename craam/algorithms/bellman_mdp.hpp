@@ -140,6 +140,120 @@ public:
 };
 
 /**
+ * Like PlainBellman, the only difference is that it allows for stochastic policies
+ */
+class PlainBellmanRand {
+
+protected:
+    /// MDP definition
+    const MDP& mdp;
+    /// Partial policy specification (action -1 is ignored and optimized)
+    const numvecvec initial_policy;
+
+public:
+    /**
+     * Provides the type of policy for each state (int represents a deterministic
+     * policy)
+     */
+    using policy_type = numvec;
+    /// Type of the state
+    using state_type = State;
+
+    /// Constructs the update with no constraints on the initial policy
+    PlainBellmanRand(const MDP& mdp) : mdp(mdp), initial_policy(0) {}
+
+    /**
+     * A partial policy that can be used to fix some actions
+     *
+     * @param policy Initial randomized policy. policy[s] is the distribution of
+     *               value functions
+     */
+    PlainBellmanRand(const MDP& mdp, numvecvec policy)
+        : mdp(mdp), initial_policy(move(policy)) {}
+
+    /// Number of MDP states
+    size_t state_count() const { return mdp.size(); }
+
+    /**
+     * Computes the Bellman update and returns the optimal action.
+     * @returns New value for the state and the policy
+     */
+    pair<prec_t, policy_type> policy_update(long stateid, const numvec& valuefunction,
+                                            prec_t discount) const {
+
+        // check whether this state should only be evaluated
+        if (initial_policy.empty() || initial_policy[stateid].empty()) { // optimizing
+
+            auto output = value_max_state(mdp[stateid], valuefunction, discount);
+            prec_t newvalue = output.first;
+            // create the distribution of the appropriate size
+            policy_type action = numvec(mdp[stateid].size());
+            // assign a deterministic policy
+            action[output.second] = 1.0;
+
+            return make_pair(newvalue, action);
+        } else { // fixed-action, do not copy
+            return {value_fix_state(mdp[stateid], valuefunction, discount,
+                                    initial_policy[stateid]),
+                    initial_policy[stateid]};
+        }
+    }
+
+    /**
+     * Computes value  a function update using the current policy
+     * @returns New value for the state
+     */
+    prec_t compute_value(const policy_type& action, long stateid,
+                         const numvec& valuefunction, prec_t discount) const {
+        return value_fix_state(mdp[stateid], valuefunction, discount, action);
+    }
+
+    /** Returns a reference to the transition probabilities
+     *
+     * @param stateid State for which to get the transition probabilites
+     * @param action Which action is taken
+     */
+    const Transition transition(long stateid, const policy_type& action) const {
+        assert(stateid >= 0 && size_t(stateid) < state_count());
+        const State& s = mdp[stateid];
+        if (s.is_terminal()) {
+            return Transition::empty_tran();
+        } else {
+            // compute the weighted average of transition probabilies
+            assert(s.size() == action.size());
+            Transition result;
+            for (size_t ai = 0; ai < s.size(); ai++) {
+                // make sure that the action is being taken
+                if (action[ai] > EPSILON) {
+                    result.probabilities_add(action[ai], s[ai].mean_transition());
+                }
+            }
+            return result;
+        }
+    }
+
+    /** Returns the reward for the action
+     *
+     * @param stateid State for which to get the transition probabilites
+     * @param action Which action is taken
+     */
+    prec_t reward(long stateid, const policy_type& action) const {
+        const State& s = mdp[stateid];
+        if (s.is_terminal()) {
+            return 0;
+        } else {
+            prec_t result = 0;
+            assert(s.size() == action.size());
+            for (size_t ai = 0; ai < s.size(); ai++) {
+                // only consider actions that have non-zero transition probabilities
+                if (action[ai] > EPSILON) { result += action[ai] * s[ai].mean_reward(); }
+            }
+            return result;
+        }
+    }
+};
+
+/**
  * The class abstracts some operations of value / policy iteration in order to
  * generalize to various types of robust MDPs. It can be used in place of response
  * in mpi_jac or vi_gs to solve robust MDP objectives.

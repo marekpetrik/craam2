@@ -15,6 +15,7 @@
 
 #include <iostream>
 #include <stdexcept>
+#include <string>
 #include <tuple>
 
 using namespace craam;
@@ -74,17 +75,20 @@ craam::MDP mdp_from_dataframe(const Rcpp::DataFrame& data) {
  * @param frame Dataframe with 2 comlumns, idstate, value. Here, idstate
  *              determines which value should be set.
  *              Only the last value is used if multiple rows are present.
- * @param def_value The default value for when frame does not specify anything for the state action pair
+ * @param def_value The default value for when frame does not
+ *                  specify anything for the state action pair
+ * @param value_column Name of the column with the value
  *
  * @returns A vector over states with the included values
  */
-numvec parse_s_values(const MDP& mdp, const Rcpp::DataFrame& frame,
-                      double def_value = 0) {
+template <class T>
+vector<T> parse_s_values(const MDP& mdp, const Rcpp::DataFrame& frame, T def_value = 0,
+                         const string& value_column = "value") {
 
-    numvec result(mdp.size());
+    vector<T> result(mdp.size());
 
     Rcpp::IntegerVector idstates = frame["idstate"];
-    Rcpp::NumericVector values = frame["value"];
+    Rcpp::NumericVector values = frame[value_column];
 
     for (long i = 0; i < idstates.size(); i++) {
         long idstate = idstates[i];
@@ -93,7 +97,7 @@ numvec parse_s_values(const MDP& mdp, const Rcpp::DataFrame& frame,
         if (idstate > mdp.size())
             Rcpp::stop("idstate must be smaller than the number of MDP states");
 
-        double value = values[i];
+        T value = values[i];
         result[idstate] = value;
     }
 
@@ -114,8 +118,8 @@ numvec parse_s_values(const MDP& mdp, const Rcpp::DataFrame& frame,
 *
 * @returns A vector over states with an inner vector of actions
 */
-vector<numvec> parse_sa_values(const MDP& mdp, const Rcpp::DataFrame& frame,
-                               double def_value = 0) {
+numvecvec parse_sa_values(const MDP& mdp, const Rcpp::DataFrame& frame,
+                          double def_value = 0) {
 
     vector<numvec> result(mdp.size());
     for (long i = 0; i < mdp.size(); i++) {
@@ -163,6 +167,7 @@ vector<vector<numvec>> parse_sas_values(const MDP& mdp, const Rcpp::DataFrame& f
     vector<vector<numvec>> result(mdp.size());
     for (long i = 0; i < mdp.size(); i++) {
         for (long j = 0; j < mdp[i].size(); j++) {
+            // this is the number of non-zero transition probabilities
             result[i][j] = numvec(mdp[i][j].size(), def_value);
         }
     }
@@ -184,13 +189,63 @@ vector<vector<numvec>> parse_sas_values(const MDP& mdp, const Rcpp::DataFrame& f
                        "corresponding state");
         if (idstateto < 0) Rcpp::stop("idstateto must be non-negative");
 
-        if (idstateto > mdp[idstatefrom][idaction].size())
-            Rcpp::stop("idstateto must be smaller than the number of positive transition "
-                       "probabilites");
+        long indexto = mdp[idstatefrom][idaction].index_of(idstateto);
 
-        double value = values[i];
-        result[idstatefrom][idaction][idstateto] = value;
+        if (indexto < 0)
+            Rcpp::stop("idstateto must be one of the states with non-zero probability."
+                       "idstatefrom = " +
+                       to_string(idstatefrom) + ", idaction = " + to_string(idaction));
+
+        result[idstatefrom][idaction][indexto] = values[i];
     }
+
+    return result;
+}
+
+/**
+ * Turns a deterministic policy to a dataframe with state and action
+ * as the columns
+ *
+ * @param policy Deterministic policy
+ * @return Dataframe with idstate, idaction columns (idstate is the index)
+ */
+Rcpp::DataFrame output_policy(const indvec& policy) {
+
+    indvec states(policy.size());
+    std::iota(states.begin(), states.end(), 0);
+
+    Rcpp::DataFrame result;
+    result["idstate"] = std::move(states);
+    result["idaction"] = std::move(policy);
+
+    return result;
+}
+
+/**
+ * Turns a randomized policy to a dataframe with state and action
+ * as the columns
+ *
+ * @param policy A randomized policy
+ * @return Dataframe with idstae, idaction, probability columns
+ *          (idstate, idaction are the index)
+ */
+Rcpp::DataFrame output_policy(const numvecvec& policy) {
+
+    indvec states, actions;
+    numvec probabilities;
+
+    for (size_t s = 0; s < policy.size(); ++s) {
+        for (size_t a = 0; a < policy[s].size(); ++s) {
+            states.push_back(s);
+            actions.push_back(a);
+            probabilities.push_back(policy[s][a]);
+        }
+    }
+
+    Rcpp::DataFrame result;
+    result["idstate"] = std::move(states);
+    result["idaction"] = std::move(actions);
+    result["probability"] = std::move(probabilities);
 
     return result;
 }
@@ -238,44 +293,110 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::List options) {
                           ? Rcpp::as<bool>(options["output_tran"])
                           : false;
 
+    if (options.containsElementNamed("policy") &&
+        options.containsElementNamed("policy_rand")) {
+        Rcpp::stop("Cannot provide both a deterministic and a randomized policy.");
+    }
+
+    bool is_randomized = options.containsElementNamed("policy_rand");
+
+    // use one of the solutions, stochastic or deterministic
     DetermSolution sol;
+    RandSolution rsol;
+
+    // initialized policies from the parameter
+    indvec policy =
+        options.containsElementNamed("policy")
+            ? parse_s_values<long>(m, Rcpp::as<Rcpp::DataFrame>(options["policy"]), -1,
+                                   "idaction")
+            : indvec(0);
+    numvecvec rpolicy =
+        options.containsElementNamed("policy_rand")
+            ? parse_sa_values(m, Rcpp::as<Rcpp::DataFrame>(options["policy_rand"]), 0.0)
+            : numvecvec(0);
 
     if (!options.containsElementNamed("algorithm") ||
         Rcpp::as<string>(options["algorithm"]) == "mpi") {
         // Modified policy iteration
-        sol = solve_mpi(m, discount, numvec(0), indvec(0), sqrt(iterations), precision,
-                        std::min(sqrt(iterations), 1000.0), 0.9);
+        if (is_randomized) {
+            rsol = solve_mpi_r(m, discount, numvec(0), rpolicy, sqrt(iterations),
+                               precision, std::min(sqrt(iterations), 1000.0), 0.9);
+        } else {
+            sol = solve_mpi(m, discount, numvec(0), policy, sqrt(iterations), precision,
+                            std::min(sqrt(iterations), 1000.0), 0.9);
+        }
+
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi_j") {
         // Jacobian value iteration
-        sol = solve_mpi(m, discount, numvec(0), indvec(0), iterations, precision, 1, 0.9);
+        if (is_randomized) {
+            rsol = solve_mpi_r(m, discount, numvec(0), rpolicy, iterations, precision, 1,
+                               0.9);
+        } else {
+            sol =
+                solve_mpi(m, discount, numvec(0), policy, iterations, precision, 1, 0.9);
+        }
+
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
         // Gauss-seidel value iteration
-        sol = solve_vi(m, discount, numvec(0), indvec(0), iterations, precision);
+        if (is_randomized) {
+            rsol = solve_vi_r(m, discount, numvec(0), rpolicy, iterations, precision);
+        } else {
+            sol = solve_vi(m, discount, numvec(0), policy, iterations, precision);
+        }
+
     } else if (Rcpp::as<string>(options["algorithm"]) == "pi") {
         // Gauss-seidel value iteration
-        sol = solve_pi(m, discount, numvec(0), indvec(0), iterations, precision);
+        if (is_randomized) {
+            rsol = solve_pi_r(m, discount, numvec(0), rpolicy, iterations, precision);
+        } else {
+            sol = solve_pi(m, discount, numvec(0), policy, iterations, precision);
+        }
+    }
 #ifdef GUROBI_USE
-    } else if (Rcpp::as<string>(options["algorithm"]) == "lp") {
+    else if (Rcpp::as<string>(options["algorithm"]) == "lp") {
         // Gauss-seidel value iteration
-        sol = solve_lp(m, discount);
+        if (is_randomized) {
+            Rcpp::stop("LP with randomized policies not supported.");
+        } else {
+            sol = solve_lp(m, discount, policy);
+        }
+
+    }
 #endif // GUROBI_USE
-    } else {
+    else {
         Rcpp::stop("Unknown algorithm type.");
     }
 
     if (output_mat) {
-        auto pb = craam::algorithms::PlainBellman(m);
-        auto tmat = craam::algorithms::transition_mat(pb, sol.policy);
-        auto rew = craam::algorithms::rewards_vec(pb, sol.policy);
-        result["mat"] = as_matrix(tmat);
-        result["rew"] = rew;
+        if (is_randomized) {
+            auto pb = craam::algorithms::PlainBellmanRand(m);
+            auto tmat = craam::algorithms::transition_mat(pb, rsol.policy);
+            auto rew = craam::algorithms::rewards_vec(pb, rsol.policy);
+            result["mat"] = as_matrix(tmat);
+            result["rew"] = rew;
+        } else {
+            auto pb = craam::algorithms::PlainBellman(m);
+            auto tmat = craam::algorithms::transition_mat(pb, sol.policy);
+            auto rew = craam::algorithms::rewards_vec(pb, sol.policy);
+            result["mat"] = as_matrix(tmat);
+            result["rew"] = rew;
+        }
     }
 
-    result["iters"] = sol.iterations;
-    result["residual"] = sol.residual;
-    result["time"] = sol.time;
-    result["policy"] = move(sol.policy);
-    result["valuefunction"] = move(sol.valuefunction);
+    if (is_randomized) {
+        result["iters"] = rsol.iterations;
+        result["residual"] = rsol.residual;
+        result["time"] = rsol.time;
+        result["policy"] = output_policy(rsol.policy);
+        result["valuefunction"] = move(rsol.valuefunction);
+    } else {
+        result["iters"] = sol.iterations;
+        result["residual"] = sol.residual;
+        result["time"] = sol.time;
+        result["policy"] = output_policy(sol.policy);
+        result["valuefunction"] = move(sol.valuefunction);
+    }
+
     return result;
 }
 
@@ -325,7 +446,6 @@ algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String nature,
                          SEXP nature_par, Rcpp::List options) {
-
     try {
 
         MDP m = mdp_from_dataframe(mdp);
@@ -373,7 +493,7 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
         std::tie(dec_pol, nat_pol) = unzip(sol.policy);
 #endif
 
-        result["policy"] = move(dec_pol);
+        result["policy"] = output_policy(dec_pol);
         result["policy.nature"] = move(nat_pol);
         result["valuefunction"] = move(sol.valuefunction);
         return result;
@@ -392,13 +512,16 @@ algorithms::SNature parse_nature_s(const MDP& mdp, const string& nature,
         return algorithms::nats::robust_l1u(Rcpp::as<double>(nature_par));
     }*/
     if (nature == "l1") {
-        numvec values = parse_s_values(mdp, Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0);
+        numvec values =
+            parse_s_values<prec_t>(mdp, Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0);
         return algorithms::nats::robust_s_l1(values);
     }
-    if(nature == "l1w"){
+    if (nature == "l1w") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
-        auto budgets = parse_s_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["budgets"]),0.0);
-        auto weights = parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]), 1.0);
+        auto budgets =
+            parse_s_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["budgets"]), 0.0);
+        auto weights =
+            parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]), 1.0);
         return algorithms::nats::robust_s_l1w(budgets, weights);
     }
     // ----- gurobi only -----
@@ -407,10 +530,12 @@ algorithms::SNature parse_nature_s(const MDP& mdp, const string& nature,
         numvec values = parse_s_values(mdp, Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0);
         return algorithms::nats::robust_s_l1_gurobi(values);
     }
-    if(nature == "l1w_g"){
+    if (nature == "l1w_g") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
-        auto budgets = parse_s_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["budgets"]),0.0);
-        auto weights = parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]), 1.0);
+        auto budgets =
+            parse_s_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["budgets"]), 0.0);
+        auto weights =
+            parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]), 1.0);
         return algorithms::nats::robust_s_l1w_gurobi(budgets, weights);
     }
 #endif
@@ -469,7 +594,7 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     std::tie(dec_pol, nat_pol) = unzip(sol.policy);
 #endif
 
-    result["policy"] = move(dec_pol);
+    result["policy"] = output_policy(dec_pol);
     result["policy.nature"] = move(nat_pol);
     result["valuefunction"] = move(sol.valuefunction);
     return result;

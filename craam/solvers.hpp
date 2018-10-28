@@ -223,6 +223,69 @@ inline DetermSolution solve_lp(const MDP& mdp, prec_t discount,
 #endif // GUROBI_USE
 
 // **************************************************************************
+// Plain MDP methods with a randomized policy (the optimal one is deterministic
+// but a stochastic partial policy may be provided)
+// **************************************************************************
+
+/**
+ * \ingroup ValueIteration
+ */
+inline RandSolution solve_vi_r(const MDP& mdp, prec_t discount,
+                               numvec valuefunction = numvec(0),
+                               const numvecvec& policy = numvecvec(0),
+                               unsigned long iterations = MAXITER,
+                               prec_t maxresidual = SOLPREC,
+                               const std::function<bool(size_t, prec_t)>& progress =
+                                   algorithms::internal::empty_progress) {
+    return algorithms::vi_gs(algorithms::PlainBellmanRand(mdp, policy), discount,
+                             move(valuefunction), iterations, maxresidual, progress);
+}
+
+/**
+ * @ingroup ModifiedPolicyIteration
+ */
+inline RandSolution
+solve_mpi_r(const MDP& mdp, prec_t discount, const numvec& valuefunction = numvec(0),
+            const numvecvec& policy = numvecvec(0), unsigned long iterations_pi = MAXITER,
+            prec_t maxresidual_pi = SOLPREC, unsigned long iterations_vi = MAXITER,
+            prec_t maxresidual_vi = 0.9,
+            const std::function<bool(size_t, prec_t)>& progress =
+                algorithms::internal::empty_progress) {
+
+    return algorithms::mpi_jac(algorithms::PlainBellmanRand(mdp, policy), discount,
+                               valuefunction, iterations_pi, maxresidual_pi,
+                               iterations_vi, maxresidual_vi, progress);
+}
+
+/*
+Computes occupancy frequencies using matrix representation of transition
+probabilities. This method requires computing a matrix inverse.
+
+\param init Initial distribution (alpha)
+\param discount Discount factor (gamma)
+\param policies The policy (indvec) or a pair of the policy and the policy
+        of nature (pair<indvec,vector<numvec> >). The nature is typically
+        a randomized policy
+inline numvec occupancies(const MDP& mdp, const Transition& initial, prec_t discount,
+                          const indvec& policy) {
+
+    return algorithms::occfreq_mat(algorithms::PlainBellman(mdp), initial, discount,
+                                   policy);
+}*/
+
+/**
+ * \ingroup PolicyIteration
+ */
+inline RandSolution solve_pi_r(const MDP& mdp, prec_t discount,
+                               numvec valuefunction = numvec(0),
+                               const numvecvec& policy = numvecvec(0),
+                               unsigned long iterations = MAXITER,
+                               prec_t maxresidual = SOLPREC) {
+    return algorithms::pi(algorithms::PlainBellmanRand(mdp, policy), discount,
+                          move(valuefunction), iterations, maxresidual);
+}
+
+// **************************************************************************
 // Robust MDP methods
 // **************************************************************************
 

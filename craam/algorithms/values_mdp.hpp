@@ -164,20 +164,17 @@ inline vector<numvec> compute_zvalues(const State& state, const numvec& valuefun
 }
 
 /**
-Computes the value of a fixed action and fixed response of nature.
+Computes the value of a probability distribution over actions.
 
 @param state State to compute the value for
 @param valuefunction Value function to use in computing value of states.
 @param discount Discount factor
 @param actiondist Distribution over actions
-@param distribution New distribution over states with non-zero nominal
-probabilities
 
 @return Value of state, 0 if it's terminal regardless of the action index
 */
 inline prec_t value_fix_state(const State& state, numvec const& valuefunction,
-                              prec_t discount, const numvec& actiondist,
-                              const numvec& distribution) {
+                              prec_t discount, const numvec& actiondist) {
     // this is the terminal state, return 0
     if (state.is_terminal()) return 0;
 
@@ -187,12 +184,14 @@ inline prec_t value_fix_state(const State& state, numvec const& valuefunction,
     prec_t result = 0.0;
     for (size_t actionid = 0; actionid < state.size(); actionid++) {
         const auto& action = state[actionid];
-        // cannot assume that the action is valid
-        if (!state.is_valid(actionid))
+
+        // cannot take an invalid action
+        if (!state.is_valid(actionid) && actiondist[actionid] > 0)
             throw invalid_argument("Cannot take an invalid action");
 
-        result += actiondist[actionid] *
-                  value_action(action, valuefunction, discount, distribution);
+        assert(actiondist[actionid] >= 0);
+
+        result += actiondist[actionid] * value_action(action, valuefunction, discount);
     }
     return result;
 }
