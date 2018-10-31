@@ -3,6 +3,7 @@
 #define GUROBI_USE
 
 #include "craam/MDP.hpp"
+#include "craam/MDPO.hpp"
 
 #include <Rcpp.h>
 #include <eigen3/Eigen/Dense>
@@ -76,4 +77,56 @@ inline Rcpp::NumericMatrix as_matrix(const Eigen::MatrixXd& matrix) {
         }
     }
     return result;
+}
+
+/**
+ * Parses a data frame  to an MDP
+ *
+ * Also checks whether the values passed are consistent with the MDP definition.
+ *
+ * @param frame Dataframe with 3 comlumns, idstatefrom, idaction, idstateto, reward, probability.
+ *              Multiple state-action-state rows have summed probabilities and averaged rewards.
+ *
+ * @returns Corresponding MDP definition
+ */
+craam::MDP mdp_from_dataframe(const Rcpp::DataFrame& data) {
+    // idstatefrom, idaction, idstateto, probability, reward
+    Rcpp::IntegerVector idstatefrom = data["idstatefrom"], idaction = data["idaction"],
+                        idstateto = data["idstateto"];
+    Rcpp::NumericVector probability = data["probability"], reward = data["reward"];
+
+    size_t n = data.nrow();
+    craam::MDP m;
+
+    for (size_t i = 0; i < n; i++) {
+        craam::add_transition(m, idstatefrom[i], idaction[i], idstateto[i],
+                              probability[i], reward[i]);
+    }
+    return m;
+}
+
+/**
+ * Parses a data frame to an MDPO (mdp with outcomes)
+ *
+ * Also checks whether the values passed are consistent with the MDPO definition.
+ *
+ * @param frame Dataframe with 3 comlumns, idstatefrom, idaction, idoutcome, idstateto, reward, probability.
+ *              Multiple state-action-state rows have summed probabilities and averaged rewards.
+ *
+ * @returns Corresponding MDP definition
+ */
+craam::MDPO mdpo_from_dataframe(const Rcpp::DataFrame& data) {
+    // idstatefrom, idaction, idstateto, probability, reward
+    Rcpp::IntegerVector idstatefrom = data["idstatefrom"], idaction = data["idaction"],
+                        idstateto = data["idstateto"], idoutcome = data["idoutcome"];
+    Rcpp::NumericVector probability = data["probability"], reward = data["reward"];
+
+    size_t n = data.nrow();
+    craam::MDPO m;
+
+    for (size_t i = 0; i < n; i++) {
+        craam::add_transition(m, idstatefrom[i], idaction[i], idoutcome[i], idstateto[i],
+                              probability[i], reward[i]);
+    }
+    return m;
 }

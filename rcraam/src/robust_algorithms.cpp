@@ -40,33 +40,6 @@ Rcpp::List worstcase_l1(Rcpp::NumericVector z, Rcpp::NumericVector q, double t) 
 }
 
 /**
- * Parses a data frame  to an MDP
- *
- * Also checks whether the values passed are consistent with the MDP definition.
- *
- * @param frame Dataframe with 3 comlumns, idstatefrom, idaction, idstateto, reward, probability.
- *              Multiple state-action-state rows have summed probabilities and averaged rewards.
- *
- * @returns Corresponding MDP definition
- */
-craam::MDP mdp_from_dataframe(const Rcpp::DataFrame& data) {
-    // idstatefrom, idaction, idstateto, probability, reward
-    Rcpp::IntegerVector idstatefrom = data["idstatefrom"], idaction = data["idaction"],
-                        idstateto = data["idstateto"];
-    Rcpp::NumericVector probability = data["probability"], reward = data["reward"];
-
-    size_t n = data.nrow();
-    MDP m;
-
-    for (size_t i = 0; i < n; i++) {
-        craam::add_transition(m, idstatefrom[i], idaction[i], idstateto[i],
-                              probability[i], reward[i]);
-    }
-
-    return m;
-}
-
-/**
  * Parses a data frame definition of values that correspond to states.
  *
  * Also checks whether the values passed are consistent with the MDP definition.
