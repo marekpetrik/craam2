@@ -25,6 +25,10 @@ set_rcraam_threads <- function(n) {
     invisible(.Call(`_rcraam_set_rcraam_threads`, n))
 }
 
+mdp_from_samples <- function(samples_frame) {
+    .Call(`_rcraam_mdp_from_samples`, samples_frame)
+}
+
 mdp_example <- function(name) {
     .Call(`_rcraam_mdp_example`, name)
 }

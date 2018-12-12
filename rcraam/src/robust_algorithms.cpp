@@ -1,5 +1,6 @@
 #include "utils.hpp"
 
+#include "craam/Samples.hpp"
 #include "craam/algorithms/nature_declarations.hpp"
 #include "craam/algorithms/nature_response.hpp"
 #include "craam/definitions.hpp"
@@ -610,4 +611,31 @@ void set_rcraam_threads(int n) {
 #else
     Rcpp::stop("Compiled without OPENMP support, cannot set the number of threads.");
 #endif
+}
+
+/**
+Builds MDP from samples
+*/
+// [[Rcpp::export]]
+Rcpp::DataFrame mdp_from_samples(Rcpp::DataFrame samples_frame) {
+    Rcpp::IntegerVector idstatefrom = samples_frame["idstatefrom"],
+                        idaction = samples_frame["idaction"],
+                        idstateto = samples_frame["idstateto"];
+    Rcpp::NumericVector reward = samples_frame["reward"];
+
+    craam::msen::DiscreteSamples samples;
+
+    // values from the last sample
+    int last_step, last_state, last_action;
+    double last_reward;
+
+    for (int i = 0; i < samples_frame.nrows(); ++i) {
+        samples.add_sample(idstatefrom[i], idaction[i], idstateto[i], reward[i], 1.0, i,
+                           0);
+    }
+
+    craam::msen::SampledMDP smdp;
+    smdp.add_samples(samples);
+
+    return mdp_to_dataframe(*smdp.get_mdp());
 }
