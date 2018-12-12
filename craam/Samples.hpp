@@ -122,7 +122,7 @@ public:
     /** Adds an initial state */
     void add_initial(State&& decstate) { this->initial.push_back(decstate); };
 
-    /** Adds a sample starting in a decision state */
+    /** Adds a transition sample */
     void add_sample(const Sample<State, Action>& sample) {
         states_from.push_back(sample.state_from());
         actions.push_back(sample.action());
@@ -137,7 +137,7 @@ public:
         runs.push_back(sample.run());
     };
 
-    /** Adds a sample starting in a decision state */
+    /** Adds a transition sample */
     void add_sample(State state_from, Action action, State state_to, prec_t reward,
                     prec_t weight, long step, long run) {
 

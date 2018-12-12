@@ -37,7 +37,7 @@ inline Rcpp::DataFrame mdp_to_dataframe(const craam::MDP& mdp) {
     craam::indvec idstatefrom, idaction, idstateto;
     craam::numvec probability, reward;
 
-    for (size_t i = 0l; i < mdp.size(); i++) {
+    for (size_t i = 0; i < mdp.size(); i++) {
         const auto& state = mdp[i];
         //idaction
         for (size_t j = 0; j < state.size(); j++) {
