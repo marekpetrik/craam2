@@ -1068,6 +1068,7 @@ BOOST_AUTO_TEST_CASE(test_piecewise_linear_f) {
 }
 
 #if __cplusplus >= 201703L
+
 #ifdef GUROBI_USE
 BOOST_AUTO_TEST_CASE(test_solve_srect) {
     // set parameters
@@ -1103,6 +1104,19 @@ BOOST_AUTO_TEST_CASE(test_solve_srect) {
 }
 #endif
 
+BOOST_AUTO_TEST_CASE(test_solve_srect_same) {
+    // set parameters
+    const vector<numvec> p{{0.3, 0.2, 0.1, 0.4}, {0.3, 0.6, 0.1}, {0.1, 0.3, 0.6}};
+    const vector<numvec> z{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
+
+    GRBEnv env = get_gurobi();
+
+    for (double psi = 0.0; psi < 3.0; psi += 0.1) {
+        auto [obj, d, xi] = solve_srect_bisection(z, p, psi);
+        BOOST_CHECK_CLOSE(obj, 1.00, 1e-3);
+    }
+}
+
 BOOST_AUTO_TEST_CASE(test_responses) {
     // set parameters
     const vector<numvec> p{{0.3, 0.2, 0.1, 0.4}, {0.3, 0.6, 0.1}, {0.1, 0.3, 0.6}};
@@ -1110,7 +1124,7 @@ BOOST_AUTO_TEST_CASE(test_responses) {
     const vector<numvec> w{{0.3, 0.3, 0.3, 0.1}, {0.2, 0.5, 0.3}, {0.7, 0.1, 0.2}};
 
     // uniform weights
-    const vector<numvec> wu{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
+    const vector<numvec> wu{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 2.0}};
 
 #ifdef GUROBI_USE
     GRBEnv env = get_gurobi();
