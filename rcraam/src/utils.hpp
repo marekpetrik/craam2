@@ -89,7 +89,7 @@ inline Rcpp::NumericMatrix as_matrix(const Eigen::MatrixXd& matrix) {
  *
  * @returns Corresponding MDP definition
  */
-craam::MDP mdp_from_dataframe(const Rcpp::DataFrame& data) {
+inline craam::MDP mdp_from_dataframe(const Rcpp::DataFrame& data) {
     // idstatefrom, idaction, idstateto, probability, reward
     Rcpp::IntegerVector idstatefrom = data["idstatefrom"], idaction = data["idaction"],
                         idstateto = data["idstateto"];
@@ -115,7 +115,7 @@ craam::MDP mdp_from_dataframe(const Rcpp::DataFrame& data) {
  *
  * @returns Corresponding MDP definition
  */
-craam::MDPO mdpo_from_dataframe(const Rcpp::DataFrame& data) {
+inline craam::MDPO mdpo_from_dataframe(const Rcpp::DataFrame& data) {
     // idstatefrom, idaction, idstateto, probability, reward
     Rcpp::IntegerVector idstatefrom = data["idstatefrom"], idaction = data["idaction"],
                         idstateto = data["idstateto"], idoutcome = data["idoutcome"];

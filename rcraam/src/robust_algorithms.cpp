@@ -482,9 +482,9 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
  */
 algorithms::SNature parse_nature_s(const MDP& mdp, const string& nature,
                                    SEXP nature_par) {
-    /*if(nature == "l1u"){
-        return algorithms::nats::robust_l1u(Rcpp::as<double>(nature_par));
-    }*/
+    if (nature == "l1u") {
+        return algorithms::nats::robust_s_l1u(Rcpp::as<double>(nature_par));
+    }
     if (nature == "l1") {
         numvec values =
             parse_s_values<prec_t>(mdp, Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0);

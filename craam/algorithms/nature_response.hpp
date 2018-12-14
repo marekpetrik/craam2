@@ -310,7 +310,7 @@ public:
     operator()(long stateid, const vector<numvec>& nominalprobs,
                const vector<numvec>& zvalues) const {
 
-        // TODO: refactor this out and the robust_s_l1 to the same method
+        // TODO: refactor this and the robust_s_l1 to the same method
 
         assert(stateid >= 0);
         assert(nominalprobs.size() == zvalues.size());
