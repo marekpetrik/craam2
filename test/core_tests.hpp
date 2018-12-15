@@ -1124,7 +1124,7 @@ BOOST_AUTO_TEST_CASE(test_responses) {
     const vector<numvec> w{{0.3, 0.3, 0.3, 0.1}, {0.2, 0.5, 0.3}, {0.7, 0.1, 0.2}};
 
     // uniform weights
-    const vector<numvec> wu{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 2.0}};
+    const vector<numvec> wu{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
 
 #ifdef GUROBI_USE
     GRBEnv env = get_gurobi();

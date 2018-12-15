@@ -42,66 +42,66 @@ using namespace std;
    constant going to the infinity.
 
     @param knots Knots of the function (in parameter x). The array must be
-   sorted increasingly.
+               sorted increasingly.
     @param values Values in the knots (h(k) for knot k)
     @param x The parameter value
+    @param break_ties_last Whether to choose the last element of a tied set.
+                (multiple knots equal x)
+                Otherwise the first element is chosen.
 
     @return Value of the piecewise linear function and the index of the knot.
          The value is between knots[index-1] and knots[index]. If the parameter is
          past the largest knot, then index points beyond the end of the array
  */
 std::pair<prec_t, size_t> piecewise_linear(const numvec& knots, const numvec& values,
-                                           prec_t x) {
+                                           prec_t x, bool break_ties_last = false) {
 
     const prec_t epsilon = 1e-10;
 
     assert(knots.size() == values.size());
     assert(is_sorted(knots.cbegin(), knots.cend()));
 
-    // This approach is not correct because it returns the last element
-    // that is greater than what we are looking for. This returns the
-    // largest xi, intead of the required smallest xi, when there
-    // are ties between the z values.
-    // the largest element that is greater than or equal to x
-    size_t index =
-        size_t(distance(knots.cbegin(), lower_bound(knots.cbegin(), knots.cend(), x)));
+    size_t index;
+    if (break_ties_last) {
+        // call upper_bound to get the last index (smallest xi) in case of a tie
+        index = size_t(
+            distance(knots.cbegin(), std::upper_bound(knots.cbegin(), knots.cend(), x)));
+        // move the index back if x is identical to the last value
+        if (index > 0 && x == knots[index - 1]) --index;
+    } else {
+        index = size_t(
+            distance(knots.cbegin(), std::lower_bound(knots.cbegin(), knots.cend(), x)));
+    }
 
-    // this does not work either
-    //size_t index =
-    //    size_t(distance(knots.cbegin(), lower_bound(knots.cbegin(), knots.cend(), x,
-                                                    std::less_equal<prec_t>()))) +
-        1;
+    // check for function boundaries
+    if (index <= 0) {
+        if (x < knots.front() - epsilon)
+            throw std::invalid_argument("Parameter x is smaller than the valid range.");
+        else
+            return {values.front(), index};
+    }
+    // if all elements are smaller than the last element is returned, so just
+    // return the last value
+    if (index >= knots.size() - 1) {
+        // decide the index based on whether x is really larger than the last knot
+        if (x > knots.back()) {
+            return {values.back(), index + 1};
+        } else if (x == knots.back()) {
+            return {values.back(), index};
+        } // otherwise just continue!
+    }
 
-                                                    // check for function boundaries
-                                                    if (index <= 0) {
-                                                        if (x < knots.front() - epsilon)
-                                                            throw std::invalid_argument(
-                                                                "Parameter x is smaller "
-                                                                "than the valid range.");
-                                                        else
-                                                            return {values.front(),
-                                                                    index};
-                                                    }
-                                                    // if all elements are smaller than the last element is returned, so just
-                                                    // return the last value
-                                                    if (index >= knots.size() - 1 &&
-                                                        x > knots.back()) {
-                                                        return {values.back(), index + 1};
-                                                    }
+    // the linear segment is between (index - 1) and (index),
+    // so we need to average them
+    prec_t x0 = knots[index - 1];
+    prec_t x1 = knots[index];
+    // x = alpha * x0 + (1 - alpha) * x1
+    // alpha = (x - x1) / (x0 - x1)
+    prec_t alpha = (x1 - x) / (x1 - x0);
+    assert(alpha >= 0 && alpha <= 1);
 
-                                                    // the linear segment is between (index - 1) and (index),
-                                                    // so we need to average them
-                                                    prec_t x0 = knots[index - 1];
-                                                    prec_t x1 = knots[index];
-                                                    // x = alpha * x0 + (1 - alpha) * x1
-                                                    // alpha = (x - x1) / (x0 - x1)
-                                                    prec_t alpha = (x1 - x) / (x1 - x0);
-                                                    assert(alpha >= 0 && alpha <= 1);
-
-                                                    prec_t value =
-                                                        alpha * values[index - 1] +
-                                                        (1 - alpha) * values[index];
-                                                    return {value, size_t(index)};
+    prec_t value = alpha * values[index - 1] + (1 - alpha) * values[index];
+    return {value, size_t(index)};
 }
 
 /**
@@ -258,11 +258,13 @@ solve_srect_bisection(const vector<numvec>& z, const vector<numvec>& pbar,
     // compute xisum_upper and indices,
     for (size_t a = 0; a < nactions; a++) {
 #ifdef __cpp_structured_bindings
-        auto [xia, index] = piecewise_linear(knots[a], values[a], u_upper);
+        auto [xia, index] =
+            piecewise_linear(knots[a], values[a], u_upper, true); // choose the min xi
 #else
         double xia;
         size_t index;
-        tie(xia, index) = piecewise_linear(knots[a], values[a], u_upper);
+        tie(xia, index) =
+            piecewise_linear(knots[a], values[a], u_upper, true); // choose the min xi
 #endif
         xisum_upper += xia * (wa.empty() ? 1.0 : wa[a]);
         indices_upper[a] = index;
@@ -273,11 +275,13 @@ solve_srect_bisection(const vector<numvec>& z, const vector<numvec>& pbar,
 #ifdef __cpp_structured_bindings
         // this function should compute the **smallest** xi that can achieve
         // the desired u.
-        auto [xia, index] = piecewise_linear(knots[a], values[a], u_lower);
+        auto [xia, index] =
+            piecewise_linear(knots[a], values[a], u_lower, false); // choose the max xi
 #else
         double xia;
         size_t index;
-        tie(xia, index) = piecewise_linear(knots[a], values[a], u_lower);
+        tie(xia, index) =
+            piecewise_linear(knots[a], values[a], u_lower, false); // choose the max xi
 #endif
         assert((wa.empty() ? 1.0 : wa[a]) > 0.0);
         xisum_lower += xia * (wa.empty() ? 1.0 : wa[a]);
@@ -317,11 +321,13 @@ solve_srect_bisection(const vector<numvec>& z, const vector<numvec>& pbar,
         sizvec indices_pivot(nactions);
         for (size_t a = 0; a < nactions; a++) {
 #ifdef __cpp_structured_bindings
-            auto [xia, index] = piecewise_linear(knots[a], values[a], u_pivot);
+            auto [xia, index] =
+                piecewise_linear(knots[a], values[a], u_pivot, true); // choose the min xi
 #else
             double xia;
             size_t index;
-            tie(xia, index) = piecewise_linear(knots[a], values[a], u_pivot);
+            tie(xia, index) =
+                piecewise_linear(knots[a], values[a], u_pivot, true); //choose the min xi
 #endif
             xisum += xia * (wa.empty() ? 1.0 : wa[a]);
             indices_pivot[a] = index;
@@ -371,11 +377,13 @@ solve_srect_bisection(const vector<numvec>& z, const vector<numvec>& pbar,
     // segment)
     for (size_t a = 0; a < nactions; a++) {
 #ifdef __cpp_structured_bindings
-        auto [xia, index] = piecewise_linear(knots[a], values[a], u_result);
+        auto [xia, index] =
+            piecewise_linear(knots[a], values[a], u_result, true); // choose min xi
 #else
         double xia;
         size_t index;
-        tie(xia, index) = piecewise_linear(knots[a], values[a], u_result);
+        tie(xia, index) =
+            piecewise_linear(knots[a], values[a], u_result, true); // choose min xi
 #endif
         xi[a] = xia;
 
@@ -404,7 +412,7 @@ solve_srect_bisection(const vector<numvec>& z, const vector<numvec>& pbar,
         // the value u lies between index - 1 and index
         // when it is outside of the largest knot, the derivative is 0 and policy
         // will be 0 (this is when f_a(xi_a^*) < u^*)
-        //      that case can be ignored because pi is already intialized
+        //      that case can be ignored because pi is already initialized
         if (index < knots[a].size()) {
             // we are not outside of the largest knot or the smallest knot
 
