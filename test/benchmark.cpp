@@ -35,6 +35,7 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <variant>
 
 using namespace std;
 using namespace craam;
@@ -69,7 +70,8 @@ void solve_mdp(const cxxopts::Options& options, Solver solver) {
     // output values
     int iters;
     prec_t residual;
-    indvec policy;
+    // represents a deterministic or randomized policy
+    std::variant<indvec, numvecvec> policy;
     numvec valuefunction;
 
     if (ambiguity.empty()) {
@@ -92,17 +94,35 @@ void solve_mdp(const cxxopts::Options& options, Solver solver) {
         algorithms::SARobustSolution sol;
 
         prec_t budget = options["budget"].as<prec_t>();
-        numvecvec budgets =
-            map_sa<prec_t>(mdp, [budget](const State&, const Action&) { return budget; });
 
         if (solver == Solver::MPI) {
             sol = algorithms::rsolve_mpi(
-                mdp, discount, algorithms::nats::robust_l1(budgets), numvec(0), indvec(0),
+                mdp, discount, algorithms::nats::robust_l1u(budget), numvec(0), indvec(0),
                 iterations, precision, MAXITER, precision);
         } else if (solver == Solver::VI) {
             sol =
-                algorithms::rsolve_vi(mdp, discount, algorithms::nats::robust_l1(budgets),
+                algorithms::rsolve_vi(mdp, discount, algorithms::nats::robust_l1u(budget),
                                       numvec(0), indvec(0), iterations, precision);
+        } else {
+            throw invalid_argument("Unknown solver type.");
+        }
+        iters = sol.iterations;
+        residual = sol.residual;
+        policy = unzip(sol.policy).first;
+        valuefunction = move(sol.valuefunction);
+    } else if (ambiguity == "L1_s") {
+        algorithms::SRobustSolution sol;
+
+        prec_t budget = options["budget"].as<prec_t>();
+
+        if (solver == Solver::MPI) {
+            sol = algorithms::rsolve_s_mpi(
+                mdp, discount, algorithms::nats::robust_s_l1u(budget), numvec(0),
+                indvec(0), iterations, precision, MAXITER, precision);
+        } else if (solver == Solver::VI) {
+            sol = algorithms::rsolve_s_vi(mdp, discount,
+                                          algorithms::nats::robust_s_l1u(budget),
+                                          numvec(0), indvec(0), iterations, precision);
         } else {
             throw invalid_argument("Unknown solver type.");
         }
@@ -156,10 +176,22 @@ void solve_mdp(const cxxopts::Options& options, Solver solver) {
             cout << "Could not open the output file for writing" << endl;
             terminate();
         }
-        ofs << "idstate,idaction,value" << endl;
-        for (size_t i = 0; i < mdp.state_count(); i++) {
-            ofs << i << "," << policy[i] << "," << valuefunction[i] << endl;
+        if (std::holds_alternative<indvec>(policy)) {
+            ofs << "idstate,idaction,value" << endl;
+            for (size_t i = 0; i < mdp.state_count(); i++) {
+                ofs << i << "," << std::get<indvec>(policy)[i] << "," << valuefunction[i]
+                    << endl;
+            }
+        } else {
+            ofs << "idstate,idaction,prob,value" << endl;
+            for (size_t i = 0; i < mdp.state_count(); i++) {
+                for (size_t j = 0; j < mdp[i].size(); j++) {
+                    ofs << i << "," << j << "," << std::get<numvecvec>(policy)[i][j]
+                        << "," << valuefunction[i] << endl;
+                }
+            }
         }
+
         ofs.close();
     }
     cout << "Done." << endl;
@@ -240,17 +272,17 @@ int main(int argc, char* argv[]) {
     } catch (const cxxopts::OptionException& oe) {
         cout << oe.what() << endl << endl << " *** usage *** " << endl;
         cout << options.help() << endl;
-        terminate();
+        return 0;
     }
 
     if (options["h"].as<bool>()) {
         cout << options.help() << endl;
-        terminate();
+        return 0;
     }
 
     if (options.count("input") == 0) {
         cout << "No input file provided. See usage (-h)." << endl;
-        terminate();
+        return 0;
     }
 
     const auto method = options["method"].as<std::string>();
@@ -262,6 +294,6 @@ int main(int argc, char* argv[]) {
         build_mdp(options);
     } else {
         cout << "Unknown method type: " << method << "." << endl;
-        terminate();
+        return 0;
     }
 }

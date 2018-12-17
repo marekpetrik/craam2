@@ -224,7 +224,9 @@ Rcpp::DataFrame output_policy(const numvecvec& policy) {
     return result;
 }
 
-/** Packs MDP actions to be consequitive */
+/**
+ * Packs MDP actions to be consequitive
+ */
 //[[Rcpp::export]]
 Rcpp::List pack_actions(Rcpp::DataFrame mdp) {
     Rcpp::List result;

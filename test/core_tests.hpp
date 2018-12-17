@@ -1107,7 +1107,7 @@ BOOST_AUTO_TEST_CASE(test_solve_srect) {
 BOOST_AUTO_TEST_CASE(test_solve_srect_same) {
     // set parameters
     const vector<numvec> p{{0.3, 0.2, 0.1, 0.4}, {0.3, 0.6, 0.1}, {0.1, 0.3, 0.6}};
-    const vector<numvec> z{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
+    const vector<numvec> z{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 0.9}};
 
     GRBEnv env = get_gurobi();
 

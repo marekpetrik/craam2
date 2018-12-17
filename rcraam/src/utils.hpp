@@ -58,10 +58,19 @@ inline Rcpp::DataFrame mdp_to_dataframe(const craam::MDP& mdp) {
         }
     }
 
+    // this is to make sure that the type on the dataframe is an integer
+    auto idstatefrom_v =
+        Rcpp::IntegerVector::import(idstatefrom.cbegin(), idstatefrom.cend());
+    auto idaction_v = Rcpp::IntegerVector::import(idaction.cbegin(), idaction.cend());
+    auto idstateto_v = Rcpp::IntegerVector::import(idstateto.cbegin(), idstateto.cend());
+    auto probability_v =
+        Rcpp::NumericVector::import(probability.cbegin(), probability.cend());
+    auto reward_v = Rcpp::NumericVector::import(reward.cbegin(), reward.cend());
+
     return Rcpp::DataFrame::create(
-        Rcpp::_["idstatefrom"] = idstatefrom, Rcpp::_["idaction"] = idaction,
-        Rcpp::_["idstateto"] = idstateto, Rcpp::_["probability"] = probability,
-        Rcpp::_["reward"] = reward);
+        Rcpp::Named("idstatefrom") = idstatefrom_v, Rcpp::Named("idaction") = idaction_v,
+        Rcpp::Named("idstateto") = idstateto_v,
+        Rcpp::Named("probability") = probability_v, Rcpp::Named("reward") = reward_v);
 }
 
 /**
