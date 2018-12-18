@@ -97,7 +97,7 @@ std::pair<prec_t, size_t> piecewise_linear(const numvec& knots, const numvec& va
     prec_t x1 = knots[index];
     // x = alpha * x0 + (1 - alpha) * x1
     // alpha = (x - x1) / (x0 - x1)
-    prec_t alpha = (x1 - x) / (x1 - x0);
+    prec_t alpha = abs(x1 - x0) > EPSILON ? (x1 - x) / (x1 - x0) : 0.5;
     assert(alpha >= 0 && alpha <= 1);
 
     prec_t value = alpha * values[index - 1] + (1 - alpha) * values[index];
@@ -380,7 +380,6 @@ solve_srect_bisection(const vector<numvec>& z, const vector<numvec>& pbar,
     // and ignore the inactive actions (for which u is higher than the last
     // segment)
 
-    indvec dbg_indexes; // DEBUG values, REMOVE
     for (size_t a = 0; a < nactions; a++) {
 #ifdef __cpp_structured_bindings
         auto [xia, index] =
@@ -392,28 +391,30 @@ solve_srect_bisection(const vector<numvec>& z, const vector<numvec>& pbar,
             piecewise_linear(knots[a], values[a], u_result, true); // choose min xi
 #endif
         xi[a] = xia;
-        dbg_indexes.push_back(index);
 
         // cout << " index " << index << "/" << knots[a].size() << endl;
         assert(knots[a].size() == values[a].size());
 
         // This means that the smallest knot was returned for the primal solution
+        // probably because of a numerical issues -> just change it to index 1
         if (index == 0) {
-#ifndef NDEBUG
-            std::cout << "z[a] = " << z[a] << std::endl;
-            std::cout << "pbar[a] = " << pbar[a] << std::endl;
-            std::cout << "knots = " << knots[a] << std::endl;
-            std::cout << "values = " << values[a] << std::endl;
-#endif
+
+            assert(abs(u_result - knots[a][0]) < EPSILON);
+            index = 1;
+            //std::cout << "z[a] = " << z[a] << std::endl;
+            //std::cout << "pbar[a] = " << pbar[a] << std::endl;
+            //std::cout << "knots = " << knots[a] << std::endl;
+            //std::cout << "values = " << values[a] << std::endl;
+
             // TODO: Can this ever happen?
-            throw std::runtime_error(
-                "This should not happen (can happen when z's are all "
-                "the same); index = 0 should be handled by the "
-                "special case with u_lower feasible. u_lower = " +
-                to_string(u_lower) + ", u_upper = " + to_string(u_upper) +
-                ", xisum_lower = " + to_string(xisum_lower) +
-                ", xisum_upper = " + to_string(xisum_upper) +
-                ", psi = " + to_string(psi) + ", knots = " + to_string(knots[a].size()));
+            //throw std::runtime_error(
+            //    "This should not happen (can happen when z's are all "
+            //    "the same); index = 0 should be handled by the "
+            //    "special case with u_lower feasible. u_lower = " +
+            //    to_string(u_lower) + ", u_upper = " + to_string(u_upper) +
+            //    ", xisum_lower = " + to_string(xisum_lower) +
+            //    ", xisum_upper = " + to_string(xisum_upper) +
+            //    ", psi = " + to_string(psi) + ", knots = " + to_string(knots[a].size()));
         }
 
         // the value u lies between index - 1 and index
