@@ -292,7 +292,7 @@ solve_srect_bisection(const vector<numvec>& z, const vector<numvec>& pbar,
     // need to handle the case when u_lower is feasible. Because the rest of the
     // code assumes that u_lower is infeasible.
     // This situation happens when psi is not constraining (very large)
-    if (xisum_lower <= psi) {
+    if (xisum_lower <= psi || u_lower == u_upper) {
         // index of the state which the index is 0
         size_t zero_index =
             size_t(distance(indices_lower.cbegin(),
@@ -333,7 +333,7 @@ solve_srect_bisection(const vector<numvec>& z, const vector<numvec>& pbar,
             indices_pivot[a] = index;
         }
 
-        // set lower an upper bounds depending on whether the solution is feasible
+        // set lower an upper bound depending on whether the solution is feasible
         if (xisum <= psi) {
             // solution is feasible
             u_upper = u_pivot;
@@ -368,13 +368,19 @@ solve_srect_bisection(const vector<numvec>& z, const vector<numvec>& pbar,
     assert(alpha >= 0 && alpha <= 1);
 
     // the result is then: alpha * u_lower + (1-alpha) * u_upper
-    prec_t u_result = alpha * u_lower + (1 - alpha) * u_upper;
+    // Note: numerical issues possible with alpha * u_lower + (1-alpha) * u_upper
+    prec_t u_result = alpha * (u_lower - u_upper) + u_upper;
+
+    // yes, I have seen this being violated here
+    assert(u_result >= u_lower && u_result <= u_upper);
 
     // ***** NOW compute the primal solution (pi) ***************
     // this is based on computing pi such that the subderivative of
     // d/dxi ( sum_a pi_a f_a(xi_a) - lambda (sum_a xi_a f(a) ) ) = 0 for xi^*
     // and ignore the inactive actions (for which u is higher than the last
     // segment)
+
+    indvec dbg_indexes; // DEBUG values, REMOVE
     for (size_t a = 0; a < nactions; a++) {
 #ifdef __cpp_structured_bindings
         auto [xia, index] =
@@ -386,6 +392,7 @@ solve_srect_bisection(const vector<numvec>& z, const vector<numvec>& pbar,
             piecewise_linear(knots[a], values[a], u_result, true); // choose min xi
 #endif
         xi[a] = xia;
+        dbg_indexes.push_back(index);
 
         // cout << " index " << index << "/" << knots[a].size() << endl;
         assert(knots[a].size() == values[a].size());
@@ -419,8 +426,14 @@ solve_srect_bisection(const vector<numvec>& z, const vector<numvec>& pbar,
             // compute the derivative of f (1/derivative of g)
             // prec_t derivative = (knots[a][index] - knots[a][index-1]) /
             // (values[a][index] - values[a][index-1]); pi[a] = 1/derivative;
-            pi[a] = -(values[a][index] - values[a][index - 1]) /
-                    (knots[a][index] - knots[a][index - 1]);
+            if (knots[a][index] - knots[a][index - 1] > EPSILON) {
+                pi[a] = -(values[a][index] - values[a][index - 1]) /
+                        (knots[a][index] - knots[a][index - 1]);
+            } else {
+                // if the derivative is very close to zero, just assign a small value
+                // that will turn to 1 if other actions are not being taking
+                pi[a] = EPSILON;
+            }
         }
 
         // cout << "pi[a] " << pi[a] << endl;
@@ -430,7 +443,7 @@ solve_srect_bisection(const vector<numvec>& z, const vector<numvec>& pbar,
     prec_t pisum = accumulate(pi.cbegin(), pi.cend(), 0.0);
     // u_upper is chosen to be the upper bound, and thus at least one index should
     // be within the range
-    assert(pisum > 1e-5);
+    assert(pisum >= EPSILON);
     // divide by the sum to normalize
     transform(pi.cbegin(), pi.cend(), pi.begin(),
               [pisum](prec_t t) { return t / pisum; });
