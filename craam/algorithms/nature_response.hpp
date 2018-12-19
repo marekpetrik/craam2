@@ -54,8 +54,8 @@ public:
     pair<numvec, prec_t> operator()(long stateid, long actionid,
                                     const numvec& nominalprob,
                                     const numvec& zfunction) const {
-        assert(stateid > 0 && stateid < long(budgets.size()));
-        assert(actionid > 0 && actionid < long(budgets[stateid].size()));
+        assert(stateid >= 0 && stateid < long(budgets.size()));
+        assert(actionid >= 0 && actionid < long(budgets[stateid].size()));
 
         return worstcase_l1(zfunction, nominalprob, budgets[stateid][actionid]);
     }
@@ -90,8 +90,8 @@ public:
     pair<numvec, prec_t> operator()(long stateid, long actionid,
                                     const numvec& nominalprob,
                                     const numvec& zfunction) const {
-        assert(stateid > 0 && stateid < long(budgets.size()));
-        assert(actionid > 0 && actionid < long(budgets[stateid].size()));
+        assert(stateid >= 0 && stateid < long(budgets.size()));
+        assert(actionid >= 0 && actionid < long(budgets[stateid].size()));
         assert(zfunction.size() == weights[stateid][actionid].size());
 
         return worstcase_l1_w(zfunction, nominalprob, weights[stateid][actionid],
@@ -138,8 +138,8 @@ public:
     pair<numvec, prec_t> operator()(long stateid, long actionid,
                                     const numvec& nominalprob,
                                     const numvec& zfunction) const {
-        assert(stateid > 0 && stateid < long(budgets.size()));
-        assert(actionid > 0 && actionid < long(budgets[stateid].size()));
+        assert(stateid >= 0 && stateid < long(budgets.size()));
+        assert(actionid >= 0 && actionid < long(budgets[stateid].size()));
         assert(nominalprob.size() == zfunction.size());
 
         numvec minusv(zfunction.size());
@@ -269,8 +269,8 @@ public:
     pair<numvec, prec_t> operator()(long stateid, long actionid,
                                     const numvec& nominalprob,
                                     const numvec& zfunction) const {
-        assert(stateid > 0 && stateid < long(budgets.size()));
-        assert(actionid > 0 && actionid < long(budgets[stateid].size()));
+        assert(stateid >= 0 && stateid < long(budgets.size()));
+        assert(actionid >= 0 && actionid < long(budgets[stateid].size()));
 
         // check for whether weights are being used
         if (weights.empty()) {
