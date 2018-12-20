@@ -58,12 +58,9 @@ Rcpp::List worstcase_l1(Rcpp::NumericVector z, Rcpp::NumericVector q, double t) 
 template <class T>
 vector<T> parse_s_values(const MDP& mdp, const Rcpp::DataFrame& frame, T def_value = 0,
                          const string& value_column = "value") {
-
     vector<T> result(mdp.size());
-
     Rcpp::IntegerVector idstates = frame["idstate"];
     Rcpp::NumericVector values = frame[value_column];
-
     for (long i = 0; i < idstates.size(); i++) {
         long idstate = idstates[i];
 
@@ -74,7 +71,6 @@ vector<T> parse_s_values(const MDP& mdp, const Rcpp::DataFrame& frame, T def_val
         T value = values[i];
         result[idstate] = value;
     }
-
     return result;
 }
 
@@ -184,14 +180,12 @@ vector<vector<numvec>> parse_sas_values(const MDP& mdp, const Rcpp::DataFrame& f
  * @return Dataframe with idstate, idaction columns (idstate is the index)
  */
 Rcpp::DataFrame output_policy(const indvec& policy) {
-
     indvec states(policy.size());
     std::iota(states.begin(), states.end(), 0);
-
-    Rcpp::DataFrame result;
-    result["idstate"] = std::move(states);
-    result["idaction"] = std::move(policy);
-
+    auto states_v = Rcpp::IntegerVector(states.cbegin(), states.cend());
+    auto policy_v = Rcpp::IntegerVector(policy.cbegin(), policy.cend());
+    auto result = Rcpp::DataFrame::create(Rcpp::Named("idstate") = states_v,
+                                          Rcpp::Named("idaction") = policy_v);
     return result;
 }
 
@@ -204,23 +198,18 @@ Rcpp::DataFrame output_policy(const indvec& policy) {
  *          (idstate, idaction are the index)
  */
 Rcpp::DataFrame output_policy(const numvecvec& policy) {
-
-    indvec states, actions;
-    numvec probabilities;
-
+    Rcpp::IntegerVector states, actions;
+    Rcpp::NumericVector probabilities;
     for (size_t s = 0; s < policy.size(); ++s) {
-        for (size_t a = 0; a < policy[s].size(); ++s) {
+        for (size_t a = 0; a < policy[s].size(); ++a) {
             states.push_back(s);
             actions.push_back(a);
             probabilities.push_back(policy[s][a]);
         }
     }
-
-    Rcpp::DataFrame result;
-    result["idstate"] = std::move(states);
-    result["idaction"] = std::move(actions);
-    result["probability"] = std::move(probabilities);
-
+    auto result = Rcpp::DataFrame::create(Rcpp::Named("idstate") = states,
+                                          Rcpp::Named("idaction") = actions,
+                                          Rcpp::Named("probability") = probabilities);
     return result;
 }
 
@@ -526,22 +515,18 @@ algorithms::SNature parse_nature_s(const MDP& mdp, const string& nature,
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String nature,
                         SEXP nature_par, Rcpp::List options) {
-
     MDP m = mdp_from_dataframe(mdp);
     Rcpp::List result;
-
     if (options.containsElementNamed("pack_actions") &&
         Rcpp::as<bool>(options["pack_actions"])) {
         result["action_map"] = m.pack_actions();
     }
-
     long iterations = options.containsElementNamed("iterations")
                           ? Rcpp::as<long>(options["iterations"])
                           : 1000000;
     double precision = options.containsElementNamed("precision")
                            ? Rcpp::as<long>(options["precision"])
                            : 0.0001;
-
     SRobustSolution sol;
     algorithms::SNature natparsed = parse_nature_s(m, nature, nature_par);
     if (!options.containsElementNamed("algorithm") ||
@@ -557,11 +542,9 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     } else {
         Rcpp::stop("Unknown solver type.");
     }
-
     result["iters"] = sol.iterations;
     result["residual"] = sol.residual;
     result["time"] = sol.time;
-
 #if __cplusplus >= 201703L
     auto [dec_pol, nat_pol] = unzip(sol.policy);
 #else
@@ -569,7 +552,6 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     std::vector<std::vector<craam::numvec>> nat_pol;
     std::tie(dec_pol, nat_pol) = unzip(sol.policy);
 #endif
-
     result["policy"] = output_policy(dec_pol);
     result["policy.nature"] = move(nat_pol);
     result["valuefunction"] = move(sol.valuefunction);

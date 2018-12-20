@@ -192,6 +192,10 @@ zip(const T1& v1, const std::vector<std::vector<T2>>& v2) {
     return result;
 }
 
+/**
+ * Takes a vector of pairs and constructs two vectors from each
+ * component of the pair
+ */
 template <class T1, class T2>
 inline std::pair<std::vector<T1>, std::vector<T2>>
 unzip(const std::vector<std::pair<T1, T2>>& values) {
@@ -199,7 +203,6 @@ unzip(const std::vector<std::pair<T1, T2>>& values) {
     first.reserve(values.size());
     std::vector<T2> second;
     second.reserve(values.size());
-
     for (const auto& x : values) {
         first.push_back(x.first);
         second.push_back(x.second);
