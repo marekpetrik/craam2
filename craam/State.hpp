@@ -199,6 +199,13 @@ public:
         return original;
     }
 
+    // ******************************************
+    // Collection functions
+    // *******************************************
+
+    auto begin() const { return actions.cbegin(); }
+    auto end() const { return actions.cend(); }
+
 protected:
     /** Returns an existing action */
     const AType& get_action(long actionid) const {

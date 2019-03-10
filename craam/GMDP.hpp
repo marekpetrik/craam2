@@ -418,6 +418,13 @@ public:
         return result;
     }
 
+    // ******************************************
+    // Collection functions
+    // *******************************************
+
+    auto begin() const { return states.cbegin(); }
+    auto end() const { return states.cend(); }
+
 protected:
     /** Retrieves an existing state */
     const SType& get_state(long stateid) const {

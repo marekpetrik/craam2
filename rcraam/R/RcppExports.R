@@ -13,6 +13,10 @@ solve_mdp <- function(mdp, discount, options) {
     .Call(`_rcraam_solve_mdp`, mdp, discount, options)
 }
 
+compute_qvalues <- function(mdp, valuefunction, discount) {
+    .Call(`_rcraam_compute_qvalues`, mdp, valuefunction, discount)
+}
+
 rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, options) {
     .Call(`_rcraam_rsolve_mdp_sa`, mdp, discount, nature, nature_par, options)
 }

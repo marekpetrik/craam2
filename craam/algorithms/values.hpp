@@ -56,7 +56,8 @@ inline pair<long, prec_t> value_max_state(const SAState<AType>& state,
         auto const& action = state[i];
 
         if (!state.is_valid(i))
-            throw invalid_argument("cannot have an invalid state and action");
+            throw invalid_argument("cannot have an invalid state and action (state and "
+                                   "action with no transitions).");
 
         auto value = value_action(action, valuefunction, discount);
         if (value >= maxvalue) {

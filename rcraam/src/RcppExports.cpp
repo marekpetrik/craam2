@@ -43,6 +43,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// compute_qvalues
+Rcpp::DataFrame compute_qvalues(Rcpp::DataFrame mdp, Rcpp::NumericVector valuefunction, double discount);
+RcppExport SEXP _rcraam_compute_qvalues(SEXP mdpSEXP, SEXP valuefunctionSEXP, SEXP discountSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type mdp(mdpSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type valuefunction(valuefunctionSEXP);
+    Rcpp::traits::input_parameter< double >::type discount(discountSEXP);
+    rcpp_result_gen = Rcpp::wrap(compute_qvalues(mdp, valuefunction, discount));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rsolve_mdp_sa
 Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String nature, SEXP nature_par, Rcpp::List options);
 RcppExport SEXP _rcraam_rsolve_mdp_sa(SEXP mdpSEXP, SEXP discountSEXP, SEXP natureSEXP, SEXP nature_parSEXP, SEXP optionsSEXP) {
@@ -121,6 +134,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_rcraam_worstcase_l1", (DL_FUNC) &_rcraam_worstcase_l1, 3},
     {"_rcraam_pack_actions", (DL_FUNC) &_rcraam_pack_actions, 1},
     {"_rcraam_solve_mdp", (DL_FUNC) &_rcraam_solve_mdp, 3},
+    {"_rcraam_compute_qvalues", (DL_FUNC) &_rcraam_compute_qvalues, 3},
     {"_rcraam_rsolve_mdp_sa", (DL_FUNC) &_rcraam_rsolve_mdp_sa, 5},
     {"_rcraam_rsolve_mdp_s", (DL_FUNC) &_rcraam_rsolve_mdp_s, 5},
     {"_rcraam_set_rcraam_threads", (DL_FUNC) &_rcraam_set_rcraam_threads, 1},

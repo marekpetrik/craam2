@@ -190,6 +190,31 @@ Rcpp::DataFrame output_policy(const indvec& policy) {
 }
 
 /**
+ * Turns a nested structure of state-action values to a dataframe with
+ * state and action as the columns
+ *
+ * @param policy A state-action value
+ * @param value_column Name of the value column
+ * @return Dataframe with idstae, idaction, probability columns
+ *          (idstate, idaction are the index)
+ */
+Rcpp::DataFrame output_sa_values(const numvecvec& values, const string& value_column) {
+    Rcpp::IntegerVector states, actions;
+    Rcpp::NumericVector values_c;
+    for (size_t s = 0; s < values.size(); ++s) {
+        for (size_t a = 0; a < values[s].size(); ++a) {
+            states.push_back(s);
+            actions.push_back(a);
+            values_c.push_back(values[s][a]);
+        }
+    }
+    auto result = Rcpp::DataFrame::create(Rcpp::Named("idstate") = states,
+                                          Rcpp::Named("idaction") = actions,
+                                          Rcpp::Named(value_column) = values_c);
+    return result;
+}
+
+/**
  * Turns a randomized policy to a dataframe with state and action
  * as the columns
  *
@@ -198,19 +223,7 @@ Rcpp::DataFrame output_policy(const indvec& policy) {
  *          (idstate, idaction are the index)
  */
 Rcpp::DataFrame output_policy(const numvecvec& policy) {
-    Rcpp::IntegerVector states, actions;
-    Rcpp::NumericVector probabilities;
-    for (size_t s = 0; s < policy.size(); ++s) {
-        for (size_t a = 0; a < policy[s].size(); ++a) {
-            states.push_back(s);
-            actions.push_back(a);
-            probabilities.push_back(policy[s][a]);
-        }
-    }
-    auto result = Rcpp::DataFrame::create(Rcpp::Named("idstate") = states,
-                                          Rcpp::Named("idaction") = actions,
-                                          Rcpp::Named("probability") = probabilities);
-    return result;
+    return output_sa_values(policy, "probability");
 }
 
 /**
@@ -236,11 +249,14 @@ Rcpp::List pack_actions(Rcpp::DataFrame mdp) {
  *          pack_actions: bool
  *          iterations: int
  *          precision: double
+ *          policy : evaluate the deterministic policy
+ *          policy_rand: evalute the randomized policy
  */
 // [[Rcpp::export]]
 Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::List options) {
-    MDP m = mdp_from_dataframe(mdp);
     Rcpp::List result;
+
+    MDP m = mdp_from_dataframe(mdp);
 
     if (options.containsElementNamed("pack_actions") &&
         Rcpp::as<bool>(options["pack_actions"])) {
@@ -366,6 +382,20 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::List options) {
 }
 
 /**
+ * Computes the function for the MDP for the given value function and discount factor
+ */
+// [[Rcpp::export]]
+Rcpp::DataFrame compute_qvalues(Rcpp::DataFrame mdp, Rcpp::NumericVector valuefunction,
+                                double discount) {
+    // TODO: check the input size
+
+    MDP m = mdp_from_dataframe(mdp);
+    vector<numvec> qvalue = craam::algorithms::compute_qfunction(
+        m, Rcpp::as<numvec>(valuefunction), discount);
+
+    return output_sa_values(qvalue, "qvalue");
+}
+/**
  * Parses the name and the parameter of the provided nature
  */
 algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
@@ -411,10 +441,10 @@ algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String nature,
                          SEXP nature_par, Rcpp::List options) {
+    Rcpp::List result;
     try {
 
         MDP m = mdp_from_dataframe(mdp);
-        Rcpp::List result;
 
         if (options.containsElementNamed("pack_actions") &&
             Rcpp::as<bool>(options["pack_actions"])) {
@@ -461,11 +491,11 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
         result["policy"] = output_policy(dec_pol);
         result["policy.nature"] = move(nat_pol);
         result["valuefunction"] = move(sol.valuefunction);
-        return result;
+
     } catch (std::exception& ex) { forward_exception_to_r(ex); } catch (...) {
         ::Rf_error("c++ exception (unknown reason)");
     }
-    return Rcpp::List();
+    return result;
 }
 
 /**

@@ -196,4 +196,32 @@ inline prec_t value_fix_state(const State& state, numvec const& valuefunction,
     return result;
 }
 
+// *******************************************************
+// Compute Q-function
+// *******************************************************
+
+/**
+ * Computes the Q function given an MDP and a value function.
+ * @param mdp Definition of the MDP
+ * @param valuefunction The value function to be used to compute the Q-function
+ * @param discount discount factor
+ * @return The q-function for each state and action of the MDP
+ */
+inline vector<numvec> compute_qfunction(const MDP& mdp, const numvec& valuefunction,
+                                        prec_t discount) {
+
+    vector<numvec> qfunction;
+    qfunction.reserve(mdp.size());
+
+    for (const State& s : mdp) {
+        numvec qa;
+        qa.reserve(s.size());
+        for (const Action& a : s) {
+            qa.push_back(value_action(a, valuefunction, discount));
+        }
+        qfunction.push_back(move(qa));
+    }
+    return qfunction;
+}
+
 }} // namespace craam::algorithms
