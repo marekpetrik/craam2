@@ -387,9 +387,12 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::List options) {
 // [[Rcpp::export]]
 Rcpp::DataFrame compute_qvalues(Rcpp::DataFrame mdp, Rcpp::NumericVector valuefunction,
                                 double discount) {
-    // TODO: check the input size
 
     MDP m = mdp_from_dataframe(mdp);
+    if (m.size() != valuefunction.size()) {
+        Rcpp::stop("value function must have the same size as the MDP.");
+    }
+
     vector<numvec> qvalue = craam::algorithms::compute_qfunction(
         m, Rcpp::as<numvec>(valuefunction), discount);
 

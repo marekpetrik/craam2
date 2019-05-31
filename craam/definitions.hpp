@@ -210,6 +210,23 @@ unzip(const std::vector<std::pair<T1, T2>>& values) {
     return {first, second};
 }
 
+/**
+ * Checks whether the iterator is a probability distribution. That means
+ * it checks whether each element is non-negative and that the elements
+ * sum to (approximately) 1 (the tolerance is epsilon.
+ */
+template <class ForwardIterator>
+inline bool is_probability_dist(ForwardIterator first, ForwardIterator last) {
+    if (first == last) return false;
+
+    prec_t sum = *first;
+    while (++first != last) {
+        if (*first < 0) return false;
+        sum += *first;
+    }
+    return std::abs(sum - 1.0) < EPSILON;
+}
+
 // implement clamp when not provided by the library (in pre c++17 code)
 #ifndef __cpp_lib_clamp
 template <class T, class Compare>

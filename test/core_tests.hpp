@@ -127,6 +127,52 @@ BOOST_AUTO_TEST_CASE(test_l1_worst_case) {
 }
 
 // ********************************************************************************
+// ***** Risk measures
+// ********************************************************************************
+
+BOOST_AUTO_TEST_CASE(risk_measures) {
+    {
+        numvec pbar = {0.1, 0.2, 0.3, 0.1, 0.3, 0.0};
+        numvec z = {4, 5, 1, 2, -1, -2};
+
+        BOOST_CHECK_CLOSE(var(z, pbar, 0).second, -2.0, 1e-3);
+        BOOST_CHECK_CLOSE(avar(z, pbar, 0).second, -2.0, 1e-3);
+
+        BOOST_CHECK_CLOSE(var(z, pbar, 0.01).second, -1.0, 1e-3);
+        BOOST_CHECK_CLOSE(avar(z, pbar, 0.01).second, -1.0, 1e-3);
+
+        BOOST_CHECK_CLOSE(var(z, pbar, 1.0).second, 5.0, 1e-3);
+        BOOST_CHECK_CLOSE(avar(z, pbar, 1.0).second, 1.6, 1e-3);
+
+        BOOST_CHECK_CLOSE(var(z, pbar, 0.5).second, 1.0, 1e-3);
+        BOOST_CHECK_CLOSE(avar(z, pbar, 0.5).second, -0.2, 1e-3);
+
+        BOOST_CHECK_CLOSE(var(z, pbar, 0.6).second, 1.0, 1e-3);
+        BOOST_CHECK_CLOSE(avar(z, pbar, 0.6).second, 0.0, 1e-3);
+    }
+
+    {
+        numvec pbar2 = {0.1, 0.2, 0.3, 0.1, 0.3};
+        numvec z2 = {4, 5, 1, 2, -1};
+
+        BOOST_CHECK_CLOSE(var(z2, pbar2, 0).second, -1.0, 1e-3);
+        BOOST_CHECK_CLOSE(avar(z2, pbar2, 0).second, -1.0, 1e-3);
+
+        BOOST_CHECK_CLOSE(var(z2, pbar2, 0.01).second, -1.0, 1e-3);
+        BOOST_CHECK_CLOSE(avar(z2, pbar2, 0.01).second, -1.0, 1e-3);
+
+        BOOST_CHECK_CLOSE(var(z2, pbar2, 1.0).second, 5.0, 1e-3);
+        BOOST_CHECK_CLOSE(avar(z2, pbar2, 1.0).second, 1.6, 1e-3);
+
+        BOOST_CHECK_CLOSE(var(z2, pbar2, 0.5).second, 1.0, 1e-3);
+        BOOST_CHECK_CLOSE(avar(z2, pbar2, 0.5).second, -0.2, 1e-3);
+
+        BOOST_CHECK_CLOSE(var(z2, pbar2, 0.6).second, 1.0, 1e-3);
+        BOOST_CHECK_CLOSE(avar(z2, pbar2, 0.6).second, 0, 1e-3);
+    }
+}
+
+// ********************************************************************************
 // ***** Basic solution tests
 // ********************************************************************************
 

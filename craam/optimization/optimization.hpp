@@ -24,6 +24,8 @@
 #pragma once
 #include "craam/definitions.hpp"
 
+#include <algorithm>
+#include <numeric>
 #include <tuple>
 // if available, use gurobi
 #ifdef GUROBI_USE
@@ -69,7 +71,7 @@ std::pair<numvec, double> worstcase_l1(numvec const& z, numvec const& pbar, prec
 
     const size_t sz = z.size();
     // sort z values
-    const std::vector<size_t> sorted_ind = sort_indexes<prec_t>(z);
+    const sizvec sorted_ind = sort_indexes<prec_t>(z);
     // initialize output probability distribution; copy the values because most
     // may be unchanged
     numvec o(pbar);
@@ -790,5 +792,142 @@ std::pair<numvec, double> worstcase_l2_w_gurobi(const GRBEnv& env, const numvec&
 }
 
 #endif
+
+/**
+ * Computes the average value at risk and the probability distribution that corresponds to it.
+ * The assumption is that this is a maximization problem, and it remains a maximization
+ * problem when the measure is applied.
+ *
+ * The formulation that is used is (see https://en.wikipedia.org/wiki/Expected_shortfall):
+ * AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )
+ * where I is the indicator function and
+ * x_a = inf{x \in R : P[X <= x] >= alpha}
+ *
+ * The function works by solving the robust representation  / dual form
+ * of the risk measure.
+ * The dual form is:
+ * min_{q in Q} q^T z
+ * where
+ * Q = {q in Delta : q_i / pbar_i <= 1/alpha }
+ * and Delta is the probability simplex. The solution is to assign as much probability weight
+ * to elements with small z values as possible.
+ *
+ * The value x_a is the same as the Value at Risk at level alpha
+ *
+ * Note that the definition is the negative of the definition on wikipedia.
+ *
+ * This function is concave.
+ *
+ * @param z  Objective / random variable
+ * @param pbar Nominal distribution of the random variable
+ * @param alpha Risk level in [0,1]. alpha = 0 is the worst case
+ *              (minimum of z, alpha = 0 is treated as alpha -> 0),
+ *              while alpha = 1 is the mean.
+ *
+ * @return A distribution p and The average value at risk as well as the distribution such that
+ * p^T z = avar. The p is the optimal solution to the robust representation of the risk measure.
+ */
+std::pair<numvec, double> avar(const numvec& z, const numvec& pbar, prec_t alpha) {
+
+    // this method sorts the values, which is not as efficient as it may be,
+    // the problem could be solved using a variant of quick select, but it is
+    // probably not worth the effort.
+    if (z.size() == 0 || pbar.size() == 0) return {numvec(0), std::nan("")};
+
+    assert(pbar.size() == z.size());
+    assert(alpha >= 0.0 && alpha <= 1.0);
+    assert(is_probability_dist(pbar.cbegin(), pbar.cend()));
+
+    const sizvec sortedi = sort_indexes(z);
+
+    // this is the new distribution
+    numvec distribution(pbar.size(), 0.0);
+    prec_t value; // this the return value, updated while computing the distribution
+
+    // for really small alpha, just return the worst case outright
+    if (alpha <= EPSILON) {
+        const auto min_pos = std::min_element(z.cbegin(), z.cend());
+        value = *min_pos;
+        distribution[std::distance(z.cbegin(), min_pos)] = 1.0;
+        return {distribution, value};
+    }
+
+    // here, we can assume that 1/alpha is not too large
+    prec_t probs_accum = 0.0; // accumulated sum of probabilities in q
+
+    size_t pos = 0; // make sure we can use the position later
+    // iterate from the smallest element
+    for (; pos < sortedi.size() && probs_accum < 1.0; ++pos) {
+        // the original index of the current element
+        const auto element = sortedi[pos];
+        // new probability value of the element, but at most what is left to acheive 1.0
+        const prec_t increment = std::min(pbar[element] / alpha, 1.0 - probs_accum);
+        // update the distribution, assumulation and the value
+        distribution[element] = increment;
+        value += increment * z[element];
+        probs_accum += increment;
+    }
+    assert(probs_accum <= 1.0 + EPSILON);
+    // make sure that the results are consistent
+    assert(std::abs(std::inner_product(distribution.cbegin(), distribution.cend(),
+                                       z.cbegin(), 0.0) -
+                    value) < EPSILON);
+    return {distribution, value};
+}
+
+/**
+ * Computes the value at risk and the probability distribution that corresponds to it.
+ * The assumption is that this is a maximization problem, and it remains a maximization
+ * problem when the measure is applied.
+ *
+ * The formulation that is used is (see https://en.wikipedia.org/wiki/Value_at_risk):
+ * inf{x \in R : P[X <= x] >= alpha}
+ *
+ * In general, this function is neither convex nor concave.
+ *
+ * @param z  Objective / random variable
+ * @param pbar Nominal distribution of the random variable
+ * @param alpha Risk level in [0,1]. alpha = 0 is the worst case
+ *              (minimum of z, alpha = 0 is treated as alpha -> 0)
+ *              alpha = 0.5 is the median, and alpha
+ *
+ * @return A distribution p and the value at risk as well as the distribution such that
+ * p^T z = var. Note that there may not be an equivalent robust representation for var like there
+ * is for coherent/convex risk measures.
+ */
+std::pair<numvec, double> var(const numvec& z, const numvec& pbar, prec_t alpha) {
+
+    // this method sorts the values, which is not as efficient as it may be,
+    // the problem could be solved using a variant of quick select, but it is
+    // probably not worth the effort.
+    if (z.size() == 0 || pbar.size() == 0) return {numvec(0), std::nan("")};
+
+    assert(pbar.size() == z.size());
+    assert(alpha >= 0.0 && alpha <= 1.0);
+    assert(is_probability_dist(pbar.cbegin(), pbar.cend()));
+
+    const sizvec sortedi = sort_indexes(z);
+
+    // find the index such that the sum of the probabilities is greater than alpha
+    // terminate outright if alpha <= 0
+    long pos = 0;             // make sure we can use the position later
+    prec_t probs_accum = 0.0; // accumulated sum of probabilities
+    for (; pos < long(sortedi.size()); ++pos) {
+        probs_accum += pbar[sortedi[pos]];
+        if (probs_accum >= alpha) break;
+    }
+    assert(probs_accum >= alpha - 1e-5);
+
+    // the loop may run all the way to the end .. need to step back then
+    const auto element = sortedi[std::min(long(sortedi.size()) - 1, pos)];
+    numvec distribution(pbar.size(), 0.0);
+    distribution[element] = 1.0;
+    // make sure that the results are consistent
+    const auto value = z[element];
+    assert(std::abs(std::inner_product(distribution.cbegin(), distribution.cend(),
+                                       z.cbegin(), 0.0) -
+                    value) < EPSILON);
+    return {distribution, value};
+}
 
 } // namespace craam
