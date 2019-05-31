@@ -61,7 +61,8 @@ to 1.
 @param t Bound on the L1 norm deviation
 @return Optimal solution p and the objective value
 */
-std::pair<numvec, double> worstcase_l1(numvec const& z, numvec const& pbar, prec_t xi) {
+std::pair<numvec, double> inline worstcase_l1(numvec const& z, numvec const& pbar,
+                                              prec_t xi) {
     assert(*min_element(pbar.cbegin(), pbar.cend()) >= -THRESHOLD);
     assert(*max_element(pbar.cbegin(), pbar.cend()) <= 1 + THRESHOLD);
     assert(xi >= 0.0);
@@ -128,8 +129,8 @@ to 1.
 @return Optimal solution p and the objective value (t).
         Important: returns the objective value and not the dot product
 */
-std::pair<numvec, prec_t> worstcase_l1_deviation(numvec const& z, numvec const& p,
-                                                 prec_t b) {
+std::pair<numvec, prec_t> inline worstcase_l1_deviation(numvec const& z, numvec const& p,
+                                                        prec_t b) {
     assert(*min_element(p.cbegin(), p.cend()) >= -THRESHOLD);
     assert(*max_element(p.cbegin(), p.cend()) <= 1 + THRESHOLD);
     assert(b >= 0.0);
@@ -201,8 +202,8 @@ indexes are computed.
 linear everywhere in between (where defined). The values are generated in a
 decreasing order. value: Corresponding values of t for the values above.
 */
-std::pair<numvec, numvec> worstcase_l1_knots(const numvec& z, const numvec& p,
-                                             const sizvec& presorted_ind = sizvec(0)) {
+std::pair<numvec, numvec> inline worstcase_l1_knots(
+    const numvec& z, const numvec& p, const sizvec& presorted_ind = sizvec(0)) {
     assert(z.size() == p.size());
 
     // sorts indexes if they are not provided
@@ -372,8 +373,9 @@ public:
  * @param w Weights in the norm
  * @return the optimal solution and the objective value
  */
-std::pair<numvec, double> worstcase_l1_w(const GradientsL1_w& gradients, const numvec& z,
-                                         const numvec& pbar, const numvec& w, double xi) {
+std::pair<numvec, double> inline worstcase_l1_w(const GradientsL1_w& gradients,
+                                                const numvec& z, const numvec& pbar,
+                                                const numvec& w, double xi) {
 
     assert(pbar.size() == z.size());
     assert(*min_element(pbar.cbegin(), pbar.cend()) >= 0);
@@ -430,8 +432,8 @@ std::pair<numvec, double> worstcase_l1_w(const GradientsL1_w& gradients, const n
 /**
  * @brief See the documentation for the overloaded function
  */
-std::pair<numvec, double> worstcase_l1_w(const numvec& z, const numvec& pbar,
-                                         const numvec& w, double xi) {
+std::pair<numvec, double> inline worstcase_l1_w(const numvec& z, const numvec& pbar,
+                                                const numvec& w, double xi) {
     return worstcase_l1_w(GradientsL1_w(z, w), z, pbar, w, xi);
 }
 
@@ -461,9 +463,9 @@ constant as u -> infty.
 linear everywhere in between (where defined). The values are generated in a
 decreasing order. value: Corresponding values of t for the values above.
 */
-inline std::pair<numvec, numvec> worstcase_l1_w_knots(const GradientsL1_w& gradients,
-                                                      const numvec& z, const numvec& pbar,
-                                                      const numvec& w) {
+inline std::pair<numvec, numvec> inline worstcase_l1_w_knots(
+    const GradientsL1_w& gradients, const numvec& z, const numvec& pbar,
+    const numvec& w) {
 
     const double epsilon = 1e-10;
 
@@ -518,8 +520,8 @@ inline std::pair<numvec, numvec> worstcase_l1_w_knots(const GradientsL1_w& gradi
 }
 
 /// See the overloaded method
-std::pair<numvec, numvec> worstcase_l1_w_knots(const numvec& z, const numvec& pbar,
-                                               const numvec& w) {
+std::pair<numvec, numvec> inline worstcase_l1_w_knots(const numvec& z, const numvec& pbar,
+                                                      const numvec& w) {
     return worstcase_l1_w_knots(GradientsL1_w(z, w), z, pbar, w);
 }
 
@@ -546,9 +548,9 @@ std::pair<numvec, numvec> worstcase_l1_w_knots(const numvec& z, const numvec& pb
  *  @param wi Weights. Optional, all 1 if not provided.
  * @return Objective value and the optimal solution
  */
-std::pair<numvec, double> worstcase_l1_w_gurobi(const GRBEnv& env, const numvec& z,
-                                                const numvec& pbar, const numvec& wi,
-                                                double xi) {
+std::pair<numvec, double> inline worstcase_l1_w_gurobi(const GRBEnv& env, const numvec& z,
+                                                       const numvec& pbar,
+                                                       const numvec& wi, double xi) {
     const size_t nstates = z.size();
     assert(nstates == pbar.size());
     assert(wi.empty() || nstates == wi.size());
@@ -626,9 +628,11 @@ std::pair<numvec, double> worstcase_l1_w_gurobi(const GRBEnv& env, const numvec&
  * @param xi Size of the ambiguity set
  * @return Worst-case distribution and the objective value
  */
-std::pair<numvec, double> worstcase_wasserstein_gurobi(const GRBEnv& env, const numvec& z,
-                                                       const numvec& pbar,
-                                                       const numvecvec& dst, double xi) {
+std::pair<numvec, double> inline worstcase_wasserstein_gurobi(const GRBEnv& env,
+                                                              const numvec& z,
+                                                              const numvec& pbar,
+                                                              const numvecvec& dst,
+                                                              double xi) {
     GRBModel model = GRBModel(env);
 
     size_t nstates = z.size();
@@ -729,9 +733,9 @@ std::pair<numvec, double> worstcase_wasserstein_gurobi(const GRBEnv& env, const 
  *  @param wi Weights. Optional, all 1 if not provided.
  * @return Objective value and the optimal solution
  */
-std::pair<numvec, double> worstcase_l2_w_gurobi(const GRBEnv& env, const numvec& z,
-                                                const numvec& pbar, const numvec& wi,
-                                                double xi) {
+std::pair<numvec, double> inline worstcase_l2_w_gurobi(const GRBEnv& env, const numvec& z,
+                                                       const numvec& pbar,
+                                                       const numvec& wi, double xi) {
     const size_t nstates = z.size();
     assert(nstates == pbar.size());
     assert(wi.empty() || nstates == wi.size());
@@ -827,7 +831,7 @@ std::pair<numvec, double> worstcase_l2_w_gurobi(const GRBEnv& env, const numvec&
  * @return A distribution p and The average value at risk as well as the distribution such that
  * p^T z = avar. The p is the optimal solution to the robust representation of the risk measure.
  */
-std::pair<numvec, double> avar(const numvec& z, const numvec& pbar, prec_t alpha) {
+std::pair<numvec, double> inline avar(const numvec& z, const numvec& pbar, prec_t alpha) {
 
     // this method sorts the values, which is not as efficient as it may be,
     // the problem could be solved using a variant of quick select, but it is
@@ -872,7 +876,7 @@ std::pair<numvec, double> avar(const numvec& z, const numvec& pbar, prec_t alpha
     assert(std::abs(std::inner_product(distribution.cbegin(), distribution.cend(),
                                        z.cbegin(), 0.0) -
                     value) < EPSILON);
-    return {distribution, value};
+    return {move(distribution), value};
 }
 
 /**
@@ -895,7 +899,7 @@ std::pair<numvec, double> avar(const numvec& z, const numvec& pbar, prec_t alpha
  * p^T z = var. Note that there may not be an equivalent robust representation for var like there
  * is for coherent/convex risk measures.
  */
-std::pair<numvec, double> var(const numvec& z, const numvec& pbar, prec_t alpha) {
+std::pair<numvec, double> inline var(const numvec& z, const numvec& pbar, prec_t alpha) {
 
     // this method sorts the values, which is not as efficient as it may be,
     // the problem could be solved using a variant of quick select, but it is
@@ -927,7 +931,47 @@ std::pair<numvec, double> var(const numvec& z, const numvec& pbar, prec_t alpha)
     assert(std::abs(std::inner_product(distribution.cbegin(), distribution.cend(),
                                        z.cbegin(), 0.0) -
                     value) < EPSILON);
-    return {distribution, value};
+    return {move(distribution), value};
+}
+
+/**
+ * Computes a convex combination of var and expectation:
+ *
+ * beta * var_pbar [z] + (1-beta) * E_pbar[z]
+ *
+ */
+std::pair<numvec, double> inline var_exp(const numvec& z, const numvec& pbar,
+                                         prec_t alpha, prec_t beta) {
+    auto [var_dist, var_value] = var(z, pbar, alpha);
+    assert(var_dist.size() == pbar.size());
+    const auto mean_value = std::inner_product(z.cbegin(), z.cend(), pbar.cbegin(), 0.0);
+
+    numvec result_dist(z.size(), 0.0);
+    std::transform(
+        var_dist.cbegin(), var_dist.cend(), pbar.cbegin(), result_dist.begin(),
+        [beta](prec_t var, prec_t exp) { return beta * var + (1 - beta) * exp; });
+    const auto result_val = beta * var_value + (1 - beta) * mean_value;
+    return {move(result_dist), result_val};
+}
+
+/**
+ * Computes a convex combination of avar and expectation:
+ *
+ * beta * avar_pbar [z] + (1-beta) * E_pbar[z]
+ *
+ */
+std::pair<numvec, double> inline avar_exp(const numvec& z, const numvec& pbar,
+                                          prec_t alpha, prec_t beta) {
+    auto [avar_dist, avar_value] = avar(z, pbar, alpha);
+    assert(avar_dist.size() == pbar.size());
+    const auto mean_value = std::inner_product(z.cbegin(), z.cend(), pbar.cbegin(), 0.0);
+
+    numvec result_dist(z.size(), 0.0);
+    std::transform(
+        avar_dist.cbegin(), avar_dist.cend(), pbar.cbegin(), result_dist.begin(),
+        [beta](prec_t avar, prec_t exp) { return beta * avar + (1 - beta) * exp; });
+    const auto result_val = beta * avar_value + (1 - beta) * mean_value;
+    return {move(result_dist), result_val};
 }
 
 } // namespace craam
