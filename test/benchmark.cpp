@@ -24,13 +24,11 @@
 #include "craam/MDP.hpp"
 #include "craam/Samples.hpp"
 #include "craam/algorithms/nature_response.hpp"
+#include "craam/modeltools.hpp"
 #include "craam/solvers.hpp"
 
 // library for processing command-line options
 #include "cxxopts/cxxopts.hpp"
-
-// lirary for reading csv files
-#include "fccp/csv.h"
 
 #include <chrono>
 #include <fstream>

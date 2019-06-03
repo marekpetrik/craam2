@@ -46,7 +46,7 @@ protected:
     vector<numvec> budgets;
 
 public:
-    robust_l1(vector<numvec> budgets) : budgets(move(budgets)) {}
+    robust_l1(numvecvec budgets) : budgets(move(budgets)) {}
 
     /**
     * Implements SANature interface
@@ -81,7 +81,7 @@ public:
    * @param weights State weights used in the L1 norm. One set of vectors for
    * each state and action. Use and empty vector to specify uniform weights.
    */
-    robust_l1w(vector<numvec> budgets, vector<vector<numvec>> weights)
+    robust_l1w(numvecvec budgets, vector<vector<numvec>> weights)
         : budgets(move(budgets)), weights(weights) {}
 
     /**

@@ -286,7 +286,7 @@ inline RandSolution solve_pi_r(const MDP& mdp, prec_t discount,
 }
 
 // **************************************************************************
-// Robust MDP methods
+// Robust SA-Rect MDP methods
 // **************************************************************************
 
 /**
@@ -372,6 +372,10 @@ rsolve_ppi(const MDP& mdp, prec_t discount, const algorithms::SANature& nature,
                             discount, move(valuefunction), iterations, maxresidual, 1.0,
                             discount * discount, progress);
 }
+
+// **************************************************************************
+// Robust S-Rect MDP methods
+// **************************************************************************
 
 /**
  * @ingroup ValueIteration

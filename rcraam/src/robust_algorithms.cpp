@@ -407,7 +407,7 @@ algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
         return algorithms::nats::robust_l1u(Rcpp::as<double>(nature_par));
     }
     if (nature == "l1") {
-        vector<numvec> values =
+        numvecvec values =
             parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0);
         return algorithms::nats::robust_l1(values);
     }
@@ -440,6 +440,10 @@ algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
 }
 /**
  * Solves a robust MDP version of the problem with sa-rectangular ambiguity
+ *
+ * The algorithms: pi, mpi may cycle infinitely without converging to a solution,
+ * when solving a robust MDP.
+ * The lagorithm ppi is guaranteed to converge to an optimal solition.
  */
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String nature,
@@ -463,8 +467,14 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
 
         SARobustSolution sol;
         algorithms::SANature natparsed = parse_nature_sa(m, nature, nature_par);
+        // the default method is to use ppa
         if (!options.containsElementNamed("algorithm") ||
-            Rcpp::as<string>(options["algorithm"]) == "mpi") {
+            Rcpp::as<string>(options["algorithm"]) == "ppi") {
+            sol = rsolve_ppi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+                             iterations, precision);
+        } else if (Rcpp::as<string>(options["algorithm"]) == "mpi") {
+            Rcpp::warning("The robust version of the mpi method may cycle forever "
+                          "without converging.");
             sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), indvec(0),
                              sqrt(iterations), precision, sqrt(iterations), 0.5);
         } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
@@ -472,9 +482,10 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
                             iterations, precision);
 
         } else if (Rcpp::as<string>(options["algorithm"]) == "pi") {
+            Rcpp::warning("The robust version of the pi method may cycle forever without "
+                          "converging.");
             sol = rsolve_pi(m, discount, std::move(natparsed), numvec(0), indvec(0),
                             iterations, precision);
-
         } else {
             Rcpp::stop("Unknown solver type.");
         }
