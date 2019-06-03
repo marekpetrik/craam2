@@ -314,6 +314,11 @@ rsolve_vi(const MDP& mdp, prec_t discount, const algorithms::SANature& nature,
  * same algorithm as in: Kaufman, D. L., & Schaefer, A. J. (2013). Robust
  * modified policy iteration. INFORMS Journal on Computing, 25(3), 396–410. See
  * the discussion in the paper on methods like this one (e.g. Seid, White)
+ * The divergence of a similar algorithm is shown in:
+ * Condon, A. (1993). On algorithms for simple stochastic games.
+ * Advances in Computational Complexity Theory, DIMACS Series in Discrete Mathematics
+ * and Theoretical Computer Science, 13, 51–71.
+ *
  */
 inline SARobustSolution
 rsolve_mpi(const MDP& mdp, prec_t discount, const algorithms::SANature&& nature,
@@ -330,6 +335,12 @@ rsolve_mpi(const MDP& mdp, prec_t discount, const algorithms::SANature&& nature,
 /**
  * @ingroup PolicyIteration
  * Robust policy iteration with an s,a-rectangular nature.
+ *
+ * WARNING: This method is not guaranteed to converge to the optimal solution
+ * or converge at all. The divergence of the method is shown in:
+ * Condon, A. (1993). On algorithms for simple stochastic games.
+ * Advances in Computational Complexity Theory, DIMACS Series in Discrete Mathematics
+ * and Theoretical Computer Science, 13, 51–71.
  */
 inline SARobustSolution
 rsolve_pi(const MDP& mdp, prec_t discount, const algorithms::SANature& nature,
@@ -341,6 +352,25 @@ rsolve_pi(const MDP& mdp, prec_t discount, const algorithms::SANature& nature,
     return algorithms::pi(algorithms::SARobustBellman(mdp, move(nature), policy),
                           discount, move(valuefunction), iterations, maxresidual,
                           progress);
+}
+
+/**
+ * @ingroup PartialPolicyIteration
+ * Robust partial policy iteration with an s,a-rectangular nature.
+ *
+ * This method is guaranteed to converge to the optimal value function
+ * and policy.
+ */
+inline SARobustSolution
+rsolve_ppi(const MDP& mdp, prec_t discount, const algorithms::SANature& nature,
+           numvec valuefunction = numvec(0), const indvec& policy = indvec(0),
+           unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
+           const std::function<bool(size_t, prec_t)>& progress =
+               algorithms::internal::empty_progress) {
+
+    return algorithms::rppi(algorithms::SARobustBellman(mdp, move(nature), policy),
+                            discount, move(valuefunction), iterations, maxresidual, 1.0,
+                            discount * discount, progress);
 }
 
 /**
@@ -475,6 +505,25 @@ rsolve_mpi(const MDPO& mdp, prec_t discount, const algorithms::SANature&& nature
     return algorithms::mpi_jac(algorithms::SARobustOutcomeBellman(mdp, nature, policy),
                                discount, valuefunction, iterations_pi, maxresidual_pi,
                                iterations_vi, maxresidual_vi, progress);
+}
+
+/**
+ * @ingroup PartialPolicyIteration
+ * Robust partial policy iteration with an s,a-rectangular nature.
+ *
+ * This method is guaranteed to converge to the optimal value function
+ * and policy.
+ */
+inline SARobustSolution
+rsolve_ppi(const MDPO& mdp, prec_t discount, const algorithms::SANature& nature,
+           numvec valuefunction = numvec(0), const indvec& policy = indvec(0),
+           unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
+           const std::function<bool(size_t, prec_t)>& progress =
+               algorithms::internal::empty_progress) {
+
+    return algorithms::rppi(algorithms::SARobustOutcomeBellman(mdp, move(nature), policy),
+                            discount, move(valuefunction), iterations, maxresidual, 1.0,
+                            discount * discount, progress);
 }
 
 // **************************************************************************

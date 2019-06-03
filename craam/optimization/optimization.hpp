@@ -324,7 +324,7 @@ public:
                 // cannot donate from a smaller value to a larger one; just skip it
                 if (z[i] <= z[j]) continue;
 
-                if (abs(w[i] - w[j]) > epsilon && w[i] < w[j]) {
+                if (std::abs(w[i] - w[j]) > epsilon && w[i] < w[j]) {
                     // HACK!: adding the epsilon here makes sure that these basic
                     // solutions are preferred in case of ties. This is to prevent
                     // skipping over this kind of basis when it is tied with type a
@@ -379,7 +379,7 @@ std::pair<numvec, double> inline worstcase_l1_w(const GradientsL1_w& gradients,
 
     assert(pbar.size() == z.size());
     assert(*min_element(pbar.cbegin(), pbar.cend()) >= 0);
-    assert(abs(accumulate(pbar.cbegin(), pbar.cend(), 0.0) - 1.0) < 1e-6);
+    assert(std::abs(accumulate(pbar.cbegin(), pbar.cend(), 0.0) - 1.0) < 1e-6);
 
     const double epsilon = 1e-10;
 
@@ -463,9 +463,9 @@ constant as u -> infty.
 linear everywhere in between (where defined). The values are generated in a
 decreasing order. value: Corresponding values of t for the values above.
 */
-inline std::pair<numvec, numvec> inline worstcase_l1_w_knots(
-    const GradientsL1_w& gradients, const numvec& z, const numvec& pbar,
-    const numvec& w) {
+std::pair<numvec, numvec> inline worstcase_l1_w_knots(const GradientsL1_w& gradients,
+                                                      const numvec& z, const numvec& pbar,
+                                                      const numvec& w) {
 
     const double epsilon = 1e-10;
 

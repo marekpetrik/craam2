@@ -35,18 +35,18 @@ namespace craam { namespace algorithms {
 // **************************************************************************
 
 /**
-A Bellman update class for solving regular Markov decision processes. This class
-abstracts away from particular model properties and the goal is to be able to
-plug it in into value or policy iteration methods for MDPs.
-
-Many of the methods are parametrized by the type of the state.
-
-The class also allows to use an initial policy specification. See the
-constructor for the definition.
-
-The class does not own the MDP.
-
-*/
+ * A Bellman update class for solving regular Markov decision processes. This class
+ * abstracts away from particular model properties and the goal is to be able to
+ * plug it in into value or policy iteration methods for MDPs.
+ *
+ * Many of the methods are parametrized by the type of the state.
+ *
+ * The class also allows to use an initial policy specification. See the
+ * constructor for the definition.
+ *
+ * The class does not own the MDP.
+ *
+ */
 class PlainBellman {
 protected:
     /// MDP definition
@@ -271,12 +271,17 @@ protected:
     const MDP& mdp;
     /// Reference to the function that is used to call the nature
     const SANature& nature;
-    /// Partial policy specification (action -1 is ignored and optimized)
-    const indvec initial_policy;
+    /// Partial policy specification for the decision maker (action -1 is ignored and optimized)
+    indvec decision_policy;
 
 public:
-    /// action of the decision maker, distribution of nature
-    using policy_type = pair<long, numvec>;
+    /// the policy of the decision maker
+    using dec_policy_type = long;
+    /// the policy of nature
+    using nat_policy_type = numvec;
+    /// action of the decision maker AND distribution of nature
+    using policy_type = pair<typename SARobustBellman::dec_policy_type,
+                             typename SARobustBellman::nat_policy_type>;
     /// Type of the state
     using state_type = State;
 
@@ -287,7 +292,7 @@ public:
       @param nature Function that describes nature's response
       */
     SARobustBellman(const MDP& mdp, const SANature& nature, indvec policy)
-        : mdp(mdp), nature(nature), initial_policy(move(policy)) {}
+        : mdp(mdp), nature(nature), decision_policy(move(policy)) {}
 
     /**
       Constructs the object from a specification of nature. No decision maker's
@@ -295,7 +300,7 @@ public:
       @param nature Function that describes nature's response
       */
     SARobustBellman(const MDP& mdp, const SANature& nature)
-        : mdp(mdp), nature(nature), initial_policy(0) {}
+        : mdp(mdp), nature(nature), decision_policy(0) {}
 
     size_t state_count() const { return mdp.size(); }
 
@@ -319,7 +324,7 @@ public:
 
         // check whether this state should only be evaluated or also optimized
         // optimizing action
-        if (initial_policy.empty() || initial_policy[stateid] < 0) {
+        if (decision_policy.empty() || decision_policy[stateid] < 0) {
             long actionid;
             tie(actionid, transition, newvalue) =
                 value_max_state(mdp[stateid], valuefunction, discount, stateid, nature);
@@ -328,7 +333,7 @@ public:
         // fixed-action, do not copy
         else {
             prec_t newvalue;
-            const long actionid = initial_policy[stateid];
+            const long actionid = decision_policy[stateid];
             tie(transition, newvalue) = value_fix_state(
                 mdp[stateid], valuefunction, discount, actionid, stateid, nature);
             action = make_pair(actionid, move(transition));
@@ -390,6 +395,23 @@ public:
             return s[action.first].mean_reward();
         }
     }
+
+    /**
+     * Sets the policy that will be used by the update. The value -1 for a state
+     * means that the action will be optimized.
+     *
+     * If the length is 0, then the decision maker's policy is optimized for every state
+     */
+    void set_decision_policy(const indvec& policy) {
+        if (policy.empty()) {
+            // if it is empty, then this should have no effect,
+            // but it prevents repeated shortening of the vector
+            fill(decision_policy.begin(), decision_policy.end(), -1);
+        } else {
+            assert(policy.size() == mdp.size());
+            decision_policy = policy;
+        }
+    }
 };
 
 /**
@@ -406,12 +428,17 @@ protected:
     const MDP& mdp;
     /// Reference to the function that is used to call the nature
     const SNature& nature;
-    /// Partial policy specification (action -1 is ignored and optimized)
+    /// Policy specification for the decision-maker (action -1 is ignored and optimized)
     const indvec initial_policy;
 
 public:
+    /// action type of the decision maker
+    using dec_policy_type = numvec;
+    /// the policy of nature
+    using nat_policy_type = numvecvec;
     /// distribution the decision maker, distribution of nature
-    using policy_type = pair<numvec, numvecvec>;
+    using policy_type = pair<typename SRobustBellman::dec_policy_type,
+                             typename SRobustBellman::nat_policy_type>;
     // Type of the state
     using state_type = State;
 
@@ -457,8 +484,7 @@ public:
 
         const State& state = mdp[stateid];
 
-        if (state.is_terminal())
-            return make_pair(-1, make_pair(numvec(0), vector<numvec>(0)));
+        if (state.is_terminal()) return make_pair(-1, make_pair(numvec(0), numvecvec(0)));
 
         // check whether this state should only be evaluated or also optimized
         // optimizing action

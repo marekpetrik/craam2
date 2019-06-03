@@ -51,11 +51,16 @@ protected:
     /// How to combine the values from a robust solution
     SANature nature;
     /// Partial policy specification (action -1 is ignored and optimized)
-    const indvec initial_policy;
+    indvec decision_policy;
 
 public:
-    /// Action index and distribution over outcomes
-    using policy_type = std::pair<long, numvec>;
+    /// the policy of the decision maker
+    using dec_policy_type = long;
+    /// the policy of nature
+    using nat_policy_type = numvec;
+    /// action of the decision maker AND distribution of nature
+    using policy_type = pair<typename SARobustOutcomeBellman::dec_policy_type,
+                             typename SARobustOutcomeBellman::nat_policy_type>;
 
     /**
      * @param mdpo MDPO definition. Does not take ownership
@@ -66,7 +71,7 @@ public:
      */
     SARobustOutcomeBellman(const MDPO& mdpo, const SANature& nature = nats::average(),
                            indvec initial_policy = indvec(0))
-        : mdpo(mdpo), nature(nature), initial_policy(move(initial_policy)) {}
+        : mdpo(mdpo), nature(nature), decision_policy(move(initial_policy)) {}
 
     /// @brief Number of states in the MDPO
     size_t state_count() const { return mdpo.size(); }
@@ -90,7 +95,7 @@ public:
 
         // check whether this state should only be evaluated or also optimized
         // optimizing action
-        if (initial_policy.empty() || initial_policy[stateid] < 0) {
+        if (decision_policy.empty() || decision_policy[stateid] < 0) {
             long actionid;
             tie(actionid, transition, newvalue) =
                 value_max_state(mdpo[stateid], valuefunction, discount, stateid, nature);
@@ -99,7 +104,7 @@ public:
         // fixed-action, do not copy
         else {
             prec_t newvalue;
-            const long actionid = initial_policy[stateid];
+            const long actionid = decision_policy[stateid];
             tie(transition, newvalue) = value_fix_state(
                 mdpo[stateid], valuefunction, discount, actionid, stateid, nature);
             action = make_pair(actionid, move(transition));
@@ -128,6 +133,23 @@ public:
             return Transition::empty_tran();
         } else {
             return s[action.first].mean_transition(action.second);
+        }
+    }
+
+    /**
+     * Sets the policy that will be used by the update. The value -1 for a state
+     * means that the action will be optimized.
+     *
+     * If the length is 0, then the decision maker's policy is optimized for every state
+     */
+    void set_decision_policy(const indvec& policy) {
+        if (policy.empty()) {
+            // if it is empty, then this should have no effect,
+            // but it prevents repeated shortening of the vector
+            fill(decision_policy.begin(), decision_policy.end(), -1);
+        } else {
+            assert(policy.size() == mdpo.size());
+            decision_policy = policy;
         }
     }
 

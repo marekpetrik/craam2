@@ -38,31 +38,31 @@ inline bool empty_progress(size_t iteration, prec_t residual) { return true; }
 } // namespace internal
 
 /**
-Gauss-Seidel variant of value iteration (not parallelized). See solve_vi for a
-simplified interface.
-
-This function is suitable for computing the value function of a finite state
-MDP. If the states are ordered correctly, one iteration is enough to compute the
-optimal value function. Since the value function is updated from the last state
-to the first one, the states should be ordered in the temporal order.
-
-@tparam ResponseType Class responsible for computing the Bellman updates. Should
-be compatible with PlainBellman
-
-@param response Using PolicyResponce allows to specify a partial policy. Only
-the actions that not provided by the partial policy are included in the
-optimization. Using a class of a different types enables computing other
-@param discount Discount factor.
-@param valuefunction Initial value function. Passed by value, because it is
-modified. Optional, use all zeros when not provided. Ignored when size is 0.
-objectives, such as robust or risk averse ones.
-@param iterations Maximal number of iterations to run
-@param maxresidual Stop when the maximal residual falls below this value.
-@param progress An optional function for reporting progress and can
-                return false to stop computation
-
-@returns Solution that can be used to compute the total return, or the optimal
-policy.
+ * Gauss-Seidel variant of value iteration (not parallelized). See solve_vi for a
+ * simplified interface.
+ *
+ * This function is suitable for computing the value function of a finite state
+ * MDP. If the states are ordered correctly, one iteration is enough to compute the
+ * optimal value function. Since the value function is updated from the last state
+ * to the first one, the states should be ordered in the temporal order.
+ *
+ * @tparam ResponseType Class responsible for computing the Bellman updates. Should
+ * be compatible with PlainBellman
+ *
+ * @param response Using PolicyResponce allows to specify a partial policy. Only
+ * the actions that not provided by the partial policy are included in the
+ * optimization. Using a class of a different types enables computing other
+ * @param discount Discount factor.
+ * @param valuefunction Initial value function. Passed by value, because it is
+ * modified. Optional, use all zeros when not provided. Ignored when size is 0.
+ * objectives, such as robust or risk averse ones.
+ * @param iterations Maximal number of iterations to run
+ * @param maxresidual Stop when the maximal residual falls below this value.
+ * @param progress An optional function for reporting progress and can
+ *                 return false to stop computation
+ *
+ * @returns Solution that can be used to compute the total return, or the optimal
+ * policy.
  */
 template <class ResponseType>
 inline Solution<typename ResponseType::policy_type>
@@ -105,32 +105,41 @@ vi_gs(const ResponseType& response, prec_t discount, numvec valuefunction = numv
 }
 
 /**
-Modified policy iteration using Jacobi value iteration in the inner loop. See
-solve_mpi for a simplified interface. This method generalizes modified policy
-iteration to robust MDPs. In the value iteration step, both the action *and* the
-outcome are fixed.
-
-@tparam ResponseType Class responsible for computing the Bellman updates. Should
-
-Note that the total number of iterations will be bounded by iterations_pi *
-iterations_vi
-@param type Type of realization of the uncertainty
-@param discount Discount factor
-@param valuefunction Initial value function
-@param response Using PolicyResponce allows to specify a partial policy. Only
-the actions that not provided by the partial policy are included in the
-optimization. Using a class of a different types enables computing other
-objectives, such as robust or risk averse ones.
-@param iterations_pi Maximal number of policy iteration steps
-@param maxresidual_pi Stop the outer policy iteration when the residual drops
-below this threshold.
-@param iterations_vi Maximal number of inner loop value iterations
-@param maxresidual_vi_rel Stop policy evaluation when the policy residual drops
-below maxresidual_vi_rel * last_policy_residual
-@param progress An optional function for reporting progress and can
-                return false to stop computation
-
-@return Computed (approximate) solution
+ * Modified policy iteration using Jacobi value iteration in the inner loop. See
+ * solve_mpi for a simplified interface. This method can also be applied directly
+ * to robust MDPs, but it is not guaranteed to converge (may loop)
+ * for the robust objective. See:
+ *
+ * Condon, A. (1993). On algorithms for simple stochastic games.
+ * Advances in Computational Complexity Theory, DIMACS Series in
+ *  Discrete Mathematics and Theoretical Computer Science, 13, 51–71.
+ *
+ * It probably converges just fine for the optimistic objective.
+ *
+ * In the value iteration step, both the action *and* the
+ * outcome are fixed.
+ *
+ * @tparam ResponseType Class responsible for computing the Bellman updates. Should
+ *
+ * Note that the total number of iterations will be bounded by iterations_pi *
+ * iterations_vi
+ * @param type Type of realization of the uncertainty
+ * @param discount Discount factor
+ * @param valuefunction Initial value function
+ * @param response Using PolicyResponce allows to specify a partial policy. Only
+ * the actions that not provided by the partial policy are included in the
+ * optimization. Using a class of a different types enables computing other
+ * objectives, such as robust or risk averse ones.
+ * @param iterations_pi Maximal number of policy iteration steps
+ * @param maxresidual_pi Stop the outer policy iteration when the residual drops
+ * below this threshold.
+ * @param iterations_vi Maximal number of inner loop value iterations
+ * @param maxresidual_vi_rel Stop policy evaluation when the policy residual drops
+ * below maxresidual_vi_rel * last_policy_residual
+ * @param progress An optional function for reporting progress and can
+ *                 return false to stop computation
+ *
+ * @return Computed (approximate) solution
  */
 template <class ResponseType>
 inline Solution<typename ResponseType::policy_type>
@@ -157,13 +166,13 @@ mpi_jac(const ResponseType& response, prec_t discount,
     numvec residuals(response.state_count());
 
     // residual in the policy iteration part
+    static_assert(std::numeric_limits<prec_t>::has_infinity == true);
     prec_t residual_pi = numeric_limits<prec_t>::infinity();
 
     size_t i; // defined here to be able to report the number of iterations
 
     for (i = 0; i < iterations_pi; i++) {
-
-        // this should use move semantics and therefore be very efficient
+        // this just swaps pointers
         swap(targetvalue, sourcevalue);
 
         prec_t residual_vi = numeric_limits<prec_t>::infinity();
@@ -205,33 +214,43 @@ mpi_jac(const ResponseType& response, prec_t discount,
 }
 
 /**
-Policy iteration. See solve_pi for a simplified interface. In the value iteration
-step, both the action *and* the
-outcome are fixed.
-
-@tparam ResponseType Class responsible for computing the Bellman updates. Should
-        be compatible with PlainBellman
-
-Note that the total number of iterations will be bounded by iterations_pi *
-iterations_vi
-@param type Type of realization of the uncertainty
-@param discount Discount factor
-@param valuefunction Initial value function. Used to compute the first policy
-@param response Using PolicyResponce allows to specify a partial policy. Only
-the actions that not provided by the partial policy are included in the
-optimization. Using a class of a different types enables computing other
-objectives, such as robust or risk averse ones.
-@param iterations_pi Maximal number of policy iteration steps
-@param maxresidual_pi Stop the outer policy iteration when the residual drops
-below this threshold.
-@param iterations_vi Maximal number of inner loop value iterations
-@param maxresidual_vi_rel Stop policy evaluation when the policy residual drops
-below maxresidual_vi_rel * last_policy_residual
-@param progress An optional function for reporting progress and can
-                return false to stop computation
-
-
-@return Computed (approximate) solution
+ * Policy iteration. See solve_pi for a simplified interface. In the value iteration
+ * step, both the action *and* the
+ * outcome are fixed.
+ *
+ * This method can also be applied directly
+ * to robust MDPs, but it is not guaranteed to converge (may loop)
+ * for the robust objective. See:
+ *
+ * Condon, A. (1993). On algorithms for simple stochastic games.
+ * Advances in Computational Complexity Theory, DIMACS Series in
+ *  Discrete Mathematics and Theoretical Computer Science, 13, 51–71.
+ *
+ * It probably converges just fine for the optimistic objective.
+ *
+ * @tparam ResponseType Class responsible for computing the Bellman updates. Should
+ *         be compatible with PlainBellman
+ *
+ * Note that the total number of iterations will be bounded by iterations_pi *
+ * iterations_vi
+ * @param type Type of realization of the uncertainty
+ * @param discount Discount factor
+ * @param valuefunction Initial value function. Used to compute the first policy
+ * @param response Using PolicyResponce allows to specify a partial policy. Only
+ * the actions that not provided by the partial policy are included in the
+ * optimization. Using a class of a different types enables computing other
+ * objectives, such as robust or risk averse ones.
+ * @param iterations_pi Maximal number of policy iteration steps
+ * @param maxresidual_pi Stop the outer policy iteration when the residual drops
+ * below this threshold.
+ * @param iterations_vi Maximal number of inner loop value iterations
+ * @param maxresidual_vi_rel Stop policy evaluation when the policy residual drops
+ * below maxresidual_vi_rel * last_policy_residual
+ * @param progress An optional function for reporting progress and can
+ *                 return false to stop computation
+ *
+ *
+ * @return Computed (approximate) solution
  */
 template <class ResponseType>
 inline Solution<typename ResponseType::policy_type>
@@ -306,6 +325,88 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
     chrono::duration<double> duration = finish - start;
     return Solution<policy_type>(move(valuefunction), move(policy), residual_pi, i,
                                  duration.count());
+}
+
+/**
+ * Robust partial policy iteration, proposed in Ho 2019. Converges in robust settings to
+ * the optimal solution, and probably converges in the robust setting.
+ *
+ * @tparam ResponseType Class responsible for computing the Bellman updates. This works
+ *                      with SARobustBellman and SRobustBellman
+ *
+ * The algorithm is meant for solving robust MDPs.
+ *
+ * @param response The policy provided to the response is not respected by this method
+ * @param residual Target Bellman residual (when to stop)
+ * @param rob_residual_init Initial target residual for solving the robust problem
+ * @param rob_residual_rate Multiplicative coefficient that controls the
+ * decrese in the target rate. It needs to be smaller than the discount factor.
+ *
+ * @return Computed (approximate) solution
+ */
+template <class ResponseType>
+inline Solution<typename ResponseType::policy_type>
+rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
+     unsigned long iterations_pi = MAXITER, prec_t residual = SOLPREC,
+     const prec_t rob_residual_init = 1.0, const prec_t rob_residual_rate = 0.5,
+     const std::function<bool(size_t, prec_t)>& progress = internal::empty_progress) {
+    using policy_type = typename ResponseType::policy_type;
+    using dec_policy_type = typename ResponseType::dec_policy_type;
+
+    // just quit if there are no states
+    if (response.state_count() == 0) { return Solution<policy_type>(0); }
+
+    // make sure that the value function is the right size
+    if (valuefunction.empty()) { valuefunction.resize(response.state_count(), 0.0); }
+
+    // time the computation
+    auto start = chrono::steady_clock::now();
+
+    // keep track of the target residual achieved in the policy iteration
+    prec_t target_residual = rob_residual_init;
+
+    // intialize the policy (the policy could be randomized or deterministic)
+    vector<dec_policy_type> dec_policy(response.state_count());
+    // this an array that holds the output policy (only used for the output)
+    vector<policy_type> output_policy(response.state_count());
+
+    // initial bellman residual = to check for the stopping criterion
+    static_assert(std::numeric_limits<prec_t>::has_infinity == true);
+    prec_t residual_pi = std::numeric_limits<prec_t>::infinity();
+    numvec residuals(response.state_count());
+
+    long iterations = 1;
+    do {
+        // *** robust policy evaluation ***
+        // set the dec_policy to prevent optimization
+        response.set_decision_policy(dec_policy);
+        Solution<policy_type> solution_rob =
+            pi(response, discount, valuefunction, MAXITER, target_residual, progress);
+        valuefunction = move(solution_rob.valuefunction);
+
+        // *** robust policy update ***
+        // set the dec policy to empty to optimize it
+        response.set_decision_policy(indvec(0));
+#pragma omp parallel for
+        for (auto s = 0l; s < long(response.state_count()); s++) {
+            // the new vlaue is only used to compute the residual
+            // otherwise this only about the policy
+            prec_t newvalue;
+            tie(newvalue, output_policy[s]) =
+                response.policy_update(s, valuefunction, discount);
+            // update the policy of the decision maker (to be used in the evaluation)
+            // assume that the policy type is a tuple: [dec policy, nat policy]
+            dec_policy[s] = output_policy[s].first;
+            residuals[s] = abs(valuefunction[s] - newvalue);
+        }
+        residual_pi = *max_element(residuals.cbegin(), residuals.cend());
+        ++iterations;
+    } while (residual_pi > residual);
+
+    auto finish = chrono::steady_clock::now();
+    chrono::duration<double> duration = finish - start;
+    return Solution<policy_type>(move(valuefunction), move(output_policy), residual_pi,
+                                 iterations, duration.count());
 }
 
 }} // namespace craam::algorithms
