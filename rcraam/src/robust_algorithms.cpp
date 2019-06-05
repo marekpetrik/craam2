@@ -389,7 +389,7 @@ Rcpp::DataFrame compute_qvalues(Rcpp::DataFrame mdp, Rcpp::NumericVector valuefu
                                 double discount) {
 
     MDP m = mdp_from_dataframe(mdp);
-    if (m.size() != valuefunction.size()) {
+    if (m.size() != size_t(valuefunction.size())) {
         Rcpp::stop("value function must have the same size as the MDP.");
     }
 

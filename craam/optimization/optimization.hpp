@@ -98,7 +98,7 @@ std::pair<numvec, double> inline worstcase_l1(numvec const& z, numvec const& pba
         i--;
     }
     prec_t r = inner_product(o.cbegin(), o.cend(), z.cbegin(), prec_t(0.0));
-    return make_pair(move(o), r);
+    return {move(o), r};
 }
 
 /**

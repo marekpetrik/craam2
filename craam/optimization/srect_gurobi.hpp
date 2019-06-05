@@ -56,13 +56,14 @@ using namespace std;
  *      p >= 0
  *
  * Dualizing the inner optimization problem, we get the full linear program for
- * computing s-rectangular Bellman updates: max_{d,x in R^{|A|},\lambda in R,
- * y^p,y^n in R^{|S| x |A|}} sum_{a in A} ( x_a - \bar{p}_a\tr (y^n_a - y^p_a) )
- * - \kappa \lambda s.t.    1^T d = 1       d >= 0
+ * computing s-rectangular Bellman updates:
+ * max_{d,x in R^{|A|},\lambda in R, y^p,y^n in R^{|S| x |A|}}
+ *        sum_{a in A} ( x_a - \bar{p}_a\tr (y^n_a - y^p_a) ) - \kappa \lambda
+ * s.t.    1^T d = 1       d >= 0
  *          - y^p_a + y^n_a + x * 1         <= d_a z_a       a in A
  *          y^p_a + y^n_a - \lambda * w_a   <= 0             a in A
  *          y^p >= 0      y^n >= 0
- *          \lambda >= 0
+ *          lambda >= 0
  *
  * @param z Expected returns for each state and action (a state-length vector
  * for each action)
@@ -70,12 +71,16 @@ using namespace std;
  * action)
  * @param w Weights assigned to the L1 errors (optional). A uniform vector of
  * all ones if omitted
+ * @param policy_eval The policy of the decision maker (d in the optimization problem
+ *          described above). This policy is used in the evaluation
+ *          step for a randomized policy. The parameter is optional
  *
  * @returns A pair with: policy, objective value
  */
 std::pair<numvec, double> srect_solve_gurobi(const GRBEnv& env, const numvecvec& z,
                                              const numvecvec& pbar, const prec_t kappa,
-                                             const numvecvec& w = numvecvec(0)) {
+                                             const numvecvec& w = numvecvec(0),
+                                             const numvec& policy_eval = numvec(0)) {
 
     // general constants values
     const double inf = std::numeric_limits<prec_t>::infinity();
@@ -117,6 +122,25 @@ std::pair<numvec, double> srect_solve_gurobi(const GRBEnv& env, const numvecvec&
     auto d = std::unique_ptr<GRBVar[]>(model.addVars(
         numvec(nactions, 0).data(), nullptr, numvec(nactions, 0).data(),
         std::vector<char>(nactions, GRB_CONTINUOUS).data(), nullptr, int(nactions)));
+
+    // constraints on the primal policy decision
+    // if a policy_eval is provided, then add constraints
+    assert(policy_eval.empty() || policy_eval.size() == z.size());
+    if (!policy_eval.empty()) {
+        // make sure that the provided policy is a probability distribution
+        assert(is_probability_dist(policy_eval.begin(), policy_eval.end()));
+        for (size_t i = 0; i < policy_eval.size(); ++i) {
+            model.addConstr(d[i] == policy_eval[i]);
+        }
+    }
+    // if the policy is not provided, we want to optimize over the value
+    else {
+        // constraint on the policy pi
+        GRBLinExpr ones;
+        ones.addTerms(numvec(nactions, 1.0).data(), d.get(), int(nactions));
+        model.addConstr(ones, GRB_EQUAL, 1);
+    }
+
     // objective
     GRBLinExpr objective;
 
@@ -135,15 +159,12 @@ std::pair<numvec, double> srect_solve_gurobi(const GRBEnv& env, const numvecvec&
             double weight = w.size() > 0 ? w[actionid][stateid] : 1.0;
             model.addConstr(-lambda * weight + yp[i] + yn[i] <= 0);
             // update the counter (an absolute index for each variable)
-            i++;
+            ++i;
         }
     }
-    objective += -lambda * kappa;
 
-    // constraint on the policy pi
-    GRBLinExpr ones;
-    ones.addTerms(numvec(nactions, 1.0).data(), d.get(), int(nactions));
-    model.addConstr(ones, GRB_EQUAL, 1);
+    // add the dual variable to the objective
+    objective += -lambda * kappa;
 
     // set objective
     model.setObjective(objective, GRB_MAXIMIZE);
@@ -164,7 +185,7 @@ std::pair<numvec, double> srect_solve_gurobi(const GRBEnv& env, const numvecvec&
     }
 
     // retrieve the worst-case response values
-    return make_pair(move(policy), model.get(GRB_DoubleAttr_ObjVal));
+    return {move(policy), model.get(GRB_DoubleAttr_ObjVal)};
 }
 
 } // namespace craam

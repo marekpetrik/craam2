@@ -73,7 +73,6 @@ struct average {
     pair<numvec, prec_t> operator()(long stateid, long actionid,
                                     const numvec& nominalprob,
                                     const numvec& zfunction) const {
-
         return {nominalprob, std::inner_product(zfunction.cbegin(), zfunction.cend(),
                                                 nominalprob.cbegin(), 0.0)};
     }

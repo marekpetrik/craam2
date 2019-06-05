@@ -33,28 +33,28 @@ namespace craam {
 using namespace std;
 
 /**
-    Computes a value of a piecewise linear function h(x)
-
-    The lower bound of the range is closed and a smaller parameter values than
-    the lower limit is not allowed.
-
-    The upper bound of the range is open and the function is assumed to be
-   constant going to the infinity.
-
-    @param knots Knots of the function (in parameter x). The array must be
-               sorted increasingly.
-    @param values Values in the knots (h(k) for knot k)
-    @param x The parameter value
-    @param break_ties_last Whether to choose the last element of a tied set.
-                (multiple knots equal x)
-                Otherwise the first element is chosen.
-
-    @return Value of the piecewise linear function and the index of the knot.
-         The value is between knots[index-1] and knots[index]. If the parameter is
-         past the largest knot, then index points beyond the end of the array
+ *  Computes a value of a piecewise linear function h(x)
+ *
+ * The lower bound of the range is closed and a smaller parameter values than
+ * the lower limit is not allowed.
+ *
+ * The upper bound of the range is open and the function is assumed to be
+ * constant going to the infinity.
+ *
+ * @param knots Knots of the function (in parameter x). The array must be
+ *             sorted increasingly.
+ * @param values Values in the knots (h(k) for knot k)
+ * @param x The parameter value
+ * @param break_ties_last Whether to choose the last element of a tied set.
+ *              (multiple knots equal x)
+ *              Otherwise the first element is chosen.
+ * @return Value of the piecewise linear function and the index of the knot.
+ *       The value is between knots[index-1] and knots[index]. If the parameter is
+ *       past the largest knot, then index points beyond the end of the array
  */
-std::pair<prec_t, size_t> piecewise_linear(const numvec& knots, const numvec& values,
-                                           prec_t x, bool break_ties_last = false) {
+inline std::pair<prec_t, size_t> piecewise_linear(const numvec& knots,
+                                                  const numvec& values, prec_t x,
+                                                  bool break_ties_last = false) {
 
     const prec_t epsilon = 1e-10;
 
@@ -105,46 +105,73 @@ std::pair<prec_t, size_t> piecewise_linear(const numvec& knots, const numvec& va
 }
 
 /**
-@brief solve_srect_bisection Computes the optimal objective value of the
-s-rectangular problem
+ * Computes the right derivatives of a piecewise linear function h(x). The function
+ * is not differentiable, but it has right derivatives.
+ *
+ * The right derivative is defined as:
+ * partial_+ f(a) = lim_{x -> a+} (f(x) - f(a)) / (x-a)
+ *
+ * @param knots Knots of the function (in parameter x). The array must be
+ *              sorted increasingly.
+ * @param values Values in the knots (h(k) for knot k)
+ *
+ * @return The right derivative at each knot, except for the last one.
+ */
+inline numvec piecewise_derivative(const numvec& knots, const numvec& values) {
 
-Solves the optimization problem:
+    assert(knots.size() == values.size());
 
-max_d min_{xi,p} sum_a d(a) p_a^T z_a
-s.t.    1^T pi = 1, pi >= 0
-        sum_a xi(a) wa(a) <= psi
-        || p_a - pbar_a ||_{1,ws_a} <= xi_a
+    // preallocate the derivates
+    numvec derivatives;
+    derivatives.reserve(knots.size() - 1);
 
-The algorithm works by reformulating the problem to:
+    // compute each right derivative
+    for (size_t i = 0; i < knots.size() - 1; ++i) {
+        derivatives.push_back((values[i + 1] - values[i]) / (knots[i + 1] - knots[i]));
+    }
+    return derivatives;
+}
 
-min_u {u : sum_a xi(a) wa(a) <= psi, q_a^{-1}(xi_a) <= u}, where
-d l
-q_a^{-1}(u_a) = min_{p,t} || p - pbar ||_{1,ws_a}
-s.t.    z^T e <= b
-        1^T e = 1
-        p >= 0
-
-The function q_a^{-1} is represented by a piecewise linear function.
-
-@note Note that the returned xi values may sum to less than psi. This happens
-when an an action is not active and xi for the particular action is already at
-its maximal value.
-
-
-@param z Rewards (or values) for all actions
-@param p Nominal distributions for all actions
-@param psi Bound on the sum of L1 deviations
-@param wa Optional set of weights on action errors
-@param ws Optional set of weights on staet errors (using these values can
-significantly slow the computation)
-@param gradients Optional structure that holds pre-computed gradients to speed
-up the computation of the weighted L1 response. Only used with weighted L1
-computation; the unweighted L1 is too fast to make this useful.
-
-@return Objective value, policy (d),
-        nature's deviation from nominal probability distribution (xi)
-*/
-tuple<prec_t, numvec, numvec>
+/**
+ * Computes the optimal objective value of the
+ * s-rectangular problem
+ *
+ * Solves the optimization problem:
+ *
+ * max_d min_{xi,p} sum_a d(a) p_a^T z_a
+ * s.t.    1^T pi = 1, pi >= 0
+ *         sum_a xi(a) wa(a) <= psi
+ *         || p_a - pbar_a ||_{1,ws_a} <= xi_a
+ *
+ * The algorithm works by reformulating the problem to:
+ *
+ * min_u {u : sum_a xi(a) wa(a) <= psi, q_a^{-1}(xi_a) <= u}, where
+ * q_a^{-1}(u_a) = min_{p,t} || p - pbar ||_{1,ws_a}
+ * s.t.    z^T e <= b
+ *        1^T e = 1
+ *         p >= 0
+ *
+ * The function q_a^{-1} is represented by a piecewise linear function.
+ *
+ * @note Note that the returned xi values may sum to less than psi. This happens
+ * when an an action is not active and xi for the particular action is already at
+ * its maximal value.
+ *
+ *
+ * @param z Rewards (or values) for all actions
+ * @param p Nominal distributions for all actions
+ * @param psi Bound on the sum of L1 deviations
+ * @param wa Optional set of weights on action errors
+ * @param ws Optional set of weights on staet errors (using these values can
+ * significantly slow the computation)
+ * @param gradients Optional structure that holds pre-computed gradients to speed
+ * up the computation of the weighted L1 response. Only used with weighted L1
+ * computation; the unweighted L1 is too fast to make this useful.
+ *
+ * @return Objective value, policy (d),
+ *         nature's deviation from nominal probability distribution (xi)
+ */
+inline tuple<prec_t, numvec, numvec>
 solve_srect_bisection(const vector<numvec>& z, const vector<numvec>& pbar,
                       const prec_t psi, const numvec& wa = numvec(0),
                       const vector<numvec> ws = vector<numvec>(0),

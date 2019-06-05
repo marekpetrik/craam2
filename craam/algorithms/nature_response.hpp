@@ -112,11 +112,55 @@ public:
     robust_l1u(prec_t budget) : budget(budget) {}
 
     /**
-   * @brief Implements SANature interface
-   */
+     * Implements SANature interface
+     */
     pair<numvec, prec_t> operator()(long, long, const numvec& nominalprob,
                                     const numvec& zfunction) const {
         return worstcase_l1(zfunction, nominalprob, budget);
+    }
+};
+
+/**
+ * Response that is a convex combination of expectation and value at risk:
+ *
+ *  beta * var_alpha[X] + (1-beta) * E[x]
+ */
+class robust_var_exp_u {
+protected:
+    prec_t alpha; // risk level for value at risk
+    prec_t beta;  // weight on the value at risk (1-beta is the weight of the expectation
+
+public:
+    robust_var_exp_u(prec_t alpha, prec_t beta) : alpha(alpha), beta(beta) {}
+
+    /**
+     * Implements SANature interface
+     */
+    pair<numvec, prec_t> operator()(long, long, const numvec& nominalprob,
+                                    const numvec& zfunction) const {
+        return var_exp(zfunction, nominalprob, alpha, beta);
+    }
+};
+
+/**
+ * Response that is a convex combination of expectation and average value at risk:
+ *
+ *  beta * avar_alpha[X] + (1-beta) * E[x]
+ */
+class robust_avar_exp_u {
+protected:
+    prec_t alpha; // risk level for value at risk
+    prec_t beta;  // weight on the value at risk (1-beta is the weight of the expectation
+
+public:
+    robust_avar_exp_u(prec_t alpha, prec_t beta) : alpha(alpha), beta(beta) {}
+
+    /**
+     * Implements SANature interface
+     */
+    pair<numvec, prec_t> operator()(long, long, const numvec& nominalprob,
+                                    const numvec& zfunction) const {
+        return avar_exp(zfunction, nominalprob, alpha, beta);
     }
 };
 
