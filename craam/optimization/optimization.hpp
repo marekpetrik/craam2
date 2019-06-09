@@ -610,6 +610,80 @@ std::pair<numvec, double> inline worstcase_l1_w_gurobi(const GRBEnv& env, const 
 }
 
 /**
+ * @brief worstcase_l_inf_w_gurobi Uses gurobi to solve for the worst case
+ *  response subject to a weighted L_inf constraint
+ *
+ * min_p  p^T z
+ * s.t.   1^T p = 1
+ *        p >= 0
+ *        ||p - pbar||_{inf,w} <= xi
+ *
+ * The linear program formulation is as follows:
+ *
+ * min_{p} p^T z
+ * s.t.   1^T p = 1
+ *        p >= 0
+ *        p - pbar <= w .* xi
+ *        pbar - p <= w .* xi
+ *
+ * @param wi Weights. Optional, all 1 if not provided.
+ * @return Objective value and the optimal solution
+ */
+std::pair<numvec, double> worstcase_linf_w_gurobi(
+        const GRBEnv& env, const numvec& z, const numvec& pbar, const numvec& wi, double xi) {
+    const size_t nstates = z.size();
+    assert(nstates == pbar.size());
+    assert(wi.empty() || nstates == wi.size());
+
+    numvec ws;
+    if (wi.empty()) ws = numvec(nstates, 1.0);
+    const numvec& w = wi.empty() ? ws : wi;
+
+    GRBModel model = GRBModel(env);
+
+    // Probabilities
+    auto p = std::unique_ptr<GRBVar[]>(model.addVars(numvec(nstates, 0.0).data(),
+                                                     nullptr,
+                                                     nullptr,
+                                                     std::vector<char>(nstates, GRB_CONTINUOUS).data(),
+                                                     nullptr,
+                                                     nstates));
+
+    // constraint: 1^T p = 1
+    GRBLinExpr ones;
+    ones.addTerms(numvec(nstates, 1.0).data(), p.get(), nstates);
+    model.addConstr(ones, GRB_EQUAL, 1.0);
+
+    //TODO: Check if the weighted linf derivation is correct. unweighted linf looks good though.
+    // constraints: p - pbar <= w .* xi (p - (w .* xi) <= pbar) and
+    //              pbar - p <= w .* xi ((w .* xi) - p <= -pbar)
+    for (size_t idstate = 0; idstate < nstates; idstate++) {
+        model.addConstr(p[idstate] - (w[idstate] * xi) <= pbar[idstate]);
+        model.addConstr((-w[idstate] * xi) - p[idstate] <= -pbar[idstate]);
+    }
+
+    // objective p^T z
+    GRBLinExpr objective;
+    objective.addTerms(z.data(), p.get(), nstates);
+    model.setObjective(objective, GRB_MINIMIZE);
+
+    // solve
+    model.optimize();
+
+    // retrieve probability values
+    numvec p_result(nstates);
+    for (size_t i = 0; i < nstates; i++) {
+        p_result[i] = p[i].get(GRB_DoubleAttr_X);
+    }
+
+    // get optimal objective value
+    double objective_value = model.get(GRB_DoubleAttr_ObjVal);
+
+    return make_pair(move(p_result), objective_value);
+}
+
+
+/**
  * @brief Computes the worst case probability distribution subject to a
  * wasserstein constraint
  *
