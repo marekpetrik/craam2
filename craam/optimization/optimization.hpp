@@ -233,7 +233,7 @@ std::pair<numvec, numvec> inline worstcase_l1_knots(
         knots.push_back(knot);
         values.push_back(value);
     }
-    return make_pair(move(knots), move(values));
+    return {move(knots), move(values)};
 }
 
 /**
@@ -259,15 +259,15 @@ protected:
 
 public:
     /**
-   * Constructs an empty structure
-   */
+     * Constructs an empty structure
+     */
     GradientsL1_w(){};
 
     /**
-   * Computes the possible gradients and sorts them increasingly
-   * @param z Objective function
-   * @param w Weights in the definition of the L1 norm
-   */
+     * Computes the possible gradients and sorts them increasingly
+     * @param z Objective function
+     * @param w Weights in the definition of the L1 norm
+     */
     GradientsL1_w(const numvec& z, const numvec& w) {
         const double epsilon = 1e-10;
         size_t element_count = z.size();
@@ -346,16 +346,16 @@ public:
     size_t size() const { return derivatives.size(); }
 
     /**
-   * Returns parameters for the basic solution with gradients that
-   * increase with increasing indexes
-   * @param index Position, 0 is the smallest derivative, size() -1 is the
-   * largest one
-   * @return (gradient, donor index, receiver index, does donor probability must
-   * be greater than nominal?)
-   */
+     * Returns parameters for the basic solution with gradients that
+     * increase with increasing indexes
+     * @param index Position, 0 is the smallest derivative, size() -1 is the
+     * largest one
+     * @return (gradient, donor index, receiver index, does donor probability must
+     * be greater than nominal?)
+     */
     std::tuple<double, size_t, size_t, bool> steepest_solution(size_t index) const {
         size_t e = sorted[index];
-        return std::make_tuple(derivatives[e], donors[e], receivers[e], donor_greater[e]);
+        return {derivatives[e], donors[e], receivers[e], donor_greater[e]};
     }
 };
 

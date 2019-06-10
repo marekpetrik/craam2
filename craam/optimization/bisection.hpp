@@ -105,8 +105,8 @@ inline std::pair<prec_t, size_t> piecewise_linear(const numvec& knots,
 }
 
 /**
- * Computes the right derivatives of a piecewise linear function h(x). The function
- * is not differentiable, but it has right derivatives.
+ * Computes the right derivatives of a piecewise linear function h(x).
+ * The function is not differentiable, but it has right derivatives.
  *
  * The right derivative is defined as:
  * partial_+ f(a) = lim_{x -> a+} (f(x) - f(a)) / (x-a)
@@ -114,27 +114,70 @@ inline std::pair<prec_t, size_t> piecewise_linear(const numvec& knots,
  * @param knots Knots of the function (in parameter x). The array must be
  *              sorted increasingly.
  * @param values Values in the knots (h(k) for knot k)
+ * @param last_derivative The last derivetive (assuming that the function is convex).
+ *                          Optional.
  *
  * @return The right derivative at each knot, except for the last one.
  */
-inline numvec piecewise_derivative(const numvec& knots, const numvec& values) {
+inline numvec piecewise_derivatives(const numvec& knots, const numvec& values,
+                                    prec_t last_derivative = 0.0) {
 
     assert(knots.size() == values.size());
 
     // preallocate the derivates
     numvec derivatives;
-    derivatives.reserve(knots.size() - 1);
+    derivatives.reserve(knots.size());
 
     // compute each right derivative
-    for (size_t i = 0; i < knots.size() - 1; ++i) {
+    for (long i = 0; i < long(knots.size()) - 1; ++i) {
         derivatives.push_back((values[i + 1] - values[i]) / (knots[i + 1] - knots[i]));
     }
+    derivatives.push_back(last_derivative);
     return derivatives;
 }
 
 /**
- * Computes the optimal objective value of the
- * s-rectangular problem
+ * Minimizes a piecewise linear **convex** function defined by a slope and a collection
+ * of knots that define piecewise linear segments. The function is assumed to
+ * be defined on x >= x_0.
+ *
+ * The values di must be non-decreasing
+ *
+ * f(x) = sum_i^{n-1} (d_i ([x - x_i]_+ - [x - x_{i+1}]_+) ) +
+ *                  + d_n [x - x_n]_+ + lambda x
+ *
+ * where x_i are the x-values of knots, d_i are the derivatives, and
+ * lambda is an additional linear term. The number of knots is n
+ *
+ * The optimal solution of this piecewise linear function is the knot i such
+ * that -d_{i-1} >= lambda and -d_i < lambda,
+ * == d_{i-1} <= -lambda and d_i > -lambda,
+ *
+ *
+ * @param knots Values x_i that define the piecewise linear function. Assumed to be
+ *                  defined only for x >= x_0
+ * @param derivatives The right derivatives in all knots
+ * @param lambda An additive linear term
+ *
+ * @return The optimal knot index. Returns the last knot even if the optimal
+ *          solution would be infinity
+ */
+inline long minimize_piecewise(const numvec& knots, const numvec& derivatives,
+                               prec_t lambda) {
+
+    assert(knots.size() == derivatives.size());
+    // make sure that the derivatives are non-decreasing
+    assert(std::is_sorted(cbegin(derivatives), cend(derivatives)));
+
+    auto begin = cbegin(derivatives);
+    long pos = std::distance(begin, std::lower_bound(begin, cend(derivatives), -lambda));
+    // make sure to return the last knot even if the value infinite
+    pos = std::min(pos, long(derivatives.size()) - 1);
+    return pos;
+}
+
+/**
+ * Computes the optimal objective value of the s-rectangular problem
  *
  * Solves the optimization problem:
  *
@@ -162,7 +205,7 @@ inline numvec piecewise_derivative(const numvec& knots, const numvec& values) {
  * @param p Nominal distributions for all actions
  * @param psi Bound on the sum of L1 deviations
  * @param wa Optional set of weights on action errors
- * @param ws Optional set of weights on staet errors (using these values can
+ * @param ws Optional set of weights on state errors (using these values can
  * significantly slow the computation)
  * @param gradients Optional structure that holds pre-computed gradients to speed
  * up the computation of the weighted L1 response. Only used with weighted L1
@@ -172,9 +215,8 @@ inline numvec piecewise_derivative(const numvec& knots, const numvec& values) {
  *         nature's deviation from nominal probability distribution (xi)
  */
 inline tuple<prec_t, numvec, numvec>
-solve_srect_bisection(const vector<numvec>& z, const vector<numvec>& pbar,
-                      const prec_t psi, const numvec& wa = numvec(0),
-                      const vector<numvec> ws = vector<numvec>(0),
+solve_srect_bisection(const numvecvec& z, const numvecvec& pbar, const prec_t psi,
+                      const numvec& wa = numvec(0), const numvecvec ws = numvecvec(0),
                       const vector<GradientsL1_w> gradients = vector<GradientsL1_w>(0)) {
 
     // make sure that the inputs make sense
@@ -476,6 +518,143 @@ solve_srect_bisection(const vector<numvec>& z, const vector<numvec>& pbar,
     transform(pi.cbegin(), pi.cend(), pi.begin(),
               [pisum](prec_t t) { return t / pisum; });
 
-    return make_tuple(u_result, move(pi), move(xi));
+    return {u_result, move(pi), move(xi)};
 }
+
+/**
+ * Computes the optimal response of the nature for s-rectangular ambiguity
+ * for a given randomized decision maker's policy.
+ *
+ * The goal is to solve the following optimization problem:
+ * min_xi sum_a  d_a * (min_p p^T z s.t. ||p - pbar|| <= xi_a)
+ * such that sum_a xi_a <= psi
+ * The solution is by bisection on the dual of the problem:
+ * max_lambda sum_a (min_xi_a d_a Q(min_p p^T z s.t. ||p - pbar|| <= xi_a) +
+ *              + lambda xi_a - lambda psi)
+ * The method bisects on lambda, but considers only the knots of the
+ * piecewise linear functions.
+ *
+ * @param z Rewards (or values) for all actions
+ * @param p Nominal distributions for all actions
+ * @param psi Bound on the sum of L1 deviations
+ * @param d Stochastic policy: a probability distribution over actions
+
+ * @param ws Optional set of weights on state errors (using these values can
+ * significantly slow the computation)
+ * @param gradients Optional structure that holds pre-computed gradients to speed
+ * up the computation of the weighted L1 response. Only used with weighted L1
+ * computation; the unweighted L1 is too fast to make this useful.
+ *
+ * @return Objective value, policy (d),
+ *         nature's deviation from nominal probability distribution (xi)
+ */
+inline pair<prec_t, numvec> evaluate_srect_bisection_l1(
+    const vector<numvec>& z, const vector<numvec>& pbar, const prec_t psi,
+    const numvec& d, const vector<numvec> ws = vector<numvec>(0),
+    const vector<GradientsL1_w> gradients = vector<GradientsL1_w>(0)) {
+
+    // make sure that the inputs make sense
+    if (z.size() != pbar.size())
+        throw invalid_argument("pbar and z must have the same size.");
+    if (psi < 0.0) throw invalid_argument("psi must be non-negative");
+    if (!ws.empty() && ws.size() != z.size())
+        throw invalid_argument("ws must be the same size as pbar and z.");
+    if (!gradients.empty() && gradients.size() != z.size())
+        throw invalid_argument("gradients must be the same length as pbar and z.");
+    if (d.size() != z.size()) throw invalid_argument("d and z must have the same size.");
+    assert(is_probability_dist(d.cbegin(), d.cend()));
+
+    // takes advantage of the piecewise linear representations
+    // of (min_xi_a d_a Q(min_p p^T z s.t. ||p - pbar|| <= xi_a)
+    numvecvec knots; // collection of knots for each action
+    knots.reserve(z.size());
+    numvecvec values; // collection of function values for each action
+    values.reserve(z.size());
+    numvecvec derivatives; // collection of derivatives for each action
+    derivatives.reserve(z.size());
+
+    // count all knots to preallocate space
+    size_t count_allknots = 0;
+
+    // compute the knots and values
+    if (ws.empty()) {
+        // no weights
+        for (long ai = 0; ai < long(z.size()); ++ai) {
+#ifdef __cpp_structured_bindings
+            auto [knots_a, values_a] = worstcase_l1_knots(z[ai], pbar[ai]);
+#else
+            numvec knots_a, values_a;
+            std::tie(knots_a, values_a) = worstcase_l1_knots(z[ai], pbar[ai]);
+#endif
+            knots.push_back(knots_a);
+            values.push_back(values_a);
+            derivatives.push_back(piecewise_derivatives(knots_a, values_a, 0.0));
+            count_allknots += knots_a.size();
+        }
+    } else {
+        // using l1 weights
+        for (long ai = 0; ai < long(z.size()); ++ai) {
+#ifdef __cpp_structured_bindings
+            auto [knots_a, values_a] =
+                gradients.empty()
+                    ? worstcase_l1_w_knots(z[ai], pbar[ai], ws[ai])
+                    : worstcase_l1_w_knots(gradients[ai], z[ai], pbar[ai], ws[ai]);
+#else
+            numvec knots_a, values_a;
+            std::tie(knots_a, values_a) =
+                gradients.empty()
+                    ? worstcase_l1_w_knots(z[ai], pbar[ai], ws[ai])
+                    : worstcase_l1_w_knots(gradients[ai], z[ai], pbar[ai], ws[ai]);
+#endif
+            knots.push_back(knots_a);
+            values.push_back(values_a);
+            derivatives.push_back(piecewise_derivatives(knots_a, values_a, 0.0));
+            count_allknots += knots_a.size();
+        }
+    }
+
+    // construct the set of all knots (to know which lamdas to consider)
+    numvec allderivatives;
+    allderivatives.reserve(count_allknots);
+    for (long ai = 0; ai < long(z.size()); ++ai) {
+        allderivatives.insert(allderivatives.end(), knots[ai].cbegin(), knots[ai].cend());
+        // merge the knots and make sure that they are ordered
+        std::inplace_merge(allderivatives.begin(),
+                           allderivatives.end() - knots[ai].size(), allderivatives.end());
+    }
+    assert(is_sorted(allderivatives.cbegin(), allderivatives.cend()));
+
+    // modifies the array to remove duplicate elements (like 0 for example)
+    auto last = std::unique(allderivatives.begin(), allderivatives.end());
+    allderivatives.erase(last, allderivatives.end());
+
+    // the actual work starts now. Look for the optimal value of lambda to use
+    // The optimal solution is a lambda such that the 0 is in the supergradient
+    auto lambda_lower = allderivatives.cbegin();
+    auto lambda_upper = allderivatives.cend() - 1;
+
+    // search over lambdas in the array of all derivatives
+    // the derivatives are increasing
+    // lambda is that:
+    // 1) too large: the sum of xi_a < psi
+    // 2) too small: the sum of xi_a > psi
+
+    // iterate until the lower an upper bound are just 1 step away;
+    // then there is no way to split them
+    while (lambda_upper - lambda_lower > 1) {
+
+        // pick a middle point
+        auto lambda_mean = lambda_lower + (lambda_upper - lambda_lower) / 2;
+
+        // compute xi_a for the lambda and check whether it should be the lower of the upper bound
+        if (true) {
+            lambda_lower = lambda_mean;
+        } else {
+            lambda_upper = lambda_mean;
+        }
+    }
+
+    return {0.0, {}};
+}
+
 } // namespace craam

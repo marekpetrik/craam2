@@ -1503,4 +1503,24 @@ BOOST_AUTO_TEST_CASE(test_srect_evaluation) {
 }
 #endif // GUROBI_USE
 
+BOOST_AUTO_TEST_CASE(test_piecewise_minimization) {
+
+    numvec knots{0, 1, 6, 9};
+    numvec values{10, 7, 3, 2.5};
+
+    numvec derivatives_true{-3.0, -4.0 / 5.0, -0.5 / 3.0, 0.0};
+
+    numvec derivatives = piecewise_derivatives(knots, values);
+    CHECK_CLOSE_COLLECTION(derivatives_true, derivatives, 0.1);
+
+    BOOST_CHECK_EQUAL(0, minimize_piecewise(knots, derivatives, 4.0));
+    BOOST_CHECK_EQUAL(0, minimize_piecewise(knots, derivatives, 3.0));
+    BOOST_CHECK_EQUAL(1, minimize_piecewise(knots, derivatives, 2.9));
+    BOOST_CHECK_EQUAL(1, minimize_piecewise(knots, derivatives, 1.5));
+    BOOST_CHECK_EQUAL(1, minimize_piecewise(knots, derivatives, 0.9));
+    BOOST_CHECK_EQUAL(2, minimize_piecewise(knots, derivatives, 0.799));
+    BOOST_CHECK_EQUAL(3, minimize_piecewise(knots, derivatives, 0.1));
+    BOOST_CHECK_EQUAL(3, minimize_piecewise(knots, derivatives, 0.0));
+}
+
 #endif //__cplusplus >= 2017
