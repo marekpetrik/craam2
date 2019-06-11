@@ -31,6 +31,7 @@
 #include "craam/algorithms/iteration_methods.hpp"
 #include "craam/algorithms/linprog.hpp"
 #include "craam/algorithms/nature_declarations.hpp"
+#include "craam/modeltools.hpp"
 
 namespace craam {
 
@@ -387,7 +388,8 @@ rsolve_s_vi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
             unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
             const std::function<bool(size_t, prec_t)>& progress =
                 algorithms::internal::empty_progress) {
-    return algorithms::vi_gs(algorithms::SRobustBellman(mdp, nature, policy), discount,
+    auto rpolicy = policy_det2rand(mdp, policy);
+    return algorithms::vi_gs(algorithms::SRobustBellman(mdp, nature, rpolicy), discount,
                              move(valuefunction), iterations, maxresidual, progress);
 }
 
@@ -408,7 +410,8 @@ rsolve_s_mpi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
              unsigned long iterations_vi = MAXITER, prec_t maxresidual_vi = 0.9,
              const std::function<bool(size_t, prec_t)>& progress =
                  algorithms::internal::empty_progress) {
-    return algorithms::mpi_jac(algorithms::SRobustBellman(mdp, nature, policy), discount,
+    auto rpolicy = policy_det2rand(mdp, policy);
+    return algorithms::mpi_jac(algorithms::SRobustBellman(mdp, nature, rpolicy), discount,
                                valuefunction, iterations_pi, maxresidual_pi,
                                iterations_vi, maxresidual_vi, progress);
 }
@@ -423,7 +426,8 @@ rsolve_s_pi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
             unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
             const std::function<bool(size_t, prec_t)>& progress =
                 algorithms::internal::empty_progress) {
-    return algorithms::pi(algorithms::SRobustBellman(mdp, nature, policy), discount,
+    auto rpolicy = policy_det2rand(mdp, policy);
+    return algorithms::pi(algorithms::SRobustBellman(mdp, nature, rpolicy), discount,
                           move(valuefunction), iterations, maxresidual, progress);
 }
 

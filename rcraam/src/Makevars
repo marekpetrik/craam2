@@ -2,7 +2,7 @@
 
 #PKG_CXXFLAGS = -I../../ -I../../include -fopenmp -DNDEBUG -O3 -march=native
 PKG_CXXFLAGS = -I../../ -I../../include -fopenmp -g
-PKG_LIBS= -fopenmp -L../../lib/gurobi -lgurobi_g++5.2 -lgurobi80
+PKG_LIBS= -fopenmp -L../../lib/gurobi -lgurobi_g++5.2 -lgurobi81
 
 CXX_STD = CXX17
 #CXX_STD = CXX14

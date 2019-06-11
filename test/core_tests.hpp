@@ -1431,8 +1431,6 @@ BOOST_AUTO_TEST_CASE(test_knots_w) {
 
     numvec knots = worstcase_l1_w_knots(z, p, w).second;
 
-    // cout << "knots = " << knots << endl;
-
     // make sure that each value between the knots is indeed a linear function
     for (size_t i = 0; i < knots.size() - 1; i++) {
         double knot1 = knots[i];
@@ -1464,6 +1462,18 @@ BOOST_AUTO_TEST_CASE(test_knots_wu) {
     CHECK_CLOSE_COLLECTION(values, values_w, 1e-5);
 }
 
+// computes the s-rectangular value for a policy d, transition probabilities p,
+// and rewards z
+prec_t compute_s_value(const numvec& d, const numvecvec& p, const numvecvec& z) {
+    long actioncount = d.size();
+    prec_t result = 0;
+    for (long i = 0; i < actioncount; ++i) {
+        result +=
+            d[i] * std::inner_product(p[i].cbegin(), p[i].cend(), z[i].cbegin(), 0.0);
+    }
+    return result;
+}
+
 #ifdef GUROBI_USE
 BOOST_AUTO_TEST_CASE(test_srect_evaluation) {
     // set parameters
@@ -1479,9 +1489,9 @@ BOOST_AUTO_TEST_CASE(test_srect_evaluation) {
     GRBEnv env = get_gurobi();
 
     for (const auto& pi : pis) {
-        std::cout << pi << std::endl;
+        //std::cout << pi << std::endl;
         for (double psi = 0.0; psi < 3.0; psi += 0.1) {
-            std::cout << psi << std::endl;
+            //std::cout << psi << std::endl;
             //auto [obj, d, xi] = solve_srect_bisection(z, p, psi, numvec(0), w);
 
             { // no weights first
@@ -1489,6 +1499,8 @@ BOOST_AUTO_TEST_CASE(test_srect_evaluation) {
                 auto [mobj, probs] = evaluate_srect_bisection_l1(z, p, psi, pi);
 
                 BOOST_CHECK_CLOSE(gobj, mobj, 1e-3);
+                auto probvalue = compute_s_value(pi, probs, z);
+                BOOST_CHECK_CLOSE(mobj, probvalue, 1e-3);
             }
 
             { // with weights
@@ -1496,23 +1508,9 @@ BOOST_AUTO_TEST_CASE(test_srect_evaluation) {
                 auto [mobj, probs] = evaluate_srect_bisection_l1(z, p, psi, pi, w);
 
                 BOOST_CHECK_CLOSE(gobj, mobj, 1e-3);
+                auto probvalue = compute_s_value(pi, probs, z);
+                BOOST_CHECK_CLOSE(mobj, probvalue, 1e-3);
             }
-
-            // xi values can be smaller if actions are not active.
-            //BOOST_CHECK_GE(psi + 1e-5, accumulate(xi.cbegin(), xi.cend(), 0.0));
-
-            // compute static value
-            // make sure that xi values are correct
-            //double expected_result = 0;
-            //for (size_t i = 0; i < z.size(); i++) {
-            //   numvec x = worstcase_l1_w(z[i], p[i], w[i], xi[i]).first;
-            //    expected_result +=
-            //        d[i] * inner_product(x.cbegin(), x.cend(), z[i].cbegin(), 0.0);
-            //}
-
-            //BOOST_CHECK_CLOSE(obj, gobj, 1e-3);
-            //BOOST_CHECK_CLOSE(obj, expected_result, 1e-3);
-            //CHECK_CLOSE_COLLECTION(d, gd, 1e-3);
         }
     }
 }

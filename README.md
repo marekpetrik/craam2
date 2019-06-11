@@ -121,35 +121,13 @@ Note that Boost must be present in order to build the tests in the first place.
 
 ## Installing Python Interface ##
 
-**Thy python interface is currently BROKEN! and will probably be rewritten from scratch**
-
-A python interface is provided by package `craam`. Most of the classes and methods are contained in `craam.crobust`.
-
-### Requirements ###
-
--   Python 3.5+ (Python 2 is NOT supported)
--   Setuptools 7.0+
--   Numpy 1.8+
--   Cython 0.24+
-
-### Installation ###
-
-
-The python interface that comes with this project is just a thin interface to the C++ code. [RAAM](https://github.com/marekpetrik/raam) is a more full-featured library that add significant python functionality as well as unit tests.
-
-To install the Python extension, first compile the C++ library as described above. Then go to the `python` subdirectory and run:
-
-``` bash
-  $ python3 setup.py install --user 
-```
-
-Omit `--user` to install the package for all users rather than just the current one.
+**Thy python interface is currently BROKEN for craam2 and will probably be rewritten from scratch**
 
 ## Installing R Interface ##
 
 The R interface is experimental and has very limited functionality. Method signatures are expected to change. The package should work on Linux, Mac, and Windows (with RTools 3.4+).
 
-Te package can be installed directly from the github repository using devtools:
+The package can be installed directly from the github repository using devtools:
 ```R
 library(devtools)
 devtools::install_github("marekpetrik/craam/rcraam")
@@ -184,8 +162,20 @@ The instruction above generate a release version of the project. The release ver
     $ cmake -DCMAKE_BUILD_TYPE=Debug .
     $ cmake --build .
 ```
+The release version that ommits many of the time-consuming debugging checks can be compiled as:
 
-To help with development, Cmake can be used to generate a [CodeBlocks](http://www.codeblocks.org/) project files too:
+``` bash
+    $ cmake -DCMAKE_BUILD_TYPE=Release .
+    $ cmake --build .
+```
+
+By default, the project assumes that the [Gurobi](http://www.gurobi.com/) LP solver is available.  It is possible to disable the code that requires gurobi by uncommenting the fillowing line in CMakeLists.txt: 
+
+```
+set (GUROBI_USE FALSE)
+```
+
+[QT creator](https://www.qt.io/download) is a nice IDE that can automatically parse and run cmake projects directly. As an alternative, CMake can be used to generate a [CodeBlocks](http://www.codeblocks.org/) project files too:
 
 ``` bash
   $ cmake . -G "CodeBlocks - Ninja"
