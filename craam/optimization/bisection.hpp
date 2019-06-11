@@ -647,6 +647,8 @@ inline pair<prec_t, numvecvec> evaluate_srect_bisection_l1(
     }
     // lambdas will be equal to the negative of the derivatives
     multiply_inplace(allderivatives, -1);
+    // allow a negative value so lambda_upper can be optimal when lambda = 0 is optimal
+    allderivatives.push_back(-1);
     std::sort(allderivatives.begin(), allderivatives.end());
     assert(is_sorted(allderivatives.cbegin(), allderivatives.cend()));
 
@@ -654,7 +656,7 @@ inline pair<prec_t, numvecvec> evaluate_srect_bisection_l1(
     auto last = std::unique(allderivatives.begin(), allderivatives.end());
     allderivatives.erase(last, allderivatives.end());
     // add one value that is strictly greater than all other elements (to assure a 0-solution)
-    allderivatives.push_back(allderivatives.back() + 10 * EPSILON);
+    allderivatives.push_back(allderivatives.back() + 1);
 
     auto lambda_begin = allderivatives.cbegin();
     // the actual work starts now. Look for the optimal value of lambda to use
@@ -669,12 +671,14 @@ inline pair<prec_t, numvecvec> evaluate_srect_bisection_l1(
         auto knot_index = minimize_piecewise(knots[ai], derivatives[ai], *lambda_lower);
         xisum_lower += knots[ai][knot_index];
     }
-    assert(xisum_lower >= psi);
+    // assert(xisum_lower >= psi); <=== this may not be true when psi is really large
     prec_t xisum_upper = 0;
+
     for (long ai = 0; ai < long(actioncount); ++ai) {
         auto knot_index = minimize_piecewise(knots[ai], derivatives[ai], *lambda_upper);
         xisum_upper += knots[ai][knot_index];
     }
+    assert(xisum_lower >= xisum_upper);
     assert(xisum_upper <= psi);
 
     // search over lambdas in the array of all derivatives
@@ -700,14 +704,14 @@ inline pair<prec_t, numvecvec> evaluate_srect_bisection_l1(
         }
 
         // compute xi_a for the lambda and check whether it should be the lower of the upper bound
-        if (xi_sum < psi) {
+        if (xi_sum <= psi) {
             lambda_upper = lambda_mean_it;
             xisum_upper = xi_sum;
         } else {
             lambda_lower = lambda_mean_it;
             xisum_lower = xi_sum;
         }
-        assert(xisum_lower >= psi);
+        assert(xisum_lower >= xisum_upper);
         assert(xisum_upper <= psi);
     }
 
@@ -716,12 +720,13 @@ inline pair<prec_t, numvecvec> evaluate_srect_bisection_l1(
     // compute alpha * xisum_lower + (1-alpha) * xisum_upper = psi
     // then lambda = alpha * lambda_lower + (1-alpha) * lambda_upper
     // return 1/2 if they are very close or the same
-    auto alpha = (xisum_lower - xisum_upper) > EPSILON
-                     ? (psi - xisum_upper) / (xisum_lower - xisum_upper)
-                     : 0.5;
-    assert(alpha >= 0.0 && alpha <= 1.0);
-    alpha = 0.0;
-    auto lambda = alpha * (*lambda_lower) + (1 - alpha) * (*lambda_upper);
+    //auto alpha = (xisum_lower - xisum_upper) > EPSILON
+    //                 ? (psi - xisum_upper) / (xisum_lower - xisum_upper)
+    //                 : 0.5;
+    //assert(alpha >= 0.0 && alpha <= 1.0);
+    // alpha = 0.0;
+    //auto lambda = alpha * (*lambda_lower) + (1 - alpha) * (*lambda_upper);
+    auto lambda = *lambda_upper;
     // *** compute the optimal x_a for the lambda
     // return objective value
     prec_t objective_value = 0;
