@@ -239,4 +239,22 @@ template <class T> constexpr const T& clamp(const T& v, const T& lo, const T& hi
 }
 #endif
 
+/**
+ * Multiplies the vector by a value and returns it
+ */
+numvec multiply(numvec vct, prec_t value) {
+    // intentionally passed by value (to enable a move and handling rvalues)
+    for (int i = 0; i < int(vct.size()); ++i)
+        vct[i] *= value;
+    return vct;
+}
+
+/**
+ * Multiplies the vector by a value inplace
+ */
+void multiply_inplace(numvec& vct, prec_t value) {
+    for (int i = 0; i < int(vct.size()); ++i)
+        vct[i] *= value;
+}
+
 } // namespace craam

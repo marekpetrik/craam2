@@ -295,10 +295,10 @@ public:
         : mdp(mdp), nature(nature), decision_policy(move(policy)) {}
 
     /**
-      Constructs the object from a specification of nature. No decision maker's
-      policy is provided.
-      @param nature Function that describes nature's response
-      */
+     * Constructs the object from a specification of nature. No decision maker's
+     * policy is provided.
+     * @param nature Function that describes nature's response
+     */
     SARobustBellman(const MDP& mdp, const SANature& nature)
         : mdp(mdp), nature(nature), decision_policy(0) {}
 
@@ -348,9 +348,9 @@ public:
      * @param state State for which to compute the Bellman update
      * @param stateid Index of the state
      * @param valuefunction Value function
-      @param discount Discount factor
-      @returns New value for the state
-      */
+     * @param discount Discount factor
+     * @returns New value for the state
+     */
     prec_t compute_value(const policy_type& action, long stateid,
                          const numvec& valuefunction, prec_t discount) const {
         return value_fix_state(mdp[stateid], valuefunction, discount, action.first,

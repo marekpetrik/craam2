@@ -1471,7 +1471,7 @@ BOOST_AUTO_TEST_CASE(test_srect_evaluation) {
     const numvecvec z{{3.0, 2.0, 4.0, 1.0}, {3.0, 1.3, 4.0}, {6.0, 0.3, 4.5}};
     const numvecvec w{{0.3, 0.3, 0.3, 0.1}, {0.2, 0.5, 0.3}, {0.7, 0.1, 0.2}};
     // TODO: change this to multiple different policies
-    const numvecvec pis{{0.3, 0.1, 0.6}, {1.0, 0, 0}, {0, 1, 0}, {0.8, 0.2, 0.0}};
+    const numvecvec pis{{1.0, 0, 0}, {0.3, 0.1, 0.6}, {0, 1.0, 0}, {0.8, 0.2, 0.0}};
 
     // uniform weights
     const vector<numvec> wu{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
@@ -1479,9 +1479,16 @@ BOOST_AUTO_TEST_CASE(test_srect_evaluation) {
     GRBEnv env = get_gurobi();
 
     for (const auto& pi : pis) {
+        std::cout << pi << std::endl;
         for (double psi = 0.0; psi < 3.0; psi += 0.1) {
-            auto [obj, d, xi] = solve_srect_bisection(z, p, psi, numvec(0), w);
-            auto [gd, gobj] = srect_solve_gurobi(env, z, p, psi, w, pi);
+            std::cout << psi << std::endl;
+            //auto [obj, d, xi] = solve_srect_bisection(z, p, psi, numvec(0), w);
+
+            // no weights first
+            auto [gd, gobj] = srect_solve_gurobi(env, z, p, psi, numvecvec(0), pi);
+            auto [mobj, probs] = evaluate_srect_bisection_l1(z, p, psi, pi);
+
+            BOOST_CHECK_CLOSE(gobj, mobj, 1e-3);
 
             // xi values can be smaller if actions are not active.
             //BOOST_CHECK_GE(psi + 1e-5, accumulate(xi.cbegin(), xi.cend(), 0.0));

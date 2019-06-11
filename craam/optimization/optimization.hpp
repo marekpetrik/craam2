@@ -278,9 +278,8 @@ public:
         derivatives.reserve(element_count);
         donors.reserve(element_count + 1);
         receivers.reserve(element_count + 1);
-        donor_greater.reserve(
-            element_count +
-            1); // whether the donor p is greater than the corresponding pbar
+        // whether the donor p is greater than the corresponding pbar
+        donor_greater.reserve(element_count + 1);
 
         // identify possible receivers (must be less weight than all the smaller
         // elements)
