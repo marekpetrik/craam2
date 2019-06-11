@@ -1484,11 +1484,19 @@ BOOST_AUTO_TEST_CASE(test_srect_evaluation) {
             std::cout << psi << std::endl;
             //auto [obj, d, xi] = solve_srect_bisection(z, p, psi, numvec(0), w);
 
-            // no weights first
-            auto [gd, gobj] = srect_solve_gurobi(env, z, p, psi, numvecvec(0), pi);
-            auto [mobj, probs] = evaluate_srect_bisection_l1(z, p, psi, pi);
+            { // no weights first
+                auto [gd, gobj] = srect_solve_gurobi(env, z, p, psi, numvecvec(0), pi);
+                auto [mobj, probs] = evaluate_srect_bisection_l1(z, p, psi, pi);
 
-            BOOST_CHECK_CLOSE(gobj, mobj, 1e-3);
+                BOOST_CHECK_CLOSE(gobj, mobj, 1e-3);
+            }
+
+            { // with weights
+                auto [gd, gobj] = srect_solve_gurobi(env, z, p, psi, w, pi);
+                auto [mobj, probs] = evaluate_srect_bisection_l1(z, p, psi, pi, w);
+
+                BOOST_CHECK_CLOSE(gobj, mobj, 1e-3);
+            }
 
             // xi values can be smaller if actions are not active.
             //BOOST_CHECK_GE(psi + 1e-5, accumulate(xi.cbegin(), xi.cend(), 0.0));

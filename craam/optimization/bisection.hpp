@@ -544,7 +544,7 @@ solve_srect_bisection(const numvecvec& z, const numvecvec& pbar, const prec_t ps
  * @param psi Bound on the sum of L1 deviations
  * @param d Stochastic policy: a probability distribution over actions
 
- * @param ws Optional set of weights on state errors (using these values can
+ * @param ws Optional set of weights on state errors (using weights can
  * significantly slow down the computation)
  * @param gradients Optional structure that holds pre-computed gradients to speed
  * up the computation of the weighted L1 response. Only used with weighted L1
@@ -733,9 +733,26 @@ inline pair<prec_t, numvecvec> evaluate_srect_bisection_l1(
     // return probabilities
     numvecvec probabilities_sol(actioncount);
 
+    // compute xi values
+    // need to allocate any remaining psi values (not applicable when lambda = 0)
+    auto psi_remainder = psi - xisum_upper;
+    assert(psi_remainder >= 0);
+    numvec xi_values;
+    xi_values.reserve(actioncount);
     for (long ai = 0; ai < long(actioncount); ++ai) {
         auto knot_index = minimize_piecewise(knots[ai], derivatives[ai], lambda);
         auto xi = knots[ai][knot_index];
+        // use psi-reminder if this appears to be
+        if (lambda > EPSILON &&
+            std::abs(derivatives[ai][knot_index] + lambda) < EPSILON) {
+            xi += psi_remainder;
+            psi_remainder = 0;
+        }
+        xi_values.push_back(xi);
+    }
+
+    for (long ai = 0; ai < long(actioncount); ++ai) {
+        auto xi = xi_values[ai];
         if (ws.empty()) {
 #ifdef __cpp_structured_bindings
             auto [prob, value] = worstcase_l1(z[ai], pbar[ai], xi);
@@ -744,7 +761,8 @@ inline pair<prec_t, numvecvec> evaluate_srect_bisection_l1(
             prec_t value;
             std::tie(prob, value) = worstcase_l1(z[ai], pbar[ai], xi);
 #endif
-            objective_value += d[ai] * value + xi * lambda;
+            //objective_value += d[ai] * value + xi * lambda;  <=== if psi_remainder were not allocated before
+            objective_value += d[ai] * value;
             probabilities_sol[ai] = prob;
 
         } else {
@@ -761,11 +779,12 @@ inline pair<prec_t, numvecvec> evaluate_srect_bisection_l1(
                     ? worstcase_l1_w(z[ai], pbar[ai], ws[ai], xi)
                     : worstcase_l1_w(gradients[ai], z[ai], pbar[ai], ws[ai], xi);
 #endif
-            objective_value += d[ai] * value + xi * lambda;
+            //objective_value += d[ai] * value + xi * lambda; <=== if psi_remainder were not allocated before
+            objective_value += d[ai] * value;
             probabilities_sol[ai] = prob;
         }
     }
-    objective_value -= lambda * psi;
+    //objective_value -= lambda * psi; <=== if psi_remainder were not allocated before
 
     return {objective_value, probabilities_sol};
 }
