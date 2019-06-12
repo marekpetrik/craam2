@@ -845,7 +845,7 @@ std::pair<numvec, double> inline avar(const numvec& z, const numvec& pbar, prec_
 
     // this is the new distribution
     numvec distribution(pbar.size(), 0.0);
-    prec_t value; // this the return value, updated while computing the distribution
+    prec_t value = 0; // this the return value, updated while computing the distribution
 
     // for really small alpha, just return the worst case outright
     if (alpha <= EPSILON) {
