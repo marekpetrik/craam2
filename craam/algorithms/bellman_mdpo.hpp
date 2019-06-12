@@ -46,13 +46,6 @@ namespace craam { namespace algorithms {
  * the convergence of the modified policy policy iteration in robust cases.
  */
 class SARobustOutcomeBellman {
-protected:
-    const MDPO& mdpo;
-    /// How to combine the values from a robust solution
-    SANature nature;
-    /// Partial policy specification (action -1 is ignored and optimized)
-    indvec decision_policy;
-
 public:
     /// the policy of the decision maker
     using dec_policy_type = long;
@@ -62,6 +55,16 @@ public:
     using policy_type = pair<typename SARobustOutcomeBellman::dec_policy_type,
                              typename SARobustOutcomeBellman::nat_policy_type>;
 
+protected:
+    const MDPO& mdpo;
+    /// How to combine the values from a robust solution
+    SANature nature;
+    /// Partial policy specification (action -1 is ignored and optimized)
+    vector<dec_policy_type> decision_policy;
+    /// Initial policy specification for the decision maker (should be never changed)
+    const vector<dec_policy_type> initial_policy;
+
+public:
     /**
      * @param mdpo MDPO definition. Does not take ownership
      * @param nature Natures response function to outcomes. Uses the mean
@@ -71,7 +74,8 @@ public:
      */
     SARobustOutcomeBellman(const MDPO& mdpo, const SANature& nature = nats::average(),
                            indvec initial_policy = indvec(0))
-        : mdpo(mdpo), nature(nature), decision_policy(move(initial_policy)) {}
+        : mdpo(mdpo), nature(nature), decision_policy(move(initial_policy)),
+          initial_policy(decision_policy) {}
 
     /// @brief Number of states in the MDPO
     size_t state_count() const { return mdpo.size(); }
@@ -140,13 +144,21 @@ public:
      * Sets the policy that will be used by the update. The value -1 for a state
      * means that the action will be optimized.
      *
-     * If the length is 0, then the decision maker's policy is optimized for every state
+     * If the length is 0, then the decision maker's policy is replaced by the initial
+     * policy (or an equivalent).
      */
-    void set_decision_policy(const indvec& policy) {
+    void set_decision_policy(
+        const vector<dec_policy_type>& policy = vector<dec_policy_type>(0)) {
         if (policy.empty()) {
-            // if it is empty, then this should have no effect,
-            // but it prevents repeated shortening of the vector
-            fill(decision_policy.begin(), decision_policy.end(), -1);
+            if (initial_policy.empty()) {
+                // if it is empty, then this should have no effect,
+                // but it prevents repeated shortening of the vector
+                fill(decision_policy.begin(), decision_policy.end(), -1);
+
+            } else {
+                decision_policy = initial_policy;
+            }
+
         } else {
             assert(policy.size() == mdpo.size());
             decision_policy = policy;

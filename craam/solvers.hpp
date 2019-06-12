@@ -431,6 +431,22 @@ rsolve_s_pi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
                           move(valuefunction), iterations, maxresidual, progress);
 }
 
+/**
+ * @ingroup PartialPolicyIteration
+ */
+inline SRobustSolution
+rsolve_s_ppi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
+             numvec valuefunction = numvec(0), const indvec& policy = indvec(0),
+             unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
+             const std::function<bool(size_t, prec_t)>& progress =
+                 algorithms::internal::empty_progress) {
+
+    auto rpolicy = policy_det2rand(mdp, policy);
+    return algorithms::rppi(algorithms::SRobustBellman(mdp, move(nature), rpolicy),
+                            discount, move(valuefunction), iterations, maxresidual, 1.0,
+                            discount * discount, progress);
+}
+
 // **************************************************************************
 // Plain MDPO methods
 // **************************************************************************
