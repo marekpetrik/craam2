@@ -574,7 +574,11 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     SRobustSolution sol;
     algorithms::SNature natparsed = parse_nature_s(m, nature, nature_par);
     if (!options.containsElementNamed("algorithm") ||
-        Rcpp::as<string>(options["algorithm"]) == "mpi") {
+        Rcpp::as<string>(options["algorithm"]) == "ppi") {
+        sol = rsolve_s_ppi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+                           iterations, precision);
+    }
+    if (Rcpp::as<string>(options["algorithm"]) == "mpi") {
         sol = rsolve_s_mpi(m, discount, std::move(natparsed), numvec(0), indvec(0),
                            sqrt(iterations), precision, sqrt(iterations), 0.5);
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
