@@ -1152,7 +1152,7 @@ BOOST_AUTO_TEST_CASE(s_rectangular_linf_gurobi) {
 
     auto sol = rsolve_s_vi(mdp, 1.0, nats::robust_s_linf_gurobi(numvec{0.1, 0, 0, 0}));
 }
-//#endif
+#endif
 
 // ********************************************************************************
 //  Test optimization methods
