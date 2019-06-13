@@ -351,7 +351,7 @@ public:
      * Implements SNature interface
      */
     tuple<numvec, vector<numvec>, prec_t>
-    operator()(long stateid, const vector<numvec>& nominalprobs,
+    operator()(long stateid, const numvec& policy, const vector<numvec>& nominalprobs,
                const vector<numvec>& zvalues) const {
 
         // TODO: refactor this and the robust_s_l1 to the same method
@@ -360,29 +360,40 @@ public:
         assert(nominalprobs.size() == zvalues.size());
 
         prec_t outcome;
-        numvec actiondist, sa_budgets;
-
-        // compute the distribution of actions and the optimal budgets
-        tie(outcome, actiondist, sa_budgets) =
-            solve_srect_bisection(zvalues, nominalprobs, budget);
-
-        assert(actiondist.size() == zvalues.size());
-        assert(sa_budgets.size() == actiondist.size());
-
-        // compute actual worst-case responses for all actions
-        // and aggregate them in a sparse transition probability
+        numvec actiondist;
         vector<numvec> new_probability;
-        new_probability.reserve(actiondist.size());
-        for (size_t a = 0; a < nominalprobs.size(); a++) {
-            // skip the ones that have not transition probability
-            if (actiondist[a] > EPSILON) {
-                new_probability.push_back(
-                    worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
-            } else {
-                new_probability.push_back(numvec(0));
+
+        // no decision maker's policy provided
+        if (policy.empty()) {
+            numvec sa_budgets;
+            // compute the distribution of actions and the optimal budgets
+            tie(outcome, actiondist, sa_budgets) =
+                solve_srect_bisection(zvalues, nominalprobs, budget);
+
+            assert(actiondist.size() == zvalues.size());
+            assert(sa_budgets.size() == actiondist.size());
+
+            // compute actual worst-case responses for all actions
+            // and aggregate them in a sparse transition probability
+
+            new_probability.reserve(actiondist.size());
+            for (size_t a = 0; a < nominalprobs.size(); a++) {
+                // skip the ones that have not transition probability
+                if (actiondist[a] > EPSILON) {
+                    new_probability.push_back(
+                        worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
+                } else {
+                    new_probability.push_back(numvec(0));
+                }
             }
         }
-        return make_tuple(move(actiondist), move(new_probability), outcome);
+        // a policy is provided
+        else {
+            std::tie(outcome, new_probability) =
+                evaluate_srect_bisection_l1(zvalues, nominalprobs, budget, policy);
+            actiondist = policy;
+        }
+        return {move(actiondist), move(new_probability), outcome};
     }
 };
 
@@ -395,51 +406,55 @@ public:
 class robust_s_l1 {
 protected:
     numvec budgets;
-    vector<numvec> weights_a;
 
 public:
-    robust_s_l1(numvec budgets) : budgets(move(budgets)), weights_a(0) {}
+    robust_s_l1(numvec budgets) : budgets(move(budgets)) {}
 
-    robust_s_l1(numvec budgets, vector<numvec> weights_a)
-        : budgets(move(budgets)), weights_a(move(weights_a)) {}
+    robust_s_l1(numvec budgets, vector<numvec> weights_a) : budgets(move(budgets)) {}
 
     /**
      * Implements SNature interface
      */
     tuple<numvec, vector<numvec>, prec_t>
-    operator()(long stateid, const vector<numvec>& nominalprobs,
+    operator()(long stateid, const numvec& policy, const vector<numvec>& nominalprobs,
                const vector<numvec>& zvalues) const {
         assert(stateid >= 0 && stateid < long(budgets.size()));
         assert(nominalprobs.size() == zvalues.size());
 
         prec_t outcome;
-        numvec actiondist, sa_budgets;
+        numvec actiondist;
+        vector<numvec> new_probability;
 
-        // compute the distribution of actions and the optimal budgets
-        if (!weights_a.empty()) {
-            tie(outcome, actiondist, sa_budgets) = solve_srect_bisection(
-                zvalues, nominalprobs, budgets[stateid], weights_a[stateid]);
-        } else {
+        // no decision maker's policy provided
+        if (policy.empty()) {
+            // compute the distribution of actions and the optimal budgets
+
+            numvec sa_budgets;
             tie(outcome, actiondist, sa_budgets) =
                 solve_srect_bisection(zvalues, nominalprobs, budgets[stateid]);
-        }
-        assert(actiondist.size() == zvalues.size());
-        assert(sa_budgets.size() == actiondist.size());
 
-        // compute actual worst-case responses for all actions
-        // and aggregate them in a sparse transition probability
-        vector<numvec> new_probability;
-        new_probability.reserve(actiondist.size());
-        for (size_t a = 0; a < nominalprobs.size(); a++) {
-            // skip the ones that have not transition probability
-            if (actiondist[a] > EPSILON) {
-                new_probability.push_back(
-                    worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
-            } else {
-                new_probability.push_back(numvec(0));
+            assert(actiondist.size() == zvalues.size());
+            assert(sa_budgets.size() == actiondist.size());
+
+            // compute actual worst-case responses for all actions
+            // and aggregate them in a sparse transition probability
+            vector<numvec> new_probability;
+            new_probability.reserve(actiondist.size());
+            for (size_t a = 0; a < nominalprobs.size(); a++) {
+                // skip the ones that have not transition probability
+                if (actiondist[a] > EPSILON) {
+                    new_probability.push_back(
+                        worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
+                } else {
+                    new_probability.push_back(numvec(0));
+                }
             }
+        } else {
+            std::tie(outcome, new_probability) = evaluate_srect_bisection_l1(
+                zvalues, nominalprobs, budgets[stateid], policy);
+            actiondist = policy;
         }
-        return make_tuple(move(actiondist), move(new_probability), outcome);
+        return {move(actiondist), move(new_probability), outcome};
     }
 };
 
@@ -471,36 +486,48 @@ public:
      * Implements SNature interface
      */
     tuple<numvec, vector<numvec>, prec_t>
-    operator()(long stateid, const vector<numvec>& nominalprobs,
+    operator()(long stateid, const numvec& policy, const vector<numvec>& nominalprobs,
                const vector<numvec>& zvalues) const {
         assert(stateid >= 0 && stateid < long(budgets.size()));
         assert(nominalprobs.size() == zvalues.size());
 
         prec_t outcome;
-        numvec actiondist, sa_budgets;
-
-        // compute the distribution of actions and the optimal budgets
-
-        tie(outcome, actiondist, sa_budgets) = solve_srect_bisection(
-            zvalues, nominalprobs, budgets[stateid], numvec(0), weights[stateid]);
-
-        assert(actiondist.size() == zvalues.size());
-        assert(sa_budgets.size() == actiondist.size());
-
-        // compute actual worst-case responses for all actions
-        // and aggregate them in a sparse transition probability
+        numvec actiondist;
         vector<numvec> new_probability;
-        new_probability.reserve(actiondist.size());
-        for (size_t a = 0; a < nominalprobs.size(); a++) {
-            // skip the ones that have not transition probability
-            if (actiondist[a] > EPSILON) {
-                new_probability.push_back(
-                    worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
-            } else {
-                new_probability.push_back(numvec(0));
+
+        // no decision maker's policy provided
+        if (policy.empty()) {
+            numvec sa_budgets;
+
+            // compute the distribution of actions and the optimal budgets
+
+            tie(outcome, actiondist, sa_budgets) = solve_srect_bisection(
+                zvalues, nominalprobs, budgets[stateid], numvec(0), weights[stateid]);
+
+            assert(actiondist.size() == zvalues.size());
+            assert(sa_budgets.size() == actiondist.size());
+
+            // compute actual worst-case responses for all actions
+            // and aggregate them in a sparse transition probability
+            vector<numvec> new_probability;
+            new_probability.reserve(actiondist.size());
+            for (size_t a = 0; a < nominalprobs.size(); a++) {
+                // skip the ones that have not transition probability
+                if (actiondist[a] > EPSILON) {
+                    new_probability.push_back(
+                        worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
+                } else {
+                    new_probability.push_back(numvec(0));
+                }
             }
         }
-        return make_tuple(move(actiondist), move(new_probability), outcome);
+        // a policy is provided
+        else {
+            std::tie(outcome, new_probability) = evaluate_srect_bisection_l1(
+                zvalues, nominalprobs, budgets[stateid], policy, weights[stateid]);
+            actiondist = policy;
+        }
+        return {move(actiondist), move(new_probability), outcome};
     }
 };
 
@@ -511,7 +538,7 @@ public:
  *
  * The state-action weights are used as follows:
  *
- * WARNING: does not compute the probaility distributions of policies and will
+ * WARNING: does not compute the probability distributions of policies and will
  * therefore fail when used in modified policy iteration
  */
 class robust_s_l1_gurobi {
@@ -544,22 +571,37 @@ public:
    * Implements SNature interface
    */
     tuple<numvec, vector<numvec>, prec_t>
-    operator()(long stateid, const vector<numvec>& nominalprobs,
+    operator()(long stateid, const numvec& policy, const vector<numvec>& nominalprobs,
                const vector<numvec>& zvalues) const {
         assert(stateid >= 0 && stateid < long(budgets.size()));
         assert(nominalprobs.size() == zvalues.size());
 
         prec_t outcome;
-        numvec actiondist;
+        numvec actiondist, sa_budgets;
+
+        if (!policy.empty()) {
+            throw invalid_argument("Does not support decision maker's policies.");
+        }
 
         // compute the distribution of actions and the optimal budgets
 
-        tie(actiondist, outcome) =
-            srect_solve_gurobi(*env, zvalues, nominalprobs, budgets[stateid]);
+        tie(outcome, actiondist, sa_budgets) =
+            srect_l1_solve_gurobi(*env, zvalues, nominalprobs, budgets[stateid]);
 
         assert(actiondist.size() == zvalues.size());
 
-        vector<numvec> new_probability(actiondist.size());
+        vector<numvec> new_probability;
+        new_probability.reserve(actiondist.size());
+        for (size_t a = 0; a < nominalprobs.size(); a++) {
+            // skip the ones that have not transition probability
+            if (actiondist[a] > EPSILON) {
+                new_probability.push_back(
+                        worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
+            } else {
+                new_probability.push_back(numvec(0));
+            }
+        }
+
         return make_tuple(move(actiondist), move(new_probability), outcome);
     }
 };
@@ -617,25 +659,102 @@ public:
     /**
    * Implements the SNature interface
    */
-    tuple<numvec, vector<numvec>, prec_t> operator()(long stateid,
+    tuple<numvec, vector<numvec>, prec_t> operator()(long stateid, const numvec& policy,
                                                      const numvecvec& nominalprobs,
                                                      const numvecvec& zvalues) const {
         assert(stateid >= 0 && stateid < long(budgets.size()));
         assert(nominalprobs.size() == zvalues.size());
 
+        if (!policy.empty()) {
+            throw invalid_argument("Does not support decision maker's policies.");
+        }
+
         prec_t outcome;
-        numvec actiondist;
+        numvec actiondist, sa_budgets;
 
         // compute the distribution of actions and the optimal budgets
 
-        tie(actiondist, outcome) = srect_solve_gurobi(*env, zvalues, nominalprobs,
+        tie(outcome, actiondist, sa_budgets) = srect_l1_solve_gurobi(*env, zvalues, nominalprobs,
                                                       budgets[stateid], weights[stateid]);
 
         assert(actiondist.size() == zvalues.size());
 
-        vector<numvec> new_probability(actiondist.size());
+        vector<numvec> new_probability;
+        new_probability.reserve(actiondist.size());
+        for (size_t a = 0; a < nominalprobs.size(); a++) {
+            // skip the ones that have not transition probability
+            if (actiondist[a] > EPSILON) {
+                new_probability.push_back(
+                        worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
+            } else {
+                new_probability.push_back(numvec(0));
+            }
+        }
+
         return make_tuple(move(actiondist), move(new_probability), outcome);
     };
 };
+
+class robust_s_linf_gurobi {
+    protected:
+        // a budget for every state
+        numvec budgets;
+        shared_ptr<GRBEnv> env;
+
+    public:
+
+        /**
+       * Automatically constructs a gurobi environment object. Weights are uniform
+       * when not provided
+       * @param budgets Budgets, with a single value for each MDP state
+       */
+        robust_s_linf_gurobi(numvec budgets) : budgets(move(budgets)) {
+            env = make_shared<GRBEnv>();
+            // make sure it is run in a single thread so it can be parallelized
+            env->set(GRB_IntParam_OutputFlag, 0);
+            env->set(GRB_IntParam_Threads, 1);
+        };
+
+        /**
+       * @param env Gurobi environment to use
+       * @param budgets Budgets, with a single value for each MDP state
+       */
+        robust_s_linf_gurobi(const shared_ptr<GRBEnv>& env, numvec budgets)
+                : budgets(move(budgets)), env(env){};
+
+        /**
+       * Implements SNature interface
+       */
+        tuple<numvec, vector<numvec>, prec_t>
+        operator()(long stateid, const vector<numvec>& nominalprobs,
+                   const vector<numvec>& zvalues) const {
+            //assert(stateid >= 0 && stateid < long(budgets.size()));
+            assert(nominalprobs.size() == zvalues.size());
+
+            prec_t outcome;
+            numvec actiondist, sa_budgets;
+
+            // compute the distribution of actions and the optimal budgets
+            tie(outcome, actiondist, sa_budgets) = srect_linf_solve_gurobi(*env, zvalues, nominalprobs, budgets[stateid]);
+
+            assert(actiondist.size() == zvalues.size());
+
+            // compute actual worst-case transition probability (deviated by sa_budget amount from the nominal transition)
+            // for all actions and aggregate them in a sparse transition probability
+            vector<numvec> new_probability;
+            new_probability.reserve(actiondist.size());
+            for (size_t a = 0; a < nominalprobs.size(); a++) {
+                // skip the ones that have not transition probability
+                if (actiondist[a] > EPSILON) {
+                    new_probability.push_back(
+                            worstcase_linf_w_gurobi(*env,  zvalues[a], nominalprobs[a], numvec(0), sa_budgets[a]).first);
+                } else {
+                    new_probability.push_back(numvec(0));
+                }
+            }
+
+            return make_tuple(move(actiondist), move(new_probability), outcome);
+        }
+    };
 #endif // GUROBI_USE
 }}}    // namespace craam::algorithms::nats

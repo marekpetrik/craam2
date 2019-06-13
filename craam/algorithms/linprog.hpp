@@ -24,6 +24,7 @@
 #pragma once
 
 #include "craam/definitions.hpp"
+
 #ifdef GUROBI_USE
 #include "craam/MDP.hpp"
 #include "craam/Solution.hpp"
@@ -32,6 +33,7 @@
 #include <memory>
 
 namespace craam { namespace algorithms {
+
 
 /**
  * @brief Solves the MDP using the primal formulation (using value functions)

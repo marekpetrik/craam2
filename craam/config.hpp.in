@@ -1,11 +1,16 @@
 #pragma once 
-
 #define VERSION @CRAAMVERSION@
+
+#define CRAAM_CONFIG_HPP
+
 #cmakedefine IS_DEBUG
 #cmakedefine GUROBI_USE
 
 #ifndef IS_DEBUG
     #define NDEBUG
 #endif
+
+
+
 
 

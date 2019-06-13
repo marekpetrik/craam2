@@ -266,14 +266,6 @@ public:
  * @see PlainBellman for a plain implementation
  */
 class SARobustBellman {
-protected:
-    /// MDP definition
-    const MDP& mdp;
-    /// Reference to the function that is used to call the nature
-    const SANature& nature;
-    /// Partial policy specification for the decision maker (action -1 is ignored and optimized)
-    indvec decision_policy;
-
 public:
     /// the policy of the decision maker
     using dec_policy_type = long;
@@ -285,22 +277,27 @@ public:
     /// Type of the state
     using state_type = State;
 
+protected:
+    /// MDP definition
+    const MDP& mdp;
+    /// Reference to the function that is used to call the nature
+    const SANature& nature;
+    /// Partial policy specification for the decision maker (action -1 is ignored and optimized)
+    vector<dec_policy_type> decision_policy;
+    /// Initial policy specification for the decision maker (should be never changed)
+    const vector<dec_policy_type> initial_policy;
+
+public:
     /**
       Constructs the object from a policy and a specification of nature. Action are
       optimized only in states in which policy is -1 (or < 0)
       @param policy Index of the action to take for each state
       @param nature Function that describes nature's response
       */
-    SARobustBellman(const MDP& mdp, const SANature& nature, indvec policy)
-        : mdp(mdp), nature(nature), decision_policy(move(policy)) {}
-
-    /**
-      Constructs the object from a specification of nature. No decision maker's
-      policy is provided.
-      @param nature Function that describes nature's response
-      */
-    SARobustBellman(const MDP& mdp, const SANature& nature)
-        : mdp(mdp), nature(nature), decision_policy(0) {}
+    SARobustBellman(const MDP& mdp, const SANature& nature,
+                    vector<dec_policy_type> policy = indvec(0))
+        : mdp(mdp), nature(nature), decision_policy(move(policy)),
+          initial_policy(decision_policy) {}
 
     size_t state_count() const { return mdp.size(); }
 
@@ -348,9 +345,9 @@ public:
      * @param state State for which to compute the Bellman update
      * @param stateid Index of the state
      * @param valuefunction Value function
-      @param discount Discount factor
-      @returns New value for the state
-      */
+     * @param discount Discount factor
+     * @returns New value for the state
+     */
     prec_t compute_value(const policy_type& action, long stateid,
                          const numvec& valuefunction, prec_t discount) const {
         return value_fix_state(mdp[stateid], valuefunction, discount, action.first,
@@ -400,13 +397,21 @@ public:
      * Sets the policy that will be used by the update. The value -1 for a state
      * means that the action will be optimized.
      *
-     * If the length is 0, then the decision maker's policy is optimized for every state
+     * If the length is 0, then the decision maker's policy is replaced by the initial
+     * policy (or an equivalent).
      */
-    void set_decision_policy(const indvec& policy) {
+    void set_decision_policy(
+        const vector<dec_policy_type>& policy = vector<dec_policy_type>(0)) {
         if (policy.empty()) {
-            // if it is empty, then this should have no effect,
-            // but it prevents repeated shortening of the vector
-            fill(decision_policy.begin(), decision_policy.end(), -1);
+            if (initial_policy.empty()) {
+                // if it is empty, then this should have no effect,
+                // but it prevents repeated shortening of the vector
+                fill(decision_policy.begin(), decision_policy.end(), -1);
+
+            } else {
+                decision_policy = initial_policy;
+            }
+
         } else {
             assert(policy.size() == mdp.size());
             decision_policy = policy;
@@ -424,13 +429,6 @@ public:
  * @see PlainBellman for a plain implementation
  */
 class SRobustBellman {
-protected:
-    const MDP& mdp;
-    /// Reference to the function that is used to call the nature
-    const SNature& nature;
-    /// Policy specification for the decision-maker (action -1 is ignored and optimized)
-    const indvec initial_policy;
-
 public:
     /// action type of the decision maker
     using dec_policy_type = numvec;
@@ -442,22 +440,30 @@ public:
     // Type of the state
     using state_type = State;
 
-    /**
-      Constructs the object from a policy and a specification of nature. Action are
-      optimized only in states in which policy is -1 (or < 0)
-      @param policy Index of the action to take for each state
-      @param nature Function that describes nature's response
-      */
-    SRobustBellman(const MDP& mdp, const SNature& nature, indvec policy)
-        : mdp(mdp), nature(nature), initial_policy(move(policy)) {}
+protected:
+    /// The model used to compute the response
+    const MDP& mdp;
+    /// Reference to the function that is used to call the nature
+    const SNature& nature;
+    /// Partial policy specification for the decision maker (action -1 is ignored and optimized)
+    vector<dec_policy_type> decision_policy;
+    /// Initial policy specification for the decision maker (should be never changed)
+    const vector<dec_policy_type> initial_policy;
 
+public:
     /**
-      Constructs the object from a specification of nature. No decision maker's
-      policy is provided.
-      @param nature Function that describes nature's response
-      */
-    SRobustBellman(const MDP& mdp, const SNature& nature)
-        : mdp(mdp), nature(nature), initial_policy(0) {}
+     * Constructs the object from a policy and a specification of nature. Action are
+     * optimized only in states in which policy is -1 (or < 0)
+     * @param policy Fixed randomized policy for a subset of all states.
+     *               If empty or omitted then all states are optimized.
+     *               An empty vector for a specific state means that the
+     *               action will be optimized for that state.
+     * @param nature Function that computes the nature's response
+     */
+    SRobustBellman(const MDP& mdp, const SNature& nature,
+                   vector<dec_policy_type> policy = vector<dec_policy_type>(0))
+        : mdp(mdp), nature(nature), decision_policy(move(policy)),
+          initial_policy(decision_policy) {}
 
     // **** BEGIN: Bellman Interface Methods  ********
 
@@ -465,17 +471,17 @@ public:
     size_t state_count() const { return mdp.size(); }
 
     /**
-      Computes the Bellman update. If an action is not taken then the transitions for the corresponding
-      action will have length 0.
-
-      @param solution Solution to update
-      @param state State for which to compute the Bellman update
-      @param stateid  Index of the state
-      @param valuefunction The full value function
-      @param discount Discount factor
-
-      @returns Best value and action (decision maker and nature)
-      */
+     * Computes the Bellman update. If an action is not taken then the transitions for the corresponding
+     * action will have length 0.
+     *
+     * @param solution Solution to update
+     * @param state State for which to compute the Bellman update
+     * @param stateid  Index of the state
+     * @param valuefunction The full value function
+     * @param discount Discount factor
+     *
+     * @returns Best value and action (decision maker and nature)
+     */
     pair<prec_t, policy_type> policy_update(long stateid, const numvec& valuefunction,
                                             prec_t discount) const {
         prec_t newvalue = 0;
@@ -487,23 +493,11 @@ public:
         if (state.is_terminal()) return make_pair(-1, make_pair(numvec(0), numvecvec(0)));
 
         // check whether this state should only be evaluated or also optimized
-        // optimizing action
-        if (initial_policy.empty() || initial_policy[stateid] < 0) {
-            tie(action, transitions, newvalue) =
-                nature(stateid, compute_probabilities(state),
-                       compute_zvalues(state, valuefunction, discount));
-        }
-        // fixed-action, do not copy
-        else {
-            long actionid = initial_policy[stateid];
-            newvalue = value_fix_state(state, valuefunction, discount, actionid);
-            transitions = vector<numvec>(state.size()); // create an entry for each state
-            // but set only the one that is relevant
-            transitions[actionid] = state[actionid].get_probabilities();
-            // set the actual action value
-            action = numvec(state.size(), 0.0);
-            action[actionid] = 1.0;
-        }
+        numvec init_policy =
+            decision_policy.empty() ? numvec(0) : decision_policy[stateid];
+        std::tie(action, transitions, newvalue) =
+            nature(stateid, init_policy, compute_probabilities(state),
+                   compute_zvalues(state, valuefunction, discount));
 
         assert(action.size() == state.size());
         policy_type action_response = make_pair(move(action), move(transitions));
@@ -511,14 +505,15 @@ public:
     }
 
     /**
-      Computes value function using the provided policy. Used in policy evaluation.
-      @param solution Solution used to infer the current policy
-      @param state State for which to compute the Bellman update
-      @param stateid Index of the state
-      @param valuefunction Value function
-      @param discount Discount factor
-      @returns New value for the state
-      */
+     * Computes value function using the provided policy. Used in policy evaluation.
+     *
+     * @param solution Solution used to infer the current policy
+     * @param state State for which to compute the Bellman update
+     * @param stateid Index of the state
+     * @param valuefunction Value function
+     * @param discount Discount factor
+     * @returns New value for the state
+     */
     prec_t compute_value(const policy_type& action, long stateid,
                          const numvec& valuefunction, prec_t discount) const {
         return value_fix_state(mdp[stateid], valuefunction, discount, action.first,
@@ -570,6 +565,31 @@ public:
                 }
             }
             return result;
+        }
+    }
+
+    /**
+     * Sets the policy that will be used by the update. The value -1 for a state
+     * means that the action will be optimized.
+     *
+     * If the length is 0, then the decision maker's policy is replaced by the initial
+     * policy (or an equivalent).
+     */
+    void set_decision_policy(
+        const vector<dec_policy_type>& policy = vector<dec_policy_type>(0)) {
+        if (policy.empty()) {
+            if (initial_policy.empty()) {
+                // if it is empty, then this should have no effect,
+                // but it prevents repeated shortening of the vector
+                fill(decision_policy.begin(), decision_policy.end(), numvec(0));
+
+            } else {
+                decision_policy = initial_policy;
+            }
+
+        } else {
+            assert(policy.size() == mdp.size());
+            decision_policy = policy;
         }
     }
 

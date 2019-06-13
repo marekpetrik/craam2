@@ -386,7 +386,7 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
 
         // *** robust policy update ***
         // set the dec policy to empty to optimize it
-        response.set_decision_policy(indvec(0));
+        response.set_decision_policy();
 #pragma omp parallel for
         for (auto s = 0l; s < long(response.state_count()); s++) {
             // the new vlaue is only used to compute the residual
