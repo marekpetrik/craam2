@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD 17)
 #set(CMAKE_CXX_STANDARD 14) # parially supported, not all tests run
 set(CMAKE_CXX_STANDARD_REQUIRED)
 
-# Whether to use gurobi or not
+# Whether to use gurobi or not (disabled if files are missing)
 set (GUROBI_USE TRUE)
 
 # enable colors in the output
@@ -42,11 +42,12 @@ if(${Boost_FOUND} LESS 1)
 endif()
 
 if(GUROBI_USE)
-    find_library( GUROBI_CXX_LIBRARY_1 NAMES libgurobi_g++5.2.a PATHS "lib/gurobi")
-    find_library( GUROBI_CXX_LIBRARY_2 NAMES libgurobi80.so PATHS "lib/gurobi")
-    find_path(GUROBI_INCLUDE_DIR NAMES gurobi_c++.h PATHS "include/gurobi")
+    find_library(GUROBI_CXX_LIBRARY_1 NAMES libgurobi_g++5.2.a PATHS "lib/gurobi")
+    find_library(GUROBI_CXX_LIBRARY_2 NAMES libgurobi81.so PATHS "lib/gurobi")
+    find_path(GUROBI_INCLUDE_DIR_1 NAMES gurobi_c++.h PATHS "include/gurobi")
+    find_path(GUROBI_INCLUDE_DIR_2 NAMES gurobi_c.h PATHS "include/gurobi")
 
-    if(NOT GUROBI_CXX_LIBRARY_1 OR NOT GUROBI_CXX_LIBRARY_2 OR NOT GUROBI_INCLUDE_DIR)
+    if(NOT GUROBI_CXX_LIBRARY_1 OR NOT GUROBI_CXX_LIBRARY_2 OR NOT GUROBI_INCLUDE_DIR_1 OR NOT GUROBI_INCLUDE_DIR_2 )
         message(WARNING, "Gurobi files not found in lib/gurobi or include/gurobi, disabling support.")
         set (GUROBI_USE FALSE)
     endif()
