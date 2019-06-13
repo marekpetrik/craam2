@@ -9,5 +9,6 @@ INCLUDEPATH += /usr/include/R
 INCLUDEPATH += ../../include
 
 SOURCES += \
+    utils.hpp \
     robust_algorithms.cpp \
     simulation.cpp

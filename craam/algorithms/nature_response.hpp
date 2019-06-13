@@ -124,6 +124,9 @@ public:
  * Response that is a convex combination of expectation and value at risk:
  *
  *  beta * var_alpha[X] + (1-beta) * E[x]
+ *
+ * NOTE: this method does not guarantee convergence when var is not
+ * convex (usually not convex)!
  */
 class robust_var_exp_u {
 protected:
@@ -150,7 +153,7 @@ public:
 class robust_avar_exp_u {
 protected:
     prec_t alpha; // risk level for value at risk
-    prec_t beta;  // weight on the value at risk (1-beta is the weight of the expectation
+    prec_t beta;  // weight on the value at risk (1-beta) is the weight of the expectation
 
 public:
     robust_avar_exp_u(prec_t alpha, prec_t beta) : alpha(alpha), beta(beta) {}

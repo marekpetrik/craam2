@@ -419,6 +419,16 @@ algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
             parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]), 1.0);
         return algorithms::nats::robust_l1w(budgets, weights);
     }
+    if (nature == "evaru") {
+        Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
+        return algorithms::nats::robust_var_exp_u(Rcpp::as<double>(par["alpha"]),
+                                                  Rcpp::as<double>(par["beta"]));
+    }
+    if (nature == "eavaru") {
+        Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
+        return algorithms::nats::robust_avar_exp_u(Rcpp::as<double>(par["alpha"]),
+                                                   Rcpp::as<double>(par["beta"]));
+    }
 #ifdef GUROBI_USE
     if (nature == "l1_g") {
         vector<numvec> values =
@@ -481,6 +491,10 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
             sol = rsolve_vi(m, discount, std::move(natparsed), numvec(0), indvec(0),
                             iterations, precision);
 
+        } else if (Rcpp::as<string>(options["algorithm"]) == "vi_j") {
+            // Jacobian value iteration, simulated using mpi
+            sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+                             iterations, precision, 1, 0.5);
         } else if (Rcpp::as<string>(options["algorithm"]) == "pi") {
             Rcpp::warning("The robust version of the pi method may cycle forever without "
                           "converging.");
