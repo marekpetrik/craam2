@@ -1548,7 +1548,8 @@ BOOST_AUTO_TEST_CASE(test_srect_evaluation) {
             //auto [obj, d, xi] = solve_srect_bisection(z, p, psi, numvec(0), w);
 
             { // no weights first
-                auto [gd, gobj] = srect_solve_gurobi(env, z, p, psi, numvecvec(0), pi);
+                auto [gobj, gd, budgets] =
+                    srect_l1_solve_gurobi(env, z, p, psi, numvecvec(0), pi);
                 auto [mobj, probs] = evaluate_srect_bisection_l1(z, p, psi, pi);
 
                 BOOST_CHECK_CLOSE(gobj, mobj, 1e-3);
@@ -1557,7 +1558,7 @@ BOOST_AUTO_TEST_CASE(test_srect_evaluation) {
             }
 
             { // with weights
-                auto [gd, gobj] = srect_solve_gurobi(env, z, p, psi, w, pi);
+                auto [gobj, gd, budgets] = srect_l1_solve_gurobi(env, z, p, psi, w, pi);
                 auto [mobj, probs] = evaluate_srect_bisection_l1(z, p, psi, pi, w);
 
                 BOOST_CHECK_CLOSE(gobj, mobj, 1e-3);

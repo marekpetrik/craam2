@@ -596,7 +596,7 @@ public:
             // skip the ones that have not transition probability
             if (actiondist[a] > EPSILON) {
                 new_probability.push_back(
-                        worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
+                    worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
             } else {
                 new_probability.push_back(numvec(0));
             }
@@ -674,8 +674,8 @@ public:
 
         // compute the distribution of actions and the optimal budgets
 
-        tie(outcome, actiondist, sa_budgets) = srect_l1_solve_gurobi(*env, zvalues, nominalprobs,
-                                                      budgets[stateid], weights[stateid]);
+        tie(outcome, actiondist, sa_budgets) = srect_l1_solve_gurobi(
+            *env, zvalues, nominalprobs, budgets[stateid], weights[stateid]);
 
         assert(actiondist.size() == zvalues.size());
 
@@ -685,7 +685,7 @@ public:
             // skip the ones that have not transition probability
             if (actiondist[a] > EPSILON) {
                 new_probability.push_back(
-                        worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
+                    worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
             } else {
                 new_probability.push_back(numvec(0));
             }
@@ -696,65 +696,72 @@ public:
 };
 
 class robust_s_linf_gurobi {
-    protected:
-        // a budget for every state
-        numvec budgets;
-        shared_ptr<GRBEnv> env;
+protected:
+    // a budget for every state
+    numvec budgets;
+    shared_ptr<GRBEnv> env;
 
-    public:
-
-        /**
+public:
+    /**
        * Automatically constructs a gurobi environment object. Weights are uniform
        * when not provided
        * @param budgets Budgets, with a single value for each MDP state
        */
-        robust_s_linf_gurobi(numvec budgets) : budgets(move(budgets)) {
-            env = make_shared<GRBEnv>();
-            // make sure it is run in a single thread so it can be parallelized
-            env->set(GRB_IntParam_OutputFlag, 0);
-            env->set(GRB_IntParam_Threads, 1);
-        };
+    robust_s_linf_gurobi(numvec budgets) : budgets(move(budgets)) {
+        env = make_shared<GRBEnv>();
+        // make sure it is run in a single thread so it can be parallelized
+        env->set(GRB_IntParam_OutputFlag, 0);
+        env->set(GRB_IntParam_Threads, 1);
+    };
 
-        /**
+    /**
        * @param env Gurobi environment to use
        * @param budgets Budgets, with a single value for each MDP state
        */
-        robust_s_linf_gurobi(const shared_ptr<GRBEnv>& env, numvec budgets)
-                : budgets(move(budgets)), env(env){};
+    robust_s_linf_gurobi(const shared_ptr<GRBEnv>& env, numvec budgets)
+        : budgets(move(budgets)), env(env){};
 
-        /**
+    /**
        * Implements SNature interface
        */
-        tuple<numvec, vector<numvec>, prec_t>
-        operator()(long stateid, const vector<numvec>& nominalprobs,
-                   const vector<numvec>& zvalues) const {
-            //assert(stateid >= 0 && stateid < long(budgets.size()));
-            assert(nominalprobs.size() == zvalues.size());
+    tuple<numvec, vector<numvec>, prec_t>
+    operator()(long stateid, numvec policy, const vector<numvec>& nominalprobs,
+               const vector<numvec>& zvalues) const {
+        //assert(stateid >= 0 && stateid < long(budgets.size()));
+        assert(nominalprobs.size() == zvalues.size());
 
-            prec_t outcome;
-            numvec actiondist, sa_budgets;
+        if (!policy.empty())
+            throw std::logic_error(
+                "PPI with Linf is not implemented yet. Need to support "
+                "policy evaluation.");
 
-            // compute the distribution of actions and the optimal budgets
-            tie(outcome, actiondist, sa_budgets) = srect_linf_solve_gurobi(*env, zvalues, nominalprobs, budgets[stateid]);
+        prec_t outcome;
+        numvec actiondist, sa_budgets;
 
-            assert(actiondist.size() == zvalues.size());
+        // compute the distribution of actions and the optimal budgets
+        tie(outcome, actiondist, sa_budgets) =
+            srect_linf_solve_gurobi(*env, zvalues, nominalprobs, budgets[stateid]);
 
-            // compute actual worst-case transition probability (deviated by sa_budget amount from the nominal transition)
-            // for all actions and aggregate them in a sparse transition probability
-            vector<numvec> new_probability;
-            new_probability.reserve(actiondist.size());
-            for (size_t a = 0; a < nominalprobs.size(); a++) {
-                // skip the ones that have not transition probability
-                if (actiondist[a] > EPSILON) {
-                    new_probability.push_back(
-                            worstcase_linf_w_gurobi(*env,  zvalues[a], nominalprobs[a], numvec(0), sa_budgets[a]).first);
-                } else {
-                    new_probability.push_back(numvec(0));
-                }
+        assert(actiondist.size() == zvalues.size());
+
+        // compute actual worst-case transition probability (deviated by sa_budget amount from the nominal transition)
+        // for all actions and aggregate them in a sparse transition probability
+        vector<numvec> new_probability;
+        new_probability.reserve(actiondist.size());
+        for (size_t a = 0; a < nominalprobs.size(); a++) {
+            // skip the ones that have not transition probability
+            if (actiondist[a] > EPSILON) {
+                new_probability.push_back(
+                    worstcase_linf_w_gurobi(*env, zvalues[a], nominalprobs[a], numvec(0),
+                                            sa_budgets[a])
+                        .first);
+            } else {
+                new_probability.push_back(numvec(0));
             }
-
-            return make_tuple(move(actiondist), move(new_probability), outcome);
         }
-    };
+
+        return make_tuple(move(actiondist), move(new_probability), outcome);
+    }
+};
 #endif // GUROBI_USE
 }}}    // namespace craam::algorithms::nats

@@ -1,8 +1,5 @@
 # CRAAM: Robust And Approximate Markov decision processes #
 
-
-[![Build Status](https://travis-ci.org/marekpetrik/CRAAM.svg?branch=master)](https://travis-ci.org/marekpetrik/CRAAM)
-
 Craam is a **header-only** C++ library for solving Markov decision processes with support for handling uncertainty in transition probabilities. The library can handle uncertainties using both *robust*, or *optimistic* objectives.
 
 The library includes Python and R interfaces. See below for detailed installation instructions.
