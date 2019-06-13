@@ -1113,7 +1113,7 @@ BOOST_AUTO_TEST_CASE(s_rectangular) {
 
 #ifdef GUROBI_USE
 
-BOOST_AUTO_TEST_CASE(s_rectangular_gurobi) {
+BOOST_AUTO_TEST_CASE(s_rectangular_l1_gurobi) {
 
     MDP mdp(3);
 
@@ -1133,6 +1133,25 @@ BOOST_AUTO_TEST_CASE(s_rectangular_gurobi) {
     auto sol = rsolve_s_vi(mdp, 1.0, nats::robust_s_l1_gurobi(numvec{0.1, 0, 0, 0}));
 }
 
+BOOST_AUTO_TEST_CASE(s_rectangular_linf_gurobi) {
+
+    MDP mdp(3);
+
+    add_transition(mdp, 0, 1, 1, 0.4, 1.0);
+    add_transition(mdp, 0, 1, 2, 0.3, 2.0);
+    add_transition(mdp, 0, 1, 3, 0.3, 3.0);
+
+    add_transition(mdp, 0, 0, 1, 0.2, 3.0);
+    add_transition(mdp, 0, 0, 2, 0.4, 2.0);
+    add_transition(mdp, 0, 0, 3, 0.4, 1.0);
+
+    add_transition(mdp, 0, 2, 1, 0.6, 3.0);
+    add_transition(mdp, 0, 2, 2, 0.4, 2.0);
+
+    add_transition(mdp, 0, 3, 2, 1.0, 1.0);
+
+    auto sol = rsolve_s_vi(mdp, 1.0, nats::robust_s_linf_gurobi(numvec{0.1, 0, 0, 0}));
+}
 #endif
 
 // ********************************************************************************
@@ -1171,7 +1190,7 @@ BOOST_AUTO_TEST_CASE(test_piecewise_linear_f) {
 #if __cplusplus >= 201703L
 
 #ifdef GUROBI_USE
-BOOST_AUTO_TEST_CASE(test_solve_srect) {
+BOOST_AUTO_TEST_CASE(test_solve_srect_l1) {
     // set parameters
     const numvecvec p{{0.3, 0.2, 0.1, 0.4}, {0.3, 0.6, 0.1}, {0.1, 0.3, 0.6}};
     const numvecvec z{{3.0, 2.0, 4.0, 1.0}, {3.0, 1.3, 4.0}, {6.0, 0.3, 4.5}};
@@ -1184,7 +1203,7 @@ BOOST_AUTO_TEST_CASE(test_solve_srect) {
 
     for (double psi = 0.0; psi < 3.0; psi += 0.1) {
         auto [obj, d, xi] = solve_srect_bisection(z, p, psi, numvec(0), w);
-        auto [gd, gobj] = srect_solve_gurobi(env, z, p, psi, w);
+        auto [gobj, gd, gxi] = srect_l1_solve_gurobi(env, z, p, psi, w);
 
         // xi values can be smaller if actions are not active.
         BOOST_CHECK_GE(psi + 1e-5, accumulate(xi.cbegin(), xi.cend(), 0.0));
@@ -1203,7 +1222,40 @@ BOOST_AUTO_TEST_CASE(test_solve_srect) {
         CHECK_CLOSE_COLLECTION(d, gd, 1e-3);
     }
 }
-#endif
+
+BOOST_AUTO_TEST_CASE(test_solve_srect_linf) {
+    // set parameters
+    const numvecvec p{{0.3, 0.2, 0.1, 0.4}, {0.3, 0.6, 0.1}, {0.1, 0.3, 0.6}};
+    const numvecvec z{{3.0, 2.0, 4.0, 1.0}, {3.0, 1.3, 4.0}, {6.0, 0.3, 4.5}};
+    const numvecvec w{{0.3, 0.3, 0.3, 0.1}, {0.2, 0.5, 0.3}, {0.7, 0.1, 0.2}};
+
+    // uniform weights
+    const vector<numvec> wu{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
+
+    GRBEnv env = get_gurobi();
+
+    for (double psi = 0.0; psi < 3.0; psi += 0.1) {
+        //TODO: Integrate the linf bisection method for comparison with gurobi
+        //auto [obj, d, xi] = solve_srect_bisection(z, p, psi, numvec(0), w);
+        auto [gobj, gd, gxi] = srect_linf_solve_gurobi(env, z, p, psi, w);
+
+        // xi values can be smaller if actions are not active.
+        BOOST_CHECK_GE(psi + 1e-5, accumulate(gxi.cbegin(), gxi.cend(), 0.0));
+
+        // compute static value
+        // make sure that xi values are correct
+        double expected_result = 0;
+        for (size_t i = 0; i < z.size(); i++) {
+            numvec x = worstcase_l1_w(z[i], p[i], w[i], gxi[i]).first;
+            expected_result +=
+                gd[i] * inner_product(x.cbegin(), x.cend(), z[i].cbegin(), 0.0);
+        }
+
+        //BOOST_CHECK_CLOSE(obj, gobj, 1e-3);
+        //BOOST_CHECK_CLOSE(obj, expected_result, 1e-3);
+        //CHECK_CLOSE_COLLECTION(d, gd, 1e-3);
+    }
+}
 
 BOOST_AUTO_TEST_CASE(test_solve_srect_same) {
     // set parameters
@@ -1217,6 +1269,7 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_same) {
         BOOST_CHECK_CLOSE(obj, 1.00, 1e-3);
     }
 }
+#endif
 
 BOOST_AUTO_TEST_CASE(test_responses) {
     // set parameters
