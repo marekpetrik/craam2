@@ -61,14 +61,15 @@ to 1.
 @param t Bound on the L1 norm deviation
 @return Optimal solution p and the objective value
 */
-std::pair<numvec, double> inline worstcase_l1(numvec const& z, numvec const& pbar,
+std::pair<numvec, prec_t> inline worstcase_l1(numvec const& z, numvec const& pbar,
                                               prec_t xi) {
     assert(*min_element(pbar.cbegin(), pbar.cend()) >= -THRESHOLD);
     assert(*max_element(pbar.cbegin(), pbar.cend()) <= 1 + THRESHOLD);
     assert(xi >= 0.0);
     assert(z.size() > 0 && z.size() == pbar.size());
 
-    xi = std::clamp(xi, 0.0, 2.0);
+    // run craam::clamp when std is not available
+    xi = clamp(xi, 0.0, 2.0);
 
     const size_t sz = z.size();
     // sort z values
@@ -233,7 +234,7 @@ std::pair<numvec, numvec> inline worstcase_l1_knots(
         knots.push_back(knot);
         values.push_back(value);
     }
-    return make_pair(move(knots), move(values));
+    return {move(knots), move(values)};
 }
 
 /**
@@ -259,17 +260,17 @@ protected:
 
 public:
     /**
-   * Constructs an empty structure
-   */
+     * Constructs an empty structure
+     */
     GradientsL1_w(){};
 
     /**
-   * Computes the possible gradients and sorts them increasingly
-   * @param z Objective function
-   * @param w Weights in the definition of the L1 norm
-   */
+     * Computes the possible gradients and sorts them increasingly
+     * @param z Objective function
+     * @param w Weights in the definition of the L1 norm
+     */
     GradientsL1_w(const numvec& z, const numvec& w) {
-        const double epsilon = 1e-10;
+        const prec_t epsilon = 1e-10;
         size_t element_count = z.size();
 
         assert(z.size() == element_count);
@@ -278,16 +279,15 @@ public:
         derivatives.reserve(element_count);
         donors.reserve(element_count + 1);
         receivers.reserve(element_count + 1);
-        donor_greater.reserve(
-            element_count +
-            1); // whether the donor p is greater than the corresponding pbar
+        // whether the donor p is greater than the corresponding pbar
+        donor_greater.reserve(element_count + 1);
 
         // identify possible receivers (must be less weight than all the smaller
         // elements)
         std::vector<std::size_t> possible_receivers;
         { // limit the visibility of these variables
             std::vector<std::size_t> z_increasing = sort_indexes(z);
-            double smallest_w = std::numeric_limits<double>::infinity();
+            prec_t smallest_w = std::numeric_limits<prec_t>::infinity();
 
             for (size_t iz : z_increasing) {
                 if (w[iz] < smallest_w) {
@@ -346,16 +346,16 @@ public:
     size_t size() const { return derivatives.size(); }
 
     /**
-   * Returns parameters for the basic solution with gradients that
-   * increase with increasing indexes
-   * @param index Position, 0 is the smallest derivative, size() -1 is the
-   * largest one
-   * @return (gradient, donor index, receiver index, does donor probability must
-   * be greater than nominal?)
-   */
-    std::tuple<double, size_t, size_t, bool> steepest_solution(size_t index) const {
+     * Returns parameters for the basic solution with gradients that
+     * increase with increasing indexes
+     * @param index Position, 0 is the smallest derivative, size() -1 is the
+     * largest one
+     * @return (gradient, donor index, receiver index, does donor probability must
+     * be greater than nominal?)
+     */
+    std::tuple<prec_t, size_t, size_t, bool> steepest_solution(size_t index) const {
         size_t e = sorted[index];
-        return std::make_tuple(derivatives[e], donors[e], receivers[e], donor_greater[e]);
+        return {derivatives[e], donors[e], receivers[e], donor_greater[e]};
     }
 };
 
@@ -373,20 +373,20 @@ public:
  * @param w Weights in the norm
  * @return the optimal solution and the objective value
  */
-std::pair<numvec, double> inline worstcase_l1_w(const GradientsL1_w& gradients,
+std::pair<numvec, prec_t> inline worstcase_l1_w(const GradientsL1_w& gradients,
                                                 const numvec& z, const numvec& pbar,
-                                                const numvec& w, double xi) {
+                                                const numvec& w, prec_t xi) {
 
     assert(pbar.size() == z.size());
     assert(*min_element(pbar.cbegin(), pbar.cend()) >= 0);
     assert(std::abs(accumulate(pbar.cbegin(), pbar.cend(), 0.0) - 1.0) < 1e-6);
 
-    const double epsilon = 1e-10;
+    const prec_t epsilon = 1e-10;
 
     // the working value of the new probability distribution
     numvec p = pbar;
     // remaining value of xi that needs to be allocated
-    double xi_rest = xi;
+    prec_t xi_rest = xi;
 
     for (size_t k = 0; k < gradients.size(); k++) {
 // edge index
@@ -410,11 +410,11 @@ std::pair<numvec, double> inline worstcase_l1_w(const GradientsL1_w& gradients,
         // make sure that the donor can give
         if (p[donor] < epsilon) continue;
 
-        double weight_change =
+        prec_t weight_change =
             donor_greater ? (-w[donor] + w[receiver]) : (w[donor] + w[receiver]);
         assert(weight_change > 0);
 
-        double donor_step = std::min(
+        prec_t donor_step = std::min(
             xi_rest / weight_change,
             (p[donor] > pbar[donor] + epsilon) ? (p[donor] - pbar[donor]) : p[donor]);
         p[donor] -= donor_step;
@@ -425,15 +425,15 @@ std::pair<numvec, double> inline worstcase_l1_w(const GradientsL1_w& gradients,
         if (xi_rest < epsilon) break;
     }
 
-    double objective = inner_product(p.cbegin(), p.cend(), z.cbegin(), 0.0);
+    prec_t objective = inner_product(p.cbegin(), p.cend(), z.cbegin(), 0.0);
     return make_pair(move(p), objective);
 }
 
 /**
  * @brief See the documentation for the overloaded function
  */
-std::pair<numvec, double> inline worstcase_l1_w(const numvec& z, const numvec& pbar,
-                                                const numvec& w, double xi) {
+std::pair<numvec, prec_t> inline worstcase_l1_w(const numvec& z, const numvec& pbar,
+                                                const numvec& w, prec_t xi) {
     return worstcase_l1_w(GradientsL1_w(z, w), z, pbar, w, xi);
 }
 
@@ -467,7 +467,7 @@ std::pair<numvec, numvec> inline worstcase_l1_w_knots(const GradientsL1_w& gradi
                                                       const numvec& z, const numvec& pbar,
                                                       const numvec& w) {
 
-    const double epsilon = 1e-10;
+    const prec_t epsilon = 1e-10;
 
     // the working value of the new probability distribution
     numvec p = pbar;
@@ -504,11 +504,11 @@ std::pair<numvec, numvec> inline worstcase_l1_w_knots(const GradientsL1_w& gradi
         // make sure that the donor can give
         if (p[donor] < epsilon) continue;
 
-        double weight_change =
+        prec_t weight_change =
             donor_greater ? (-w[donor] + w[receiver]) : (w[donor] + w[receiver]);
         assert(weight_change > 0);
 
-        double donor_step = donor_greater ? (p[donor] - pbar[donor]) : p[donor];
+        prec_t donor_step = donor_greater ? (p[donor] - pbar[donor]) : p[donor];
         p[donor] -= donor_step;
         p[receiver] += donor_step;
 
@@ -548,9 +548,9 @@ std::pair<numvec, numvec> inline worstcase_l1_w_knots(const numvec& z, const num
  *  @param wi Weights. Optional, all 1 if not provided.
  * @return Objective value and the optimal solution
  */
-std::pair<numvec, double> inline worstcase_l1_w_gurobi(const GRBEnv& env, const numvec& z,
+std::pair<numvec, prec_t> inline worstcase_l1_w_gurobi(const GRBEnv& env, const numvec& z,
                                                        const numvec& pbar,
-                                                       const numvec& wi, double xi) {
+                                                       const numvec& wi, prec_t xi) {
     const size_t nstates = z.size();
     assert(nstates == pbar.size());
     assert(wi.empty() || nstates == wi.size());
@@ -604,7 +604,7 @@ std::pair<numvec, double> inline worstcase_l1_w_gurobi(const GRBEnv& env, const 
     }
 
     // get optimal objective value
-    double objective_value = model.get(GRB_DoubleAttr_ObjVal);
+    prec_t objective_value = model.get(GRB_DoubleAttr_ObjVal);
 
     return make_pair(move(p_result), objective_value);
 }
@@ -628,11 +628,11 @@ std::pair<numvec, double> inline worstcase_l1_w_gurobi(const GRBEnv& env, const 
  * @param xi Size of the ambiguity set
  * @return Worst-case distribution and the objective value
  */
-std::pair<numvec, double> inline worstcase_wasserstein_gurobi(const GRBEnv& env,
+std::pair<numvec, prec_t> inline worstcase_wasserstein_gurobi(const GRBEnv& env,
                                                               const numvec& z,
                                                               const numvec& pbar,
                                                               const numvecvec& dst,
-                                                              double xi) {
+                                                              prec_t xi) {
     GRBModel model = GRBModel(env);
 
     size_t nstates = z.size();
@@ -700,7 +700,7 @@ std::pair<numvec, double> inline worstcase_wasserstein_gurobi(const GRBEnv& env,
     model.optimize();
     // model_w.write("./debug_wass_w.lp");
 
-    double objective_w = obj_w.getValue();
+    prec_t objective_w = obj_w.getValue();
     numvec w_result(nstates);
 
     for (size_t i = 0; i < pbar.size(); i++) {
@@ -733,9 +733,9 @@ std::pair<numvec, double> inline worstcase_wasserstein_gurobi(const GRBEnv& env,
  *  @param wi Weights. Optional, all 1 if not provided.
  * @return Objective value and the optimal solution
  */
-std::pair<numvec, double> inline worstcase_l2_w_gurobi(const GRBEnv& env, const numvec& z,
+std::pair<numvec, prec_t> inline worstcase_l2_w_gurobi(const GRBEnv& env, const numvec& z,
                                                        const numvec& pbar,
-                                                       const numvec& wi, double xi) {
+                                                       const numvec& wi, prec_t xi) {
     const size_t nstates = z.size();
     assert(nstates == pbar.size());
     assert(wi.empty() || nstates == wi.size());
@@ -763,7 +763,7 @@ std::pair<numvec, double> inline worstcase_l2_w_gurobi(const GRBEnv& env, const 
     // constraint: l^T W l <= xi^2
     numvec wsquared(w.size());
     transform(w.cbegin(), w.cend(), wsquared.begin(),
-              [](double iw) { return pow(iw, 2); });
+              [](prec_t iw) { return pow(iw, 2); });
     GRBQuadExpr weights;
     weights.addTerms(wsquared.data(), l.get(), l.get(), nstates);
     model.addQConstr(weights, GRB_LESS_EQUAL, pow(xi, 2));
@@ -790,7 +790,7 @@ std::pair<numvec, double> inline worstcase_l2_w_gurobi(const GRBEnv& env, const 
     }
 
     // get optimal objective value
-    double objective_value = model.get(GRB_DoubleAttr_ObjVal);
+    prec_t objective_value = model.get(GRB_DoubleAttr_ObjVal);
 
     return make_pair(move(p_result), objective_value);
 }
@@ -831,7 +831,7 @@ std::pair<numvec, double> inline worstcase_l2_w_gurobi(const GRBEnv& env, const 
  * @return A distribution p and The average value at risk as well as the distribution such that
  * p^T z = avar. The p is the optimal solution to the robust representation of the risk measure.
  */
-std::pair<numvec, double> inline avar(const numvec& z, const numvec& pbar, prec_t alpha) {
+std::pair<numvec, prec_t> inline avar(const numvec& z, const numvec& pbar, prec_t alpha) {
 
     // this method sorts the values, which is not as efficient as it may be,
     // the problem could be solved using a variant of quick select, but it is
@@ -846,7 +846,7 @@ std::pair<numvec, double> inline avar(const numvec& z, const numvec& pbar, prec_
 
     // this is the new distribution
     numvec distribution(pbar.size(), 0.0);
-    prec_t value; // this the return value, updated while computing the distribution
+    prec_t value = 0; // this the return value, updated while computing the distribution
 
     // for really small alpha, just return the worst case outright
     if (alpha <= EPSILON) {
@@ -899,7 +899,7 @@ std::pair<numvec, double> inline avar(const numvec& z, const numvec& pbar, prec_
  * p^T z = var. Note that there may not be an equivalent robust representation for var like there
  * is for coherent/convex risk measures.
  */
-std::pair<numvec, double> inline var(const numvec& z, const numvec& pbar, prec_t alpha) {
+std::pair<numvec, prec_t> inline var(const numvec& z, const numvec& pbar, prec_t alpha) {
 
     // this method sorts the values, which is not as efficient as it may be,
     // the problem could be solved using a variant of quick select, but it is
@@ -940,9 +940,17 @@ std::pair<numvec, double> inline var(const numvec& z, const numvec& pbar, prec_t
  * beta * var_pbar [z] + (1-beta) * E_pbar[z]
  *
  */
-std::pair<numvec, double> inline var_exp(const numvec& z, const numvec& pbar,
+std::pair<numvec, prec_t> inline var_exp(const numvec& z, const numvec& pbar,
                                          prec_t alpha, prec_t beta) {
+
+#ifdef __cpp_structured_bindings
     auto [var_dist, var_value] = var(z, pbar, alpha);
+#else
+    numvec var_dist;
+    prec_t var_value;
+    std::tie(var_dist, var_value) = var(z, pbar, alpha);
+#endif    
+
     assert(var_dist.size() == pbar.size());
     const auto mean_value = std::inner_product(z.cbegin(), z.cend(), pbar.cbegin(), 0.0);
 
@@ -960,9 +968,16 @@ std::pair<numvec, double> inline var_exp(const numvec& z, const numvec& pbar,
  * beta * avar_pbar [z] + (1-beta) * E_pbar[z]
  *
  */
-std::pair<numvec, double> inline avar_exp(const numvec& z, const numvec& pbar,
+std::pair<numvec, prec_t> inline avar_exp(const numvec& z, const numvec& pbar,
                                           prec_t alpha, prec_t beta) {
+
+#ifdef __cpp_structured_bindings
     auto [avar_dist, avar_value] = avar(z, pbar, alpha);
+#else
+    numvec avar_dist;
+    prec_t avar_value;
+    std::tie(avar_dist, avar_value) = avar(z, pbar, alpha);
+#endif    
     assert(avar_dist.size() == pbar.size());
     const auto mean_value = std::inner_product(z.cbegin(), z.cend(), pbar.cbegin(), 0.0);
 

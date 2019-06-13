@@ -173,10 +173,9 @@ std::pair<numvec, double> srect_solve_gurobi(const GRBEnv& env, const numvecvec&
     model.optimize();
 
     int status = model.get(GRB_IntAttr_Status);
-    if ((status == GRB_INF_OR_UNBD) || (status == GRB_INFEASIBLE) ||
-        (status == GRB_UNBOUNDED)) {
-        throw invalid_argument("Failed to solve the LP.");
-    }
+    //if ((status == GRB_INF_OR_UNBD) || (status == GRB_INFEASIBLE) ||
+    //    (status == GRB_UNBOUNDED)) {
+    if (status != GRB_OPTIMAL) { throw invalid_argument("Failed to solve the LP."); }
 
     // retrieve policy values
     numvec policy(nactions);

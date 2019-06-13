@@ -9,11 +9,12 @@ cmake_minimum_required (VERSION 3.1.0 FATAL_ERROR) # Required for C++11 support
 set(CRAAMVERSION "3.0.0")
 project (CRAAM)
 set(CMAKE_CXX_STANDARD 17)
-#set(CMAKE_CXX_STANDARD 14) # parially supported, not all tests run
+#set(CMAKE_CXX_STANDARD 14) # partially supported, not all tests run
 set(CMAKE_CXX_STANDARD_REQUIRED)
 
 # Whether to use gurobi or not
 set (GUROBI_USE TRUE)
+# set (GUROBI_USE FALSE)
 
 # enable colors in the output
 SET(CMAKE_COLOR_MAKEFILE ON)
@@ -42,8 +43,8 @@ if(${Boost_FOUND} LESS 1)
 endif()
 
 if(GUROBI_USE)
-    find_library( GUROBI_CXX_LIBRARY_1 NAMES libgurobi_g++5.2.a PATHS "lib/gurobi")
-    find_library( GUROBI_CXX_LIBRARY_2 NAMES libgurobi80.so PATHS "lib/gurobi")
+    find_library(GUROBI_CXX_LIBRARY_1 NAMES libgurobi_g++5.2.a PATHS "lib/gurobi")
+    find_library(GUROBI_CXX_LIBRARY_2 NAMES libgurobi81.so PATHS "lib/gurobi")
     find_path(GUROBI_INCLUDE_DIR NAMES gurobi_c++.h PATHS "include/gurobi")
 
     if(NOT GUROBI_CXX_LIBRARY_1 OR NOT GUROBI_CXX_LIBRARY_2 OR NOT GUROBI_INCLUDE_DIR)

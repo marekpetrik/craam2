@@ -1431,8 +1431,6 @@ BOOST_AUTO_TEST_CASE(test_knots_w) {
 
     numvec knots = worstcase_l1_w_knots(z, p, w).second;
 
-    // cout << "knots = " << knots << endl;
-
     // make sure that each value between the knots is indeed a linear function
     for (size_t i = 0; i < knots.size() - 1; i++) {
         double knot1 = knots[i];
@@ -1464,6 +1462,18 @@ BOOST_AUTO_TEST_CASE(test_knots_wu) {
     CHECK_CLOSE_COLLECTION(values, values_w, 1e-5);
 }
 
+// computes the s-rectangular value for a policy d, transition probabilities p,
+// and rewards z
+prec_t compute_s_value(const numvec& d, const numvecvec& p, const numvecvec& z) {
+    long actioncount = d.size();
+    prec_t result = 0;
+    for (long i = 0; i < actioncount; ++i) {
+        result +=
+            d[i] * std::inner_product(p[i].cbegin(), p[i].cend(), z[i].cbegin(), 0.0);
+    }
+    return result;
+}
+
 #ifdef GUROBI_USE
 BOOST_AUTO_TEST_CASE(test_srect_evaluation) {
     // set parameters
@@ -1471,7 +1481,7 @@ BOOST_AUTO_TEST_CASE(test_srect_evaluation) {
     const numvecvec z{{3.0, 2.0, 4.0, 1.0}, {3.0, 1.3, 4.0}, {6.0, 0.3, 4.5}};
     const numvecvec w{{0.3, 0.3, 0.3, 0.1}, {0.2, 0.5, 0.3}, {0.7, 0.1, 0.2}};
     // TODO: change this to multiple different policies
-    const numvecvec pis{{0.3, 0.1, 0.6}, {1.0, 0, 0}, {0, 1, 0}, {0.8, 0.2, 0.0}};
+    const numvecvec pis{{1.0, 0, 0}, {0.3, 0.1, 0.6}, {0, 1.0, 0}, {0.8, 0.2, 0.0}};
 
     // uniform weights
     const vector<numvec> wu{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
@@ -1479,28 +1489,51 @@ BOOST_AUTO_TEST_CASE(test_srect_evaluation) {
     GRBEnv env = get_gurobi();
 
     for (const auto& pi : pis) {
+        //std::cout << pi << std::endl;
         for (double psi = 0.0; psi < 3.0; psi += 0.1) {
-            auto [obj, d, xi] = solve_srect_bisection(z, p, psi, numvec(0), w);
-            auto [gd, gobj] = srect_solve_gurobi(env, z, p, psi, w, pi);
+            //std::cout << psi << std::endl;
+            //auto [obj, d, xi] = solve_srect_bisection(z, p, psi, numvec(0), w);
 
-            // xi values can be smaller if actions are not active.
-            //BOOST_CHECK_GE(psi + 1e-5, accumulate(xi.cbegin(), xi.cend(), 0.0));
+            { // no weights first
+                auto [gd, gobj] = srect_solve_gurobi(env, z, p, psi, numvecvec(0), pi);
+                auto [mobj, probs] = evaluate_srect_bisection_l1(z, p, psi, pi);
 
-            // compute static value
-            // make sure that xi values are correct
-            //double expected_result = 0;
-            //for (size_t i = 0; i < z.size(); i++) {
-            //   numvec x = worstcase_l1_w(z[i], p[i], w[i], xi[i]).first;
-            //    expected_result +=
-            //        d[i] * inner_product(x.cbegin(), x.cend(), z[i].cbegin(), 0.0);
-            //}
+                BOOST_CHECK_CLOSE(gobj, mobj, 1e-3);
+                auto probvalue = compute_s_value(pi, probs, z);
+                BOOST_CHECK_CLOSE(mobj, probvalue, 1e-3);
+            }
 
-            //BOOST_CHECK_CLOSE(obj, gobj, 1e-3);
-            //BOOST_CHECK_CLOSE(obj, expected_result, 1e-3);
-            //CHECK_CLOSE_COLLECTION(d, gd, 1e-3);
+            { // with weights
+                auto [gd, gobj] = srect_solve_gurobi(env, z, p, psi, w, pi);
+                auto [mobj, probs] = evaluate_srect_bisection_l1(z, p, psi, pi, w);
+
+                BOOST_CHECK_CLOSE(gobj, mobj, 1e-3);
+                auto probvalue = compute_s_value(pi, probs, z);
+                BOOST_CHECK_CLOSE(mobj, probvalue, 1e-3);
+            }
         }
     }
 }
 #endif // GUROBI_USE
+
+BOOST_AUTO_TEST_CASE(test_piecewise_minimization) {
+
+    numvec knots{0, 1, 6, 9};
+    numvec values{10, 7, 3, 2.5};
+
+    numvec derivatives_true{-3.0, -4.0 / 5.0, -0.5 / 3.0, 0.0};
+
+    numvec derivatives = piecewise_derivatives(knots, values);
+    CHECK_CLOSE_COLLECTION(derivatives_true, derivatives, 0.1);
+
+    BOOST_CHECK_EQUAL(0, minimize_piecewise(knots, derivatives, 4.0));
+    BOOST_CHECK_EQUAL(0, minimize_piecewise(knots, derivatives, 3.0));
+    BOOST_CHECK_EQUAL(1, minimize_piecewise(knots, derivatives, 2.9));
+    BOOST_CHECK_EQUAL(1, minimize_piecewise(knots, derivatives, 1.5));
+    BOOST_CHECK_EQUAL(1, minimize_piecewise(knots, derivatives, 0.9));
+    BOOST_CHECK_EQUAL(2, minimize_piecewise(knots, derivatives, 0.799));
+    BOOST_CHECK_EQUAL(3, minimize_piecewise(knots, derivatives, 0.1));
+    BOOST_CHECK_EQUAL(3, minimize_piecewise(knots, derivatives, 0.0));
+}
 
 #endif //__cplusplus >= 2017

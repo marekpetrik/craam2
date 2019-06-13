@@ -11,9 +11,9 @@ When using the *robust objective*, adversarial nature chooses the worst plausibl
 
 The library also provides tools for *basic simulation*, for constructing MDPs from *sample*s, and *value function approximation*. Objective functions supported are infinite horizon discounted MDPs, finite horizon MDPs, and stochastic shortest path \[Puterman2005\]. Some basic stochastic shortest path methods are also supported. The library assumes *maximization* over actions. The number of states and actions must be finite.
 
-The library is based on two main data structures: MDP and RMDP. **MDP** is the standard model that consists of states 𝒮 and actions 𝒜. Note that robust solutions are constrained to be **absolutely continuous** with respect to *P*(*s*, *a*, ⋅). This is a hard requirement for all choices of ambiguity (or uncertainty).
+The library is based on two main data structures: MDP and MDPO. **MDP** is the standard model that consists of states 𝒮 and actions 𝒜. Note that robust solutions are constrained to be **absolutely continuous** with respect to *P*(*s*, *a*, ⋅). This is a hard requirement for all choices of ambiguity (or uncertainty).
 
-The **RMPD** model adds a set of *outcomes* that model possible actions that can be taken by nature. Using outcomes makes it more convenient to capture correlations between the ambiguity in rewards and the uncertainty in transition probabilities. It also make it much easier to represent uncertainties that lie in small-dimensional vector spaces. Constraints for nature's distributions over outcomes are also supported.
+The **MPDO** model adds a set of *outcomes* that model possible actions that can be taken by nature. Using outcomes makes it more convenient to capture correlations between the ambiguity in rewards and the uncertainty in transition probabilities. It also make it much easier to represent uncertainties that lie in small-dimensional vector spaces. Constraints for nature's distributions over outcomes are also supported.
 
 The available algorithms are *value iteration* and *modified policy iteration*. The library support both the plain worst-case outcome method and a worst case with respect to a base distribution.
 
@@ -31,19 +31,20 @@ These two benchmark problems were generated from a uniform random distribution.
 First, download the code.
 
 ``` bash
-    $ git clone --depth 1 https://github.com/marekpetrik/CRAAM.git
-    $ cmake -DCMAKE_BUILD_TYPE=Release .
-    $ cmake --build . --target craam-cli
+    $ git clone --depth 1 https://gitlab.com/RLsquared/craam2
 ```
 
-Second, install Eigen in the same directory.
+Second, install Eigen in the includes directory (requires bash or cygwin on windows):
 
 ``` bash
-    $ cd craam
-    $ wget http://bitbucket.org/eigen/eigen/get/3.3.4.tar.gz
-    $ tar xzf 3.3.4.tar.gz
-    $ rm 3.3.4.tar.gz
-    $ mv eigen-eigen-5a0156e40feb/Eigen ../include
+    $ ./install_eigen.sh
+```
+To install it manually, download the latest version from <http://eigen.tuxfamily.org/> and install it under `include/eigen3`. A file `include/eigen3/Eigen/Core` should exist. 
+
+We can now build the project as follows:
+``` bash
+    $ cmake -DCMAKE_BUILD_TYPE=Release .
+    $ cmake --build . --target craam-cli
 ```
 
 Finally, download and solve a simple benchmark problem:
@@ -121,45 +122,16 @@ Note that Boost must be present in order to build the tests in the first place.
 
 ## Installing Python Interface ##
 
-**Thy python interface is currently BROKEN! and will probably be rewritten from scratch**
-
-A python interface is provided by package `craam`. Most of the classes and methods are contained in `craam.crobust`.
-
-### Requirements ###
-
--   Python 3.5+ (Python 2 is NOT supported)
--   Setuptools 7.0+
--   Numpy 1.8+
--   Cython 0.24+
-
-### Installation ###
-
-
-The python interface that comes with this project is just a thin interface to the C++ code. [RAAM](https://github.com/marekpetrik/raam) is a more full-featured library that add significant python functionality as well as unit tests.
-
-To install the Python extension, first compile the C++ library as described above. Then go to the `python` subdirectory and run:
-
-``` bash
-  $ python3 setup.py install --user 
-```
-
-Omit `--user` to install the package for all users rather than just the current one.
+**Thy python interface is currently BROKEN for craam2 and will probably be rewritten from scratch**
 
 ## Installing R Interface ##
 
 The R interface is experimental and has very limited functionality. Method signatures are expected to change. The package should work on Linux, Mac, and Windows (with RTools 3.4+).
 
-Te package can be installed directly from the github repository using devtools:
+The package can be installed directly from the gitlab repository using devtools:
 ```R
 library(devtools)
-devtools::install_github("marekpetrik/craam/rcraam")
-```
-
-Alternatively, install from bitbucket (less stable):
-
-```R
-library(devtools)
-devtools::install_bitbucket("marekpetrik/craam/rcraam")
+devtools::install_gitlab("RLSquared/craam2/rcraam")
 ```
 
 R version 3.4 and above is recommended, but the package probably works with earlier versions too. The local compiler must support at least C++14.
@@ -184,8 +156,20 @@ The instruction above generate a release version of the project. The release ver
     $ cmake -DCMAKE_BUILD_TYPE=Debug .
     $ cmake --build .
 ```
+The release version that omits many of the time-consuming debugging checks can be compiled as:
 
-To help with development, Cmake can be used to generate a [CodeBlocks](http://www.codeblocks.org/) project files too:
+``` bash
+    $ cmake -DCMAKE_BUILD_TYPE=Release .
+    $ cmake --build .
+```
+
+By default, the project assumes that the [Gurobi](http://www.gurobi.com/) LP solver is available.  It is possible to disable the code that requires gurobi by uncommenting the fillowing line in CMakeLists.txt: 
+
+```
+set (GUROBI_USE FALSE)
+```
+
+[QT creator](https://www.qt.io/download) is a nice IDE that can automatically parse and run cmake projects directly. As an alternative, CMake can be used to generate a [CodeBlocks](http://www.codeblocks.org/) project files too:
 
 ``` bash
   $ cmake . -G "CodeBlocks - Ninja"

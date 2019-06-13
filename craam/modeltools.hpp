@@ -255,6 +255,38 @@ inline vector<vector<T>> map_sa(const MDP& mdp,
     return statesres;
 }
 
+/**
+ * Constructs a randomized policy for an MDP from a deterministic one
+ *
+ * @tparam T MDP or MDPO
+ *
+ * @param mdp Markov decision process
+ * @param dpolicy Deterministic policy. An action can be -1 when it is not specified.
+ *                  This results in a randomized policy that is of length 0 for each state.
+ *                  If the input is empty, then the output is empty.
+ *
+ * @return Randomized policy, with 0 length vectors for each state in which the
+ * policy is not specified.
+ */
+template <class T> inline numvecvec policy_det2rand(const T& mdp, const indvec& dpolicy) {
+    if (dpolicy.empty()) return {};
+    if (mdp.size() != dpolicy.size())
+        throw invalid_argument("mdp and dpolicy sizes do not match.");
+
+    numvecvec rpolicy;
+    rpolicy.reserve(mdp.size());
+    for (long si = 0; si < long(mdp.size()); ++si) {
+        if (dpolicy[si] < 0) {
+            rpolicy.push_back(numvec(0));
+        } else {
+            numvec rule(mdp[si].size(), 0.0);
+            rule.at(dpolicy[si]) = 1.0;
+            rpolicy.push_back(rule);
+        }
+    }
+    return rpolicy;
+}
+
 // *************************************************************************************
 // **** MDPO CSV tools
 // *************************************************************************************

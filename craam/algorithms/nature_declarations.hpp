@@ -57,11 +57,15 @@ using SANature = function<pair<numvec, prec_t>(
  * for each action. the vector could have length one when the action has 0
  * probability, 3) the value of the update.
  *
+ * If policy is provided, then the optimization only chooses the worst-case nature,
+ * otherwise the policy is optimized too.
+ *
  * The zvalues is rewards + discount * valuefunction. It is defined only for the
- * same states that have non-zero transition probabilites.
+ * states that have non-zero transition probabilites.
  */
 using SNature = function<tuple<numvec, vector<numvec>, prec_t>(
-    long stateid, const vector<numvec>& nominalprobs, const vector<numvec>& zvalues)>;
+    long stateid, const numvec& policy, const vector<numvec>& nominalprobs,
+    const vector<numvec>& zvalues)>;
 
 namespace nats {
 /**
