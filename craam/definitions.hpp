@@ -23,6 +23,9 @@
 
 #pragma once
 
+// skip configuration if it is already provided
+#ifndef CRAAM_CONFIG_HPP
+#endif // CRAAM_CONFIG_HPP
 #include "config.hpp"
 
 #include <algorithm>
@@ -230,11 +233,11 @@ inline bool is_probability_dist(ForwardIterator first, ForwardIterator last) {
 // implement clamp when not provided by the library (in pre c++17 code)
 #ifndef __cpp_lib_clamp
 template <class T, class Compare>
-constexpr const T& clamp(const T& v, const T& lo, const T& hi, Compare comp) {
+inline constexpr const T& clamp(const T& v, const T& lo, const T& hi, Compare comp) {
     return assert(!comp(hi, lo)), comp(v, lo) ? lo : comp(hi, v) ? hi : v;
 }
 
-template <class T> constexpr const T& clamp(const T& v, const T& lo, const T& hi) {
+template <class T> inline constexpr const T& clamp(const T& v, const T& lo, const T& hi) {
     return clamp(v, lo, hi, std::less<>());
 }
 #endif
@@ -242,7 +245,7 @@ template <class T> constexpr const T& clamp(const T& v, const T& lo, const T& hi
 /**
  * Multiplies the vector by a value and returns it
  */
-numvec multiply(numvec vct, prec_t value) {
+inline numvec multiply(numvec vct, prec_t value) {
     // intentionally passed by value (to enable a move and handling rvalues)
     for (int i = 0; i < int(vct.size()); ++i)
         vct[i] *= value;
@@ -252,7 +255,7 @@ numvec multiply(numvec vct, prec_t value) {
 /**
  * Multiplies the vector by a value inplace
  */
-void multiply_inplace(numvec& vct, prec_t value) {
+inline void multiply_inplace(numvec& vct, prec_t value) {
     for (int i = 0; i < int(vct.size()); ++i)
         vct[i] *= value;
 }
