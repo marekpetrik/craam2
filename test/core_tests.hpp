@@ -1256,7 +1256,6 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_linf) {
         //CHECK_CLOSE_COLLECTION(d, gd, 1e-3);
     }
 }
-#endif
 
 BOOST_AUTO_TEST_CASE(test_solve_srect_same) {
     // set parameters
@@ -1270,6 +1269,7 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_same) {
         BOOST_CHECK_CLOSE(obj, 1.00, 1e-3);
     }
 }
+#endif
 
 BOOST_AUTO_TEST_CASE(test_responses) {
     // set parameters

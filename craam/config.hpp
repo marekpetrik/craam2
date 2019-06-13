@@ -1,8 +1,8 @@
 #pragma once 
 
 #define VERSION 3.0.0
-#define IS_DEBUG
-#define GUROBI_USE
+/* #undef IS_DEBUG */
+/* #undef GUROBI_USE */
 
 #ifndef IS_DEBUG
     #define NDEBUG
