@@ -591,9 +591,10 @@ inline pair<prec_t, numvecvec> evaluate_srect_bisection_l1(
     if (ws.empty()) {
         // no weights
         for (long ai = 0; ai < long(actioncount); ++ai) {
-#ifdef __cpp_structured_bindings
             // NOTE: values and knots are intentionally different from the names in the
             // function. We need the function q and not q^{-1} here.
+            assert(z[ai].size() == pbar[ai].size());
+#ifdef __cpp_structured_bindings
             auto [values_a, knots_a] = worstcase_l1_knots(z[ai], pbar[ai]);
 #else
             numvec knots_a, values_a;
@@ -610,9 +611,10 @@ inline pair<prec_t, numvecvec> evaluate_srect_bisection_l1(
     } else {
         // using l1 weights
         for (long ai = 0; ai < long(actioncount); ++ai) {
-#ifdef __cpp_structured_bindings
             // NOTE: values and knots are intentionally different from the names in the
             // function. We need the function q and not q^{-1} here.
+            assert(z[ai].size() == pbar[ai].size());
+#ifdef __cpp_structured_bindings
             auto [values_a, knots_a] =
                 gradients.empty()
                     ? worstcase_l1_w_knots(z[ai], pbar[ai], ws[ai])

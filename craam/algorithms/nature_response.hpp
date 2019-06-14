@@ -378,7 +378,6 @@ public:
 
             // compute actual worst-case responses for all actions
             // and aggregate them in a sparse transition probability
-
             new_probability.reserve(actiondist.size());
             for (size_t a = 0; a < nominalprobs.size(); a++) {
                 // skip the ones that have not transition probability
@@ -386,7 +385,7 @@ public:
                     new_probability.push_back(
                         worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
                 } else {
-                    new_probability.push_back(numvec(0));
+                    new_probability.push_back(numvec(nominalprobs[a].size(), 0.0));
                 }
             }
         }
@@ -441,7 +440,6 @@ public:
 
             // compute actual worst-case responses for all actions
             // and aggregate them in a sparse transition probability
-            vector<numvec> new_probability;
             new_probability.reserve(actiondist.size());
             for (size_t a = 0; a < nominalprobs.size(); a++) {
                 // skip the ones that have not transition probability
@@ -449,7 +447,7 @@ public:
                     new_probability.push_back(
                         worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
                 } else {
-                    new_probability.push_back(numvec(0));
+                    new_probability.push_back(numvec(nominalprobs[a].size(), 0.0));
                 }
             }
         } else {
@@ -457,6 +455,8 @@ public:
                 zvalues, nominalprobs, budgets[stateid], policy);
             actiondist = policy;
         }
+        // make sure that the states and nature have the same number of elements
+        assert(actiondist.size() == new_probability.size());
         return {move(actiondist), move(new_probability), outcome};
     }
 };
@@ -512,7 +512,6 @@ public:
 
             // compute actual worst-case responses for all actions
             // and aggregate them in a sparse transition probability
-            vector<numvec> new_probability;
             new_probability.reserve(actiondist.size());
             for (size_t a = 0; a < nominalprobs.size(); a++) {
                 // skip the ones that have not transition probability
@@ -520,7 +519,7 @@ public:
                     new_probability.push_back(
                         worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
                 } else {
-                    new_probability.push_back(numvec(0));
+                    new_probability.push_back(numvec(nominalprobs[a].size(), 0.0));
                 }
             }
         }
@@ -530,6 +529,8 @@ public:
                 zvalues, nominalprobs, budgets[stateid], policy, weights[stateid]);
             actiondist = policy;
         }
+        // make sure that the states and nature have the same number of elements
+        assert(actiondist.size() == new_probability.size());
         return {move(actiondist), move(new_probability), outcome};
     }
 };
@@ -601,10 +602,12 @@ public:
                 new_probability.push_back(
                     worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
             } else {
-                new_probability.push_back(numvec(0));
+                new_probability.push_back(numvec(nominalprobs[a].size(), 0.0));
             }
         }
 
+        // make sure that the states and nature have the same number of elements
+        assert(actiondist.size() == new_probability.size());
         return make_tuple(move(actiondist), move(new_probability), outcome);
     }
 };
@@ -690,7 +693,7 @@ public:
                 new_probability.push_back(
                     worstcase_l1(zvalues[a], nominalprobs[a], sa_budgets[a]).first);
             } else {
-                new_probability.push_back(numvec(0));
+                new_probability.push_back(numvec(nominalprobs[a].size(), 0.0));
             }
         }
 
@@ -759,7 +762,7 @@ public:
                                             sa_budgets[a])
                         .first);
             } else {
-                new_probability.push_back(numvec(0));
+                new_probability.push_back(numvec(nominalprobs[a].size(), 0.0));
             }
         }
 

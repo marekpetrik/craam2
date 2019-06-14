@@ -48,26 +48,29 @@ template <class PolicyType> struct Solution {
     long iterations;
     /// Time taken to solve the problem
     prec_t time;
+    /// Status (0 means OK, 1 means timeout, 2 means internal error)
+    int status;
 
     Solution()
-        : valuefunction(0), policy(0), residual(-1), iterations(-1), time(std::nan("")) {}
+        : valuefunction(0), policy(0), residual(-1), iterations(-1), time(std::nan("")),
+          status(0) {}
 
     /// Empty solution for a problem with statecount states
     Solution(size_t statecount)
         : valuefunction(statecount, 0.0), policy(statecount), residual(-1),
-          iterations(-1), time(nan("")) {}
+          iterations(-1), time(nan("")), status(0) {}
 
     /// Empty solution for a problem with a given value function and policy
     Solution(numvec valuefunction, vector<PolicyType> policy, prec_t residual = -1,
-             long iterations = -1, double time = nan(""))
+             long iterations = -1, double time = nan(""), int status = 0)
         : valuefunction(move(valuefunction)), policy(move(policy)), residual(residual),
-          iterations(iterations), time(time) {}
+          iterations(iterations), time(time), status(status) {}
 
     /**
-  Computes the total return of the solution given the initial
-  distribution.
-  @param initial The initial distribution
-   */
+     * Computes the total return of the solution given the initial
+     * distribution.
+     * @param initial The initial distribution
+     */
     prec_t total_return(const Transition& initial) const {
         if (initial.max_index() >= (long)valuefunction.size())
             throw invalid_argument("Too many indexes in the initial distribution.");

@@ -365,7 +365,7 @@ BOOST_AUTO_TEST_CASE(simple_rmdpd_vi_of_nonrobust) {
     test_simple_vi<MDPO>(robustify(rmdp));
 }
 
-BOOST_AUTO_TEST_CASE(inventory_robust_policy_iteration) {
+BOOST_AUTO_TEST_CASE(simple_zero_robust) {
     MDP fullmdp = create_test_mdp<MDP>();
 
     /*simulator.build_mdp(
@@ -396,6 +396,65 @@ BOOST_AUTO_TEST_CASE(inventory_robust_policy_iteration) {
     BOOST_CHECK_EQUAL_COLLECTIONS(
         solution1.valuefunction.cbegin(), solution1.valuefunction.cend(),
         solution3.valuefunction.cbegin(), solution3.valuefunction.cend());
+
+    auto solution5 = rsolve_s_ppi(fullmdp, discount, algorithms::nats::robust_s_l1u(0.0));
+
+    BOOST_CHECK_EQUAL_COLLECTIONS(
+        solution1.valuefunction.cbegin(), solution1.valuefunction.cend(),
+        solution5.valuefunction.cbegin(), solution5.valuefunction.cend());
+}
+
+BOOST_AUTO_TEST_CASE(simple_robust_algorithms) {
+    MDP fullmdp = create_test_mdp<MDP>();
+
+    /*simulator.build_mdp(
+        [&fullmdp](long statefrom, long action, long stateto, prec_t prob, prec_t rew) {
+            add_transition(fullmdp, statefrom, action, stateto, prob, rew);
+        });
+    */
+
+    double discount = 0.99;
+
+    auto solution1 = rsolve_vi(fullmdp, discount, algorithms::nats::robust_l1u(0.5));
+    auto solution2 = rsolve_ppi(fullmdp, discount, algorithms::nats::robust_l1u(0.5));
+    CHECK_CLOSE_COLLECTION(solution1.valuefunction, solution2.valuefunction, 1.0);
+
+    auto solution3 = rsolve_s_vi(fullmdp, discount, algorithms::nats::robust_s_l1u(0.5));
+    auto solution4 = rsolve_s_mpi(fullmdp, discount, algorithms::nats::robust_s_l1u(0.5),
+                                  numvec(0), indvec(0), MAXITER, SOLPREC, 1, 0.9);
+
+    CHECK_CLOSE_COLLECTION(solution3.valuefunction, solution4.valuefunction, 1.0);
+
+    auto solution5 = rsolve_s_ppi(fullmdp, discount, algorithms::nats::robust_s_l1u(0.5));
+    CHECK_CLOSE_COLLECTION(solution3.valuefunction, solution5.valuefunction, 1.0);
+}
+
+BOOST_AUTO_TEST_CASE(simple_robust_algorithms_ind) {
+    MDP fullmdp = create_test_mdp<MDP>();
+
+    /*simulator.build_mdp(
+        [&fullmdp](long statefrom, long action, long stateto, prec_t prob, prec_t rew) {
+            add_transition(fullmdp, statefrom, action, stateto, prob, rew);
+        });
+    */
+
+    double discount = 0.99;
+    auto nature_sa =
+        algorithms::nats::robust_l1(numvecvec{{0.1, 0.1}, {0.1, 0.1}, {0.1, 0.1}});
+
+    auto solution1 = rsolve_vi(fullmdp, discount, nature_sa);
+    auto solution2 = rsolve_ppi(fullmdp, discount, nature_sa);
+    CHECK_CLOSE_COLLECTION(solution1.valuefunction, solution2.valuefunction, 1.0);
+
+    auto nature_s = algorithms::nats::robust_s_l1(numvec{0.1, 0.1, 0.1});
+    auto solution3 = rsolve_s_vi(fullmdp, discount, nature_s);
+    auto solution4 = rsolve_s_mpi(fullmdp, discount, nature_s, numvec(0), indvec(0),
+                                  MAXITER, SOLPREC, 1, 0.9);
+
+    CHECK_CLOSE_COLLECTION(solution3.valuefunction, solution4.valuefunction, 1.0);
+
+    auto solution5 = rsolve_s_ppi(fullmdp, discount, nature_s);
+    CHECK_CLOSE_COLLECTION(solution3.valuefunction, solution5.valuefunction, 1.0);
 }
 
 // ********************************************************************************

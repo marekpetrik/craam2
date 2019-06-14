@@ -1,3 +1,26 @@
+// This file is part of CRAAM, a C++ library for solving plain
+// and robust Markov decision processes.
+//
+// MIT License
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #include "utils.hpp"
 
 #include "craam/Samples.hpp"
@@ -19,8 +42,72 @@
 #include <string>
 #include <tuple>
 
+// [[Rcpp::depends(RcppProgress)]]
+namespace RcppProg {
+#include <progress.hpp>
+}
+
 using namespace craam;
 using namespace std;
+
+namespace defaults {
+constexpr size_t iterations = 1000;
+constexpr double maxresidual = 0.0001;
+constexpr double timeout = -1;
+constexpr bool show_progress = true;
+} // namespace defaults
+
+class ComputeProgress {
+protected:
+    /// maximum number of iterations
+    size_t max_iterations;
+    /// the target Bellman residual
+    prec_t min_residual;
+    /// Progress bar visualization
+    RcppProg::Progress progress;
+    /// Timing the computation
+    chrono::steady_clock::time_point start = chrono::steady_clock::now();
+    /// Timeout
+    int timeout_seconds;
+    /// Show progress
+    bool show_progress;
+
+public:
+    /**
+     * @param max_iterations Maximum number of iterations
+     * @param min_residual Desired level of Bellman residual
+     * @param timeout_seconds Number of seconds before a timeout. 0 or less means
+     *                          that there is no timeout
+     */
+    ComputeProgress(size_t max_iterations, prec_t min_residual, bool show_progress,
+                    int timeout_seconds)
+        : max_iterations(max_iterations), min_residual(min_residual),
+          progress(max_iterations, show_progress), timeout_seconds(timeout_seconds),
+          show_progress(show_progress){};
+
+    /**
+     * Reports progress of the computation and listens to interrupt requests
+     * @param iterations Current number of iterations
+     * @param residual Current residual achieved
+
+     * @return Whether to continue with the computation
+     */
+    bool operator()(size_t iterations, prec_t residual) {
+        if (iterations % 10) {
+            if (RcppProg::Progress::check_abort()) { return false; }
+            if (timeout_seconds > 0) {
+                auto finish = chrono::steady_clock::now();
+                chrono::duration<double> duration = finish - start;
+                if (duration.count() > timeout_seconds) {
+                    Rcpp::warning("Computation timed out.");
+                    return false;
+                }
+            }
+            progress.update(iterations);
+        }
+        return true;
+    }
+};
 
 /** Computes the maximum distribution subject to L1 constraints */
 // [[Rcpp::export]]
@@ -265,14 +352,24 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::List options) {
 
     long iterations = options.containsElementNamed("iterations")
                           ? Rcpp::as<long>(options["iterations"])
-                          : 1000000;
+                          : defaults::iterations;
     double precision = options.containsElementNamed("precision")
                            ? Rcpp::as<long>(options["precision"])
-                           : 0.0001;
+                           : defaults::maxresidual;
 
+    // outputs the matrix of transition probabilities and the
+    // vector of rewards
     bool output_mat = options.containsElementNamed("output_tran")
                           ? Rcpp::as<bool>(options["output_tran"])
                           : false;
+
+    double timeout = options.containsElementNamed("timeout")
+                         ? Rcpp::as<double>(options["timeout"])
+                         : defaults::timeout;
+
+    bool show_progress = options.containsElementNamed("progress")
+                             ? Rcpp::as<bool>(options["progress"])
+                             : defaults::show_progress;
 
     if (options.containsElementNamed("policy") &&
         options.containsElementNamed("policy_rand")) {
@@ -296,33 +393,38 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::List options) {
             ? parse_sa_values(m, Rcpp::as<Rcpp::DataFrame>(options["policy_rand"]), 0.0)
             : numvecvec(0);
 
+    ComputeProgress progress(iterations, precision, show_progress, timeout);
+
     if (!options.containsElementNamed("algorithm") ||
         Rcpp::as<string>(options["algorithm"]) == "mpi") {
         // Modified policy iteration
         if (is_randomized) {
-            rsol = solve_mpi_r(m, discount, numvec(0), rpolicy, sqrt(iterations),
-                               precision, std::min(sqrt(iterations), 1000.0), 0.9);
+            rsol =
+                solve_mpi_r(m, discount, numvec(0), rpolicy, sqrt(iterations), precision,
+                            std::min(sqrt(iterations), 1000.0), 0.9, progress);
         } else {
             sol = solve_mpi(m, discount, numvec(0), policy, sqrt(iterations), precision,
-                            std::min(sqrt(iterations), 1000.0), 0.9);
+                            std::min(sqrt(iterations), 1000.0), 0.9, progress);
         }
 
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi_j") {
         // Jacobian value iteration
         if (is_randomized) {
             rsol = solve_mpi_r(m, discount, numvec(0), rpolicy, iterations, precision, 1,
-                               0.9);
+                               0.9, progress);
         } else {
-            sol =
-                solve_mpi(m, discount, numvec(0), policy, iterations, precision, 1, 0.9);
+            sol = solve_mpi(m, discount, numvec(0), policy, iterations, precision, 1, 0.9,
+                            progress);
         }
 
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
         // Gauss-seidel value iteration
         if (is_randomized) {
-            rsol = solve_vi_r(m, discount, numvec(0), rpolicy, iterations, precision);
+            rsol = solve_vi_r(m, discount, numvec(0), rpolicy, iterations, precision,
+                              progress);
         } else {
-            sol = solve_vi(m, discount, numvec(0), policy, iterations, precision);
+            sol =
+                solve_vi(m, discount, numvec(0), policy, iterations, precision, progress);
         }
 
     } else if (Rcpp::as<string>(options["algorithm"]) == "pi") {
@@ -370,12 +472,20 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::List options) {
         result["time"] = rsol.time;
         result["policy"] = output_policy(rsol.policy);
         result["valuefunction"] = move(rsol.valuefunction);
+        result["status"] = rsol.status;
+        if (rsol.status != 0)
+            Rcpp::warning(
+                "Ran out of time or iterations. The solution may be suboptimal.");
     } else {
         result["iters"] = sol.iterations;
         result["residual"] = sol.residual;
         result["time"] = sol.time;
         result["policy"] = output_policy(sol.policy);
         result["valuefunction"] = move(sol.valuefunction);
+        result["status"] = sol.status;
+        if (sol.status != 0)
+            Rcpp::warning(
+                "Ran out of time or iterations. The solution may be suboptimal.");
     }
 
     return result;
@@ -470,13 +580,24 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
 
         long iterations = options.containsElementNamed("iterations")
                               ? Rcpp::as<long>(options["iterations"])
-                              : 1000000;
+                              : defaults::iterations;
         double precision = options.containsElementNamed("precision")
                                ? Rcpp::as<long>(options["precision"])
-                               : 0.0001;
+                               : defaults::maxresidual;
+
+        double timeout = options.containsElementNamed("timeout")
+                             ? Rcpp::as<double>(options["timeout"])
+                             : defaults::timeout;
+
+        bool show_progress = options.containsElementNamed("progress")
+                                 ? Rcpp::as<bool>(options["progress"])
+                                 : defaults::show_progress;
 
         SARobustSolution sol;
         algorithms::SANature natparsed = parse_nature_sa(m, nature, nature_par);
+
+        ComputeProgress progress(iterations, precision, show_progress, timeout);
+
         // the default method is to use ppa
         if (!options.containsElementNamed("algorithm") ||
             Rcpp::as<string>(options["algorithm"]) == "ppi") {
@@ -485,21 +606,22 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
         } else if (Rcpp::as<string>(options["algorithm"]) == "mpi") {
             Rcpp::warning("The robust version of the mpi method may cycle forever "
                           "without converging.");
-            sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), indvec(0),
-                             sqrt(iterations), precision, sqrt(iterations), 0.5);
+            sol =
+                rsolve_mpi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+                           sqrt(iterations), precision, sqrt(iterations), 0.5, progress);
         } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
             sol = rsolve_vi(m, discount, std::move(natparsed), numvec(0), indvec(0),
-                            iterations, precision);
+                            iterations, precision, progress);
 
         } else if (Rcpp::as<string>(options["algorithm"]) == "vi_j") {
             // Jacobian value iteration, simulated using mpi
             sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), indvec(0),
-                             iterations, precision, 1, 0.5);
+                             iterations, precision, 1, 0.5, progress);
         } else if (Rcpp::as<string>(options["algorithm"]) == "pi") {
             Rcpp::warning("The robust version of the pi method may cycle forever without "
                           "converging.");
             sol = rsolve_pi(m, discount, std::move(natparsed), numvec(0), indvec(0),
-                            iterations, precision);
+                            iterations, precision, progress);
         } else {
             Rcpp::stop("Unknown solver type.");
         }
@@ -519,6 +641,10 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
         result["policy"] = output_policy(dec_pol);
         result["policy.nature"] = move(nat_pol);
         result["valuefunction"] = move(sol.valuefunction);
+        result["status"] = sol.status;
+        if (sol.status != 0)
+            Rcpp::warning(
+                "Ran out of time or iterations. The solution may be suboptimal.");
 
     } catch (std::exception& ex) { forward_exception_to_r(ex); } catch (...) {
         ::Rf_error("c++ exception (unknown reason)");
@@ -581,28 +707,42 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     }
     long iterations = options.containsElementNamed("iterations")
                           ? Rcpp::as<long>(options["iterations"])
-                          : 1000000;
+                          : defaults::iterations;
     double precision = options.containsElementNamed("precision")
                            ? Rcpp::as<long>(options["precision"])
-                           : 0.0001;
+                           : defaults::maxresidual;
+
+    double timeout = options.containsElementNamed("timeout")
+                         ? Rcpp::as<double>(options["timeout"])
+                         : defaults::timeout;
+
+    bool show_progress = options.containsElementNamed("progress")
+                             ? Rcpp::as<bool>(options["progress"])
+                             : defaults::show_progress;
     SRobustSolution sol;
     algorithms::SNature natparsed = parse_nature_s(m, nature, nature_par);
+
+    ComputeProgress progress(iterations, precision, show_progress, timeout);
+
     if (!options.containsElementNamed("algorithm") ||
         Rcpp::as<string>(options["algorithm"]) == "ppi") {
         sol = rsolve_s_ppi(m, discount, std::move(natparsed), numvec(0), indvec(0),
-                           iterations, precision);
-    }
-    if (Rcpp::as<string>(options["algorithm"]) == "mpi") {
+                           iterations, precision, progress);
+    } else if (Rcpp::as<string>(options["algorithm"]) == "mpi") {
         sol = rsolve_s_mpi(m, discount, std::move(natparsed), numvec(0), indvec(0),
-                           sqrt(iterations), precision, sqrt(iterations), 0.5);
+                           sqrt(iterations), precision, sqrt(iterations), 0.5, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
         sol = rsolve_s_vi(m, discount, std::move(natparsed), numvec(0), indvec(0),
-                          iterations, precision);
+                          iterations, precision, progress);
+    } else if (Rcpp::as<string>(options["algorithm"]) == "vi_j") {
+        // Jacobian value iteration, simulated using mpi
+        sol = rsolve_s_mpi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+                           iterations, precision, 1, 0.5, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "pi") {
         sol = rsolve_s_pi(m, discount, std::move(natparsed), numvec(0), indvec(0),
-                          iterations, precision);
+                          iterations, precision, progress);
     } else {
-        Rcpp::stop("Unknown solver type.");
+        Rcpp::stop("Unknown algorithm type: " + Rcpp::as<string>(options["algorithm"]));
     }
     result["iters"] = sol.iterations;
     result["residual"] = sol.residual;
@@ -617,6 +757,10 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     result["policy"] = output_policy(dec_pol);
     result["policy.nature"] = move(nat_pol);
     result["valuefunction"] = move(sol.valuefunction);
+    result["status"] = sol.status;
+    if (sol.status != 0)
+        Rcpp::warning("Ran out of time or iterations. The solution may be suboptimal.");
+
     return result;
 }
 

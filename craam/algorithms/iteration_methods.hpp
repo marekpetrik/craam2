@@ -100,8 +100,9 @@ vi_gs(const ResponseType& response, prec_t discount, numvec valuefunction = numv
 
     auto finish = chrono::steady_clock::now();
     chrono::duration<double> duration = finish - start;
+    int status = residual <= maxresidual ? 0 : 1;
     return Solution<policy_type>(move(valuefunction), move(policy), residual, i,
-                                 duration.count());
+                                 duration.count(), status);
 }
 
 /**
@@ -182,6 +183,7 @@ mpi_jac(const ResponseType& response, prec_t discount,
         for (auto s = 0l; s < long(response.state_count()); s++) {
             prec_t newvalue;
             tie(newvalue, policy[s]) = response.policy_update(s, sourcevalue, discount);
+
             residuals[s] = abs(sourcevalue[s] - newvalue);
             targetvalue[s] = newvalue;
         }
@@ -209,8 +211,9 @@ mpi_jac(const ResponseType& response, prec_t discount,
     }
     auto finish = chrono::steady_clock::now();
     chrono::duration<double> duration = finish - start;
+    int status = residual_pi <= maxresidual_pi ? 0 : 1;
     return Solution<policy_type>(move(targetvalue), move(policy), residual_pi, i,
-                                 duration.count());
+                                 duration.count(), status);
 }
 
 /**
@@ -277,7 +280,7 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
     prec_t residual_pi = numeric_limits<prec_t>::infinity();
     size_t i; // defined here to be able to report the number of iterations
 
-    // TODO: could be sped up by keeping I - gamma * P instead of transition probabilities
+    // NOTE: could be sped up by keeping I - gamma * P instead of transition probabilities
 
     // first udate the policy
 #pragma omp parallel for
@@ -323,8 +326,9 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
     }
     auto finish = chrono::steady_clock::now();
     chrono::duration<double> duration = finish - start;
+    int status = residual_pi <= maxresidual_pi ? 0 : 1;
     return Solution<policy_type>(move(valuefunction), move(policy), residual_pi, i,
-                                 duration.count());
+                                 duration.count(), status);
 }
 
 /**
@@ -347,7 +351,7 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
 template <class ResponseType>
 inline Solution<typename ResponseType::policy_type>
 rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
-     unsigned long iterations_pi = MAXITER, prec_t residual = SOLPREC,
+     unsigned long iterations_pi = MAXITER, prec_t maxresidual = SOLPREC,
      const prec_t rob_residual_init = 1.0, const prec_t rob_residual_rate = 0.5,
      const std::function<bool(size_t, prec_t)>& progress = internal::empty_progress) {
     using policy_type = typename ResponseType::policy_type;
@@ -401,12 +405,16 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
         }
         residual_pi = *max_element(residuals.cbegin(), residuals.cend());
         ++iterations;
-    } while (residual_pi > residual);
+
+        // check whether there is no reson to interrupt
+        if (!progress(iterations, residual_pi)) break;
+    } while (residual_pi > maxresidual);
 
     auto finish = chrono::steady_clock::now();
     chrono::duration<double> duration = finish - start;
+    int status = residual_pi <= residual_pi ? 0 : 1;
     return Solution<policy_type>(move(valuefunction), move(output_policy), residual_pi,
-                                 iterations, duration.count());
+                                 iterations, duration.count(), status);
 }
 
 }} // namespace craam::algorithms
