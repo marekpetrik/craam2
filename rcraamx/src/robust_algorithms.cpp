@@ -68,7 +68,7 @@ protected:
     /// Timing the computation
     chrono::steady_clock::time_point start = chrono::steady_clock::now();
     /// Timeout
-    int timeout_seconds;
+    double timeout_seconds;
     /// Show progress
     bool show_progress;
 
@@ -80,7 +80,7 @@ public:
      *                          that there is no timeout
      */
     ComputeProgress(size_t max_iterations, prec_t min_residual, bool show_progress,
-                    int timeout_seconds)
+                    double timeout_seconds)
         : max_iterations(max_iterations), min_residual(min_residual),
           progress(max_iterations, show_progress), timeout_seconds(timeout_seconds),
           show_progress(show_progress){};
@@ -223,6 +223,7 @@ vector<vector<numvec>> parse_sas_values(const MDP& mdp, const Rcpp::DataFrame& f
 
     vector<vector<numvec>> result(mdp.size());
     for (long i = 0; i < mdp.size(); i++) {
+        result[i] = numvecvec(mdp[i].size());
         for (long j = 0; j < mdp[i].size(); j++) {
             // this is the number of non-zero transition probabilities
             result[i][j] = numvec(mdp[i][j].size(), def_value);
@@ -255,7 +256,6 @@ vector<vector<numvec>> parse_sas_values(const MDP& mdp, const Rcpp::DataFrame& f
 
         result[idstatefrom][idaction][indexto] = values[i];
     }
-
     return result;
 }
 

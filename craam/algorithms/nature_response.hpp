@@ -482,7 +482,10 @@ public:
      */
     robust_s_l1w(numvec budgets, vector<numvecvec> weights)
         : budgets(move(budgets)), weights(move(weights)) {
-        assert(this->weights.size() == this->budgets.size());
+        if (this->weights.size() != this->budgets.size()) {
+            throw invalid_argument(
+                "There must be one weight and one budget for each state.");
+        }
     }
 
     /**
