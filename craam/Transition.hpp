@@ -377,8 +377,8 @@ public:
         if (stateid < 0) return -1;
 
         auto fiter = std::lower_bound(indices.cbegin(), indices.cend(), stateid);
-        if (*fiter == stateid) { // the element was found
-            return fiter - indices.cbegin();
+        if ((*fiter) == stateid) { // the element was found
+            return std::distance(indices.cbegin(), fiter);
         } else { // the element was not found
             return -1;
         }

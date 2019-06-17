@@ -88,9 +88,9 @@ public:
             if (action_counts[obs] >= 0) {
                 if (action_counts[obs] != long(ac)) {
                     throw invalid_argument(
-                        "Inconsistent number of actions: " + to_string(ac) +
-                        " instead of " + to_string(action_counts[obs]) + " in state " +
-                        to_string(state));
+                        "Inconsistent number of actions: " + std::to_string(ac) +
+                        " instead of " + std::to_string(action_counts[obs]) +
+                        " in state " + std::to_string(state));
                 }
             } else {
                 action_counts[obs] = ac;

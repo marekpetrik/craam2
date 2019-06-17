@@ -309,7 +309,7 @@ public:
 
             if (abs(sum - 1) > SOLPREC) {
                 throw invalid_argument("Action probabilities must sum to 1 in state " +
-                                       to_string(pi));
+                                       std::to_string(pi));
             }
             distributions[pi] = discrete_distribution<long>(prob.begin(), prob.end());
         }

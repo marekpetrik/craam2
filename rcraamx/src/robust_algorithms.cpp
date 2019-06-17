@@ -238,23 +238,39 @@ vector<vector<numvec>> parse_sas_values(const MDP& mdp, const Rcpp::DataFrame& f
         long idstatefrom = idstatesfrom[i], idstateto = idstatesto[i],
              idaction = idactions[i];
 
-        if (idstatefrom < 0) Rcpp::stop("idstatefrom must be non-negative");
-        if (idstatefrom > mdp.size())
-            Rcpp::stop("idstatefrom must be smaller than the number of MDP states");
-        if (idaction < 0) Rcpp::stop("idaction must be non-negative");
-        if (idaction > mdp[idstatefrom].size())
-            Rcpp::stop("idaction must be smaller than the number of actions for the "
-                       "corresponding state");
-        if (idstateto < 0) Rcpp::stop("idstateto must be non-negative");
+        if (idstatefrom < 0) {
+            Rcpp::warning("idstatefrom must be non-negative");
+            continue;
+        }
+        if (idstatefrom > mdp.size()) {
+            Rcpp::warning("idstatefrom must be smaller than the number of MDP states");
+            continue;
+        }
+        if (idaction < 0) {
+            Rcpp::warning("idaction must be non-negative");
+            continue;
+        }
+        if (idaction > mdp[idstatefrom].size()) {
+            Rcpp::warning("idaction must be smaller than the number of actions for the "
+                          "corresponding state");
+            continue;
+        }
+        if (idstateto < 0) {
+            Rcpp::warning("idstateto must be non-negative");
+            continue;
+        }
 
         long indexto = mdp[idstatefrom][idaction].index_of(idstateto);
+        //cout << idstatefrom << "," << idaction << "," << idstateto << "," << indexto
+        //     << endl;
 
-        if (indexto < 0)
-            Rcpp::stop("idstateto must be one of the states with non-zero probability."
-                       "idstatefrom = " +
-                       to_string(idstatefrom) + ", idaction = " + to_string(idaction));
-
-        result[idstatefrom][idaction][indexto] = values[i];
+        if (indexto < 0) {
+            Rcpp::warning("idstateto must be one of the states with non-zero probability."
+                          "idstatefrom = " +
+                          to_string(idstatefrom) + ", idaction = " + to_string(idaction));
+        } else {
+            result[idstatefrom][idaction][indexto] = values[i];
+        }
     }
     return result;
 }
@@ -354,7 +370,7 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::List options) {
                           ? Rcpp::as<long>(options["iterations"])
                           : defaults::iterations;
     double precision = options.containsElementNamed("precision")
-                           ? Rcpp::as<long>(options["precision"])
+                           ? Rcpp::as<double>(options["precision"])
                            : defaults::maxresidual;
 
     // outputs the matrix of transition probabilities and the
@@ -582,7 +598,7 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
                               ? Rcpp::as<long>(options["iterations"])
                               : defaults::iterations;
         double precision = options.containsElementNamed("precision")
-                               ? Rcpp::as<long>(options["precision"])
+                               ? Rcpp::as<double>(options["precision"])
                                : defaults::maxresidual;
 
         double timeout = options.containsElementNamed("timeout")
@@ -709,7 +725,7 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
                           ? Rcpp::as<long>(options["iterations"])
                           : defaults::iterations;
     double precision = options.containsElementNamed("precision")
-                           ? Rcpp::as<long>(options["precision"])
+                           ? Rcpp::as<double>(options["precision"])
                            : defaults::maxresidual;
 
     double timeout = options.containsElementNamed("timeout")

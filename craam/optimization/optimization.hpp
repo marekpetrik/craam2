@@ -250,7 +250,7 @@ std::pair<numvec, numvec> inline worstcase_l1_knots(
  */
 class GradientsL1_w {
 protected:
-    numvec derivatives; // derivate for each potential basic solution
+    numvec derivatives; // derivative for each potential basic solution
     indvec donors;      // the index of the donor for each potential basic solution
     indvec receivers;   // the index of the receiver for each potential basic solution
     std::vector<bool> donor_greater; // whether the donor is greater than the nominal
@@ -270,7 +270,7 @@ public:
      * @param w Weights in the definition of the L1 norm
      */
     GradientsL1_w(const numvec& z, const numvec& w) {
-        const prec_t epsilon = 1e-10;
+        constexpr prec_t epsilon = 1e-10;
         size_t element_count = z.size();
 
         assert(z.size() == element_count);
@@ -290,6 +290,7 @@ public:
             prec_t smallest_w = std::numeric_limits<prec_t>::infinity();
 
             for (size_t iz : z_increasing) {
+                assert(w[iz] > epsilon);
                 if (w[iz] < smallest_w) {
                     possible_receivers.push_back(iz);
                     smallest_w = w[iz];
@@ -357,6 +358,17 @@ public:
         size_t e = sorted[index];
         return {derivatives[e], donors[e], receivers[e], donor_greater[e]};
     }
+
+    /// Genrates a string description of the gradients
+    std::string to_string() const {
+        std::stringstream sstream;
+
+        for (auto i : sorted) {
+            sstream << "(" << (donor_greater[i] ? "+" : "") << donors[i] << "=>"
+                    << receivers[i] << "," << derivatives[i] << ")";
+        }
+        return sstream.str();
+    }
 };
 
 /**
@@ -399,12 +411,20 @@ std::pair<numvec, prec_t> inline worstcase_l1_w(const GradientsL1_w& gradients,
 #endif
 
         // this basic solution is not applicable here, just skip it
-        if (donor_greater && p[donor] <= pbar[donor]) continue;
+        if (donor_greater && p[donor] <= pbar[donor] + epsilon) continue;
 
-        // No obvious reason how this could happen, but lets just make sure to flag
-        // it this could happen because of ties, see the hack above
+        // No obvious reason how this could happen, but lets just make sure to flag it
+        // if this happens because of ties, see the hack above
         if (!donor_greater && p[donor] > pbar[donor] + epsilon) {
-            throw std::runtime_error("internal program error, unexpected value of p");
+            std::cerr << "internal program error (numerical issues? continuing anyway), "
+                         "unexpected value of p, donor = " +
+                             std::to_string(donor) + "\n z = " + to_string(z) +
+                             "\n pbar = " + to_string(pbar) + "\n w = " + to_string(w) +
+                             "\n p = " + to_string(p) + "\n xi = " + std::to_string(xi) +
+                             "\n xi_rest = " + std::to_string(xi_rest) +
+                             "\n gradients = " + gradients.to_string() + "\n"
+                      << std::endl;
+            continue;
         }
 
         // make sure that the donor can give
@@ -430,7 +450,7 @@ std::pair<numvec, prec_t> inline worstcase_l1_w(const GradientsL1_w& gradients,
 }
 
 /**
- * @brief See the documentation for the overloaded function
+ * See the documentation for the overloaded function
  */
 std::pair<numvec, prec_t> inline worstcase_l1_w(const numvec& z, const numvec& pbar,
                                                 const numvec& w, prec_t xi) {
@@ -493,14 +513,19 @@ std::pair<numvec, numvec> inline worstcase_l1_w_knots(const GradientsL1_w& gradi
 #endif
 
         // this basic solution is not applicable here, just skip it
-        if (donor_greater && p[donor] <= pbar[donor]) continue;
+        if (donor_greater && p[donor] <= pbar[donor] + epsilon) continue;
 
-        // No obvious reason how this could happen, but lets just make sure to flag
-        // it this could happen because of ties, see the hack above
+        // No obvious reason how this could happen, but lets just make sure to flag it
+        // if this happens because of ties, see the hack above
         if (!donor_greater && p[donor] > pbar[donor] + epsilon) {
-            throw std::runtime_error("internal program error, unexpected value of p");
+            std::cerr << "internal program error (numerical issues? continuing anyway), "
+                         "unexpected value of p, donor = " +
+                             std::to_string(donor) + "\n z = " + to_string(z) +
+                             "\n pbar = " + to_string(pbar) + "\n w = " + to_string(w) +
+                             "\n gradients = " + gradients.to_string() + "\n"
+                      << std::endl;
+            continue;
         }
-
         // make sure that the donor can give
         if (p[donor] < epsilon) continue;
 
@@ -629,8 +654,9 @@ std::pair<numvec, prec_t> inline worstcase_l1_w_gurobi(const GRBEnv& env, const 
  * @param wi Weights. Optional, all 1 if not provided.
  * @return Objective value and the optimal solution
  */
-std::pair<numvec, double> worstcase_linf_w_gurobi(
-        const GRBEnv& env, const numvec& z, const numvec& pbar, const numvec& wi, double xi) {
+std::pair<numvec, double> worstcase_linf_w_gurobi(const GRBEnv& env, const numvec& z,
+                                                  const numvec& pbar, const numvec& wi,
+                                                  double xi) {
     const size_t nstates = z.size();
     assert(nstates == pbar.size());
     assert(wi.empty() || nstates == wi.size());
@@ -642,12 +668,9 @@ std::pair<numvec, double> worstcase_linf_w_gurobi(
     GRBModel model = GRBModel(env);
 
     // Probabilities
-    auto p = std::unique_ptr<GRBVar[]>(model.addVars(numvec(nstates, 0.0).data(),
-                                                     nullptr,
-                                                     nullptr,
-                                                     std::vector<char>(nstates, GRB_CONTINUOUS).data(),
-                                                     nullptr,
-                                                     nstates));
+    auto p = std::unique_ptr<GRBVar[]>(model.addVars(
+        numvec(nstates, 0.0).data(), nullptr, nullptr,
+        std::vector<char>(nstates, GRB_CONTINUOUS).data(), nullptr, nstates));
 
     // constraint: 1^T p = 1
     GRBLinExpr ones;
@@ -681,7 +704,6 @@ std::pair<numvec, double> worstcase_linf_w_gurobi(
 
     return make_pair(move(p_result), objective_value);
 }
-
 
 /**
  * @brief Computes the worst case probability distribution subject to a
@@ -1023,7 +1045,7 @@ std::pair<numvec, prec_t> inline var_exp(const numvec& z, const numvec& pbar,
     numvec var_dist;
     prec_t var_value;
     std::tie(var_dist, var_value) = var(z, pbar, alpha);
-#endif    
+#endif
 
     assert(var_dist.size() == pbar.size());
     const auto mean_value = std::inner_product(z.cbegin(), z.cend(), pbar.cbegin(), 0.0);
@@ -1051,7 +1073,7 @@ std::pair<numvec, prec_t> inline avar_exp(const numvec& z, const numvec& pbar,
     numvec avar_dist;
     prec_t avar_value;
     std::tie(avar_dist, avar_value) = avar(z, pbar, alpha);
-#endif    
+#endif
     assert(avar_dist.size() == pbar.size());
     const auto mean_value = std::inner_product(z.cbegin(), z.cend(), pbar.cbegin(), 0.0);
 

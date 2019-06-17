@@ -87,8 +87,9 @@ inline prec_t value_fix_state(const SAState<AType>& state, numvec const& valuefu
     // this is the terminal state, return 0
     if (state.is_terminal()) return 0;
     if (actionid < 0 || actionid >= (long)state.size())
-        throw range_error("invalid actionid: " + to_string(actionid) +
-                          " for action count: " + to_string(state.get_actions().size()));
+        throw range_error(
+            "invalid actionid: " + std::to_string(actionid) +
+            " for action count: " + std::to_string(state.get_actions().size()));
 
     const auto& action = state[actionid];
     // cannot assume invalid state.get_actions()
@@ -121,8 +122,8 @@ inline prec_t value_fix_state(const SAState<AType>& state, numvec const& valuefu
 
     // if(actionid < 0 || actionid >= long(state.size())) throw
     // range_error("invalid actionid: "
-    //    + to_string(actionid) + " for action count: " +
-    //    to_string(state.get_actions().size()) );
+    //    + std::to_string(actionid) + " for action count: " +
+    //    std::to_string(state.get_actions().size()) );
 
     const auto& action = state[actionid];
 
@@ -194,8 +195,9 @@ inline vec_scal_t value_fix_state(const SType& state, numvec const& valuefunctio
     assert(actionid >= 0 && actionid < long(state.size()));
 
     if (actionid < 0 || actionid >= long(state.size()))
-        throw range_error("invalid actionid: " + to_string(actionid) +
-                          " for action count: " + to_string(state.get_actions().size()));
+        throw range_error(
+            "invalid actionid: " + std::to_string(actionid) +
+            " for action count: " + std::to_string(state.get_actions().size()));
 
     const auto& action = state[actionid];
     // cannot assume that the action is valid

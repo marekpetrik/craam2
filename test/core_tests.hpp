@@ -1574,6 +1574,29 @@ BOOST_AUTO_TEST_CASE(test_knots_wu) {
     CHECK_CLOSE_COLLECTION(values, values_w, 1e-5);
 }
 
+#ifdef GUROBI_USE
+BOOST_AUTO_TEST_CASE(inventory_failure_bug) {
+
+    numvec z = {993.124, 990.787, 987.932, 984.191, 978.15,  967.83,  965.318,
+                962.154, 958.304, 1052.06, 1050.56, 1049.05, 1047.54, 1046.03,
+                1044.52, 1043,    1041.48, 1039.95, 1038.43, 1036.9,  1035.37};
+    numvec pbar = {0.0111947, 0.0163699, 0.0229988, 0.0310452, 0.0402634, 0.0501713,
+                   0.0600659, 0.0690923, 0.0763588, 0.0810805, 0.0827185, 0.0810805,
+                   0.0763588, 0.0690923, 0.0600659, 0.0501713, 0.0402634, 0.0310452,
+                   0.0229988, 0.0163699, 0.0111947};
+    numvec w = {0.121204,  0.107023,  0.0928649, 0.0787302, 0.0646223, 0.0567386,
+                0.0708033, 0.0848458, 0.0988657, 0.112863,  0.126837,  0.140787,
+                0.154715,  0.168619,  0.182499,  0.196357,  0.210191,  0.224003,
+                0.237791,  0.251556,  0.265298};
+
+    double xi = 0.2;
+    //cout << GradientsL1_w(z, w).to_string() << endl;
+    auto sol_fast = worstcase_l1_w(z, pbar, w, xi);
+    auto sol_gurobi = worstcase_l1_w_gurobi(get_gurobi(), z, pbar, w, xi);
+    BOOST_CHECK_CLOSE(sol_fast.second, sol_gurobi.second, 1e-3);
+}
+#endif
+
 // computes the s-rectangular value for a policy d, transition probabilities p,
 // and rewards z
 prec_t compute_s_value(const numvec& d, const numvecvec& p, const numvecvec& z) {

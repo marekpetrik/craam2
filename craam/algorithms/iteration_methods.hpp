@@ -379,21 +379,33 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
     prec_t residual_pi = std::numeric_limits<prec_t>::infinity();
     numvec residuals(response.state_count());
 
-    long iterations = 1;
+    unsigned long iterations = 1;
     do {
         // *** robust policy evaluation ***
         // set the dec_policy to prevent optimization
+        // count the inner policy iterations too
+        bool inner_continue = true; // propagate a termination request from
+                                    // the inner method
         response.set_decision_policy(dec_policy);
         Solution<policy_type> solution_rob =
-            pi(response, discount, valuefunction, MAXITER, target_residual, progress);
+            pi(response, discount, valuefunction, iterations_pi - iterations,
+               target_residual,
+               [iterations, residual_pi, &progress, &inner_continue](size_t iters,
+                                                                     prec_t res) {
+                   inner_continue = progress(iterations + iters, residual_pi);
+                   return inner_continue;
+               });
+        // remember that the number of iterations is already offset here
+        iterations += solution_rob.iterations - iterations;
         valuefunction = move(solution_rob.valuefunction);
+        if (!inner_continue) break;
 
         // *** robust policy update ***
         // set the dec policy to empty to optimize it
         response.set_decision_policy();
 #pragma omp parallel for
         for (auto s = 0l; s < long(response.state_count()); s++) {
-            // the new vlaue is only used to compute the residual
+            // the new value is only used to compute the residual
             // otherwise this only about the policy
             prec_t newvalue;
             tie(newvalue, output_policy[s]) =
@@ -408,7 +420,7 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
 
         // check whether there is no reson to interrupt
         if (!progress(iterations, residual_pi)) break;
-    } while (residual_pi > maxresidual);
+    } while (residual_pi > maxresidual && iterations <= iterations_pi);
 
     auto finish = chrono::steady_clock::now();
     chrono::duration<double> duration = finish - start;

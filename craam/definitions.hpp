@@ -32,6 +32,7 @@
 #include <assert.h>
 #include <cmath>
 #include <numeric>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -78,7 +79,6 @@ constexpr unsigned long MAXITER = 100000;
 /// Numerical threshold for reporting errors
 constexpr prec_t THRESHOLD = 1e-6;
 
-#ifdef IS_DEBUG
 /** This is a useful print functionality for debugging.  */
 template <class T> std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec) {
     for (const auto& p : vec) {
@@ -86,7 +86,21 @@ template <class T> std::ostream& operator<<(std::ostream& os, const std::vector<
     }
     return os;
 }
-#endif
+
+/// Vector to string
+template <class T> inline std::string to_string(const std::vector<T>& v) {
+
+    std::stringstream ss;
+
+    ss << "[";
+    for (const auto& x : v) {
+        ss << x << ",";
+    }
+    // replace the last comma
+    ss.seekp(ss.tellp() - 1l);
+    ss << "]";
+    return ss.str();
+}
 
 /** \brief Sort indices by values in ascending order
  *
