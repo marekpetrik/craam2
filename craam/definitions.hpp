@@ -82,7 +82,7 @@ constexpr prec_t THRESHOLD = 1e-6;
 /** This is a useful print functionality for debugging.  */
 template <class T> std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec) {
     for (const auto& p : vec) {
-        std::cout << p << " ";
+        os << p << " ";
     }
     return os;
 }
