@@ -37,11 +37,8 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-#ifdef IS_DEBUG
 #include <iostream>
 #include <string>
-#endif
 
 namespace craam {
 

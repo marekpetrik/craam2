@@ -21,8 +21,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "craam/simulators/inventory.hpp"
 #include "utils.hpp"
+
+#include "craam/simulators/inventory.hpp"
 
 /**
  * Creates a simple test MDP

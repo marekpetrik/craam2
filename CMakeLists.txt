@@ -49,7 +49,7 @@ if(GUROBI_USE)
     find_path(GUROBI_INCLUDE_DIR_2 NAMES gurobi_c.h PATHS "include/gurobi")
 
     if(NOT GUROBI_CXX_LIBRARY_1 OR NOT GUROBI_CXX_LIBRARY_2 OR NOT GUROBI_INCLUDE_DIR_1 OR NOT GUROBI_INCLUDE_DIR_2 )
-        message(WARNING, "Gurobi files not found in lib/gurobi or include/gurobi, disabling support.")
+        message(WARNING "Gurobi files not found in lib/gurobi or include/gurobi, disabling support.")
         set (GUROBI_USE FALSE)
     endif()
 endif()

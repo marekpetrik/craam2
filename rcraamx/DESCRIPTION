@@ -1,7 +1,7 @@
 Package: rcraam
 Type: Package
 Title: Library for robust reinforcement learning
-Version: 0.1.0
+Version: 3.0.0
 Author: Marek Petrik
 Maintainer: Marek Petrik <marek@petrik.us>
 Description: Solves regular and robust Markov decision processes, builds MDPs from samples. 
