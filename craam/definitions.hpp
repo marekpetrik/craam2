@@ -25,8 +25,8 @@
 
 // skip configuration if it is already provided
 #ifndef CRAAM_CONFIG_HPP
-#endif // CRAAM_CONFIG_HPP
 #include "config.hpp"
+#endif // CRAAM_CONFIG_HPP
 
 #include <algorithm>
 #include <assert.h>
