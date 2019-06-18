@@ -501,6 +501,8 @@ public:
         numvec actiondist;
         vector<numvec> new_probability;
 
+        //std::cout << stateid << "," << policy << std::endl;
+
         // no decision maker's policy provided
         if (policy.empty()) {
             numvec sa_budgets;
@@ -542,11 +544,6 @@ public:
 
 /**
  * S-rectangular L1 constraint with a single budget for every state.
- *
- * The state-action weights are used as follows:
- *
- * WARNING: does not compute the probability distributions of policies and will
- * therefore fail when used in modified policy iteration
  */
 class robust_s_l1_gurobi {
 protected:
@@ -586,14 +583,10 @@ public:
         prec_t outcome;
         numvec actiondist, sa_budgets;
 
-        if (!policy.empty()) {
-            throw invalid_argument("Does not support decision maker's policies.");
-        }
-
         // compute the distribution of actions and the optimal budgets
 
-        tie(outcome, actiondist, sa_budgets) =
-            srect_l1_solve_gurobi(*env, zvalues, nominalprobs, budgets[stateid]);
+        tie(outcome, actiondist, sa_budgets) = srect_l1_solve_gurobi(
+            *env, zvalues, nominalprobs, budgets[stateid], numvecvec(0), policy);
 
         assert(actiondist.size() == zvalues.size());
 
@@ -618,11 +611,6 @@ public:
 /**
  * S-rectangular L1 constraint with a single budget for every state
  * and optional weights for each action for each state.
- *
- * The state-action weights are used as follows:
- *
- * WARNING: does not compute the probaility distributions of policies and will
- * therefore fail when used in modified policy iteration
  */
 class robust_s_l1w_gurobi {
 
@@ -654,11 +642,11 @@ public:
     };
 
     /**
-   * @param budgets Budgets, with a single value for each MDP state and action
-   * @param grbenv Gurobi environment that will be used. Should be
-   * single-threaded and probably disable printout. This environment is NOT
-   *                thread-safe.
-   */
+    * @param budgets Budgets, with a single value for each MDP state and action
+    * @param grbenv Gurobi environment that will be used. Should be
+    * single-threaded and probably disable printout. This environment is NOT
+    *                thread-safe.
+    */
     robust_s_l1w_gurobi(numvec budgets, vector<vector<numvec>> weights,
                         const shared_ptr<GRBEnv>& grbenv)
         : budgets(move(budgets)), weights(move(weights)), env(grbenv) {
@@ -666,17 +654,17 @@ public:
     };
 
     /**
-   * Implements the SNature interface
-   */
+     * Implements the SNature interface
+     */
     tuple<numvec, vector<numvec>, prec_t> operator()(long stateid, const numvec& policy,
                                                      const numvecvec& nominalprobs,
                                                      const numvecvec& zvalues) const {
         assert(stateid >= 0 && stateid < long(budgets.size()));
         assert(nominalprobs.size() == zvalues.size());
 
-        if (!policy.empty()) {
-            throw invalid_argument("Does not support decision maker's policies.");
-        }
+        //if (!policy.empty()) {
+        //    throw invalid_argument("Does not support decision maker's policies.");
+        // }
 
         prec_t outcome;
         numvec actiondist, sa_budgets;
@@ -684,7 +672,7 @@ public:
         // compute the distribution of actions and the optimal budgets
 
         tie(outcome, actiondist, sa_budgets) = srect_l1_solve_gurobi(
-            *env, zvalues, nominalprobs, budgets[stateid], weights[stateid]);
+            *env, zvalues, nominalprobs, budgets[stateid], weights[stateid], policy);
 
         assert(actiondist.size() == zvalues.size());
 

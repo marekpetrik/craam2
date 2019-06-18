@@ -403,7 +403,7 @@ public:
     void set_decision_policy(
         const vector<dec_policy_type>& policy = vector<dec_policy_type>(0)) {
         if (policy.empty()) {
-            if (initial_policy.empty()) {
+            if (!decision_policy.empty()) {
                 // if it is empty, then this should have no effect,
                 // but it prevents repeated shortening of the vector
                 fill(decision_policy.begin(), decision_policy.end(), -1);
@@ -498,7 +498,7 @@ public:
         std::tie(action, transitions, newvalue) =
             nature(stateid, init_policy, compute_probabilities(state),
                    compute_zvalues(state, valuefunction, discount));
-
+        assert(!isinf(newvalue));
         assert(action.size() == state.size());
         policy_type action_response = make_pair(move(action), move(transitions));
         return make_pair(newvalue, move(action_response));
@@ -578,7 +578,7 @@ public:
     void set_decision_policy(
         const vector<dec_policy_type>& policy = vector<dec_policy_type>(0)) {
         if (policy.empty()) {
-            if (initial_policy.empty()) {
+            if (!decision_policy.empty()) {
                 // if it is empty, then this should have no effect,
                 // but it prevents repeated shortening of the vector
                 fill(decision_policy.begin(), decision_policy.end(), numvec(0));

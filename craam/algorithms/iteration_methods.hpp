@@ -101,7 +101,7 @@ vi_gs(const ResponseType& response, prec_t discount, numvec valuefunction = numv
     auto finish = chrono::steady_clock::now();
     chrono::duration<double> duration = finish - start;
     int status = residual <= maxresidual ? 0 : 1;
-    return Solution<policy_type>(move(valuefunction), move(policy), residual, i,
+    return Solution<policy_type>(move(valuefunction), move(policy), residual, i + 1,
                                  duration.count(), status);
 }
 
@@ -260,6 +260,7 @@ inline Solution<typename ResponseType::policy_type>
 pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(0),
    unsigned long iterations_pi = MAXITER, prec_t maxresidual_pi = SOLPREC,
    const std::function<bool(size_t, prec_t)>& progress = internal::empty_progress) {
+
     const auto n = response.state_count();
 
     using policy_type = typename ResponseType::policy_type;
@@ -303,6 +304,7 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
             HouseholderQR<MatrixXd>(t_mat).solve(
                 Map<const VectorXd, Unaligned>(rw.data(), rw.size()));
 
+        // std::cout << policy << std::endl;
         // update policy
         swap(policy, policy_old);
 #pragma omp parallel for
@@ -313,10 +315,13 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
         }
         // TODO: change this to a span seminorm (in all algorithms)
         residual_pi = *max_element(residuals.cbegin(), residuals.cend());
+        //std::cout << residual_pi << std::endl;
+
+        assert(!isinf(residual_pi));
 
         // the residual is sufficiently small
-        if (residual_pi <= maxresidual_pi || policy == policy_old ||
-            !progress(i, residual_pi))
+        if (!progress(i, residual_pi) || residual_pi <= maxresidual_pi ||
+            policy == policy_old)
             break;
 
         // ** now compute the value function
@@ -375,11 +380,23 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
     vector<policy_type> output_policy(response.state_count());
 
     // initial bellman residual = to check for the stopping criterion
-    static_assert(std::numeric_limits<prec_t>::has_infinity == true);
-    prec_t residual_pi = std::numeric_limits<prec_t>::infinity();
     numvec residuals(response.state_count());
+#pragma omp parallel for
+    for (auto s = 0l; s < long(response.state_count()); s++) {
+        // the new value is only used to compute the residual
+        // otherwise this only about the policy
+        prec_t newvalue;
+        tie(newvalue, output_policy[s]) =
+            response.policy_update(s, valuefunction, discount);
+        // update the policy of the decision maker (to be used in the evaluation)
+        // assume that the policy type is a tuple: [dec policy, nat policy]
+        dec_policy[s] = output_policy[s].first;
+        residuals[s] = abs(valuefunction[s] - newvalue);
+    }
+    // TODO: change to span seminorm (in all methods and all locations)
+    prec_t residual_pi = *max_element(residuals.cbegin(), residuals.cend());
 
-    unsigned long iterations = 1;
+    unsigned long iterations = 0;
     do {
         // *** robust policy evaluation ***
         // set the dec_policy to prevent optimization
@@ -388,17 +405,16 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
                                     // the inner method
         response.set_decision_policy(dec_policy);
         Solution<policy_type> solution_rob =
+            // track the number of iterations in the inner policy iteration too
             pi(response, discount, valuefunction, iterations_pi - iterations,
                target_residual,
-               [iterations, residual_pi, &progress, &inner_continue](size_t iters,
-                                                                     prec_t res) {
-                   inner_continue = progress(iterations + iters, residual_pi);
+               [&iterations, residual_pi, &progress, &inner_continue](size_t iters,
+                                                                      prec_t res) {
+                   inner_continue = progress(iterations, residual_pi + res);
+                   ++iterations;
                    return inner_continue;
                });
-        // remember that the number of iterations is already offset here
-        iterations += solution_rob.iterations - iterations;
         valuefunction = move(solution_rob.valuefunction);
-        if (!inner_continue) break;
 
         // *** robust policy update ***
         // set the dec policy to empty to optimize it
@@ -415,11 +431,16 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
             dec_policy[s] = output_policy[s].first;
             residuals[s] = abs(valuefunction[s] - newvalue);
         }
+        // TODO: change to span seminorm (in all methods and all locations)
         residual_pi = *max_element(residuals.cbegin(), residuals.cend());
-        ++iterations;
 
-        // check whether there is no reson to interrupt
+        // cannot break earlier because the Bellman residual is not computed yet
+        // at that time
+        if (!inner_continue) break;
+
+        // check whether there is a reason to interrupt
         if (!progress(iterations, residual_pi)) break;
+        ++iterations;
     } while (residual_pi > maxresidual && iterations <= iterations_pi);
 
     auto finish = chrono::steady_clock::now();

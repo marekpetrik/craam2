@@ -1,0 +1,4 @@
+Copy the following Gurobi header files into this directory:
+
+- gurobi_c++.h
+- gurobi_c.h

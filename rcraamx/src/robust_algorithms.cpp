@@ -94,6 +94,7 @@ public:
      */
     bool operator()(size_t iterations, prec_t residual) {
         if (iterations % 10) {
+            //std::cout << iterations << "," << residual << std::endl;
             if (RcppProg::Progress::check_abort()) { return false; }
             if (timeout_seconds > 0) {
                 auto finish = chrono::steady_clock::now();
