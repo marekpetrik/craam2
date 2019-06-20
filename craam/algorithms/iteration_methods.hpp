@@ -320,9 +320,8 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
         assert(!isinf(residual_pi));
 
         // the residual is sufficiently small
-        if (!progress(i, residual_pi) || residual_pi <= maxresidual_pi ||
-            policy == policy_old)
-            break;
+        auto is_continue = !progress(i, residual_pi);
+        if (is_continue || residual_pi <= maxresidual_pi || policy == policy_old) break;
 
         // ** now compute the value function
         // 1. update the transition probabilities
@@ -435,7 +434,7 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
         residual_pi = *max_element(residuals.cbegin(), residuals.cend());
 
         // cannot break earlier because the Bellman residual is not computed yet
-        // at that time
+        // at that time (could be because the inner iteration was interrupted)
         if (!inner_continue) break;
 
         // check whether there is a reason to interrupt

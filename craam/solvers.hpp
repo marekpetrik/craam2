@@ -171,9 +171,11 @@ inline DetermSolution solve_pi(const MDP& mdp, prec_t discount,
                                numvec valuefunction = numvec(0),
                                const indvec& policy = indvec(0),
                                unsigned long iterations = MAXITER,
-                               prec_t maxresidual = SOLPREC) {
+                               prec_t maxresidual = SOLPREC,
+                               const std::function<bool(size_t, prec_t)>& progress =
+                                   algorithms::internal::empty_progress) {
     return algorithms::pi(algorithms::PlainBellman(mdp, policy), discount,
-                          move(valuefunction), iterations, maxresidual);
+                          move(valuefunction), iterations, maxresidual, progress);
 }
 
 #ifdef GUROBI_USE
@@ -281,9 +283,11 @@ inline RandSolution solve_pi_r(const MDP& mdp, prec_t discount,
                                numvec valuefunction = numvec(0),
                                const numvecvec& policy = numvecvec(0),
                                unsigned long iterations = MAXITER,
-                               prec_t maxresidual = SOLPREC) {
+                               prec_t maxresidual = SOLPREC,
+                               const std::function<bool(size_t, prec_t)>& progress =
+                                   algorithms::internal::empty_progress) {
     return algorithms::pi(algorithms::PlainBellmanRand(mdp, policy), discount,
-                          move(valuefunction), iterations, maxresidual);
+                          move(valuefunction), iterations, maxresidual, progress);
 }
 
 // **************************************************************************

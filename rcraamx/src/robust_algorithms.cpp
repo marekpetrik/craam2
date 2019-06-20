@@ -93,19 +93,17 @@ public:
      * @return Whether to continue with the computation
      */
     bool operator()(size_t iterations, prec_t residual) {
-        if (iterations % 10) {
-            //std::cout << iterations << "," << residual << std::endl;
-            if (RcppProg::Progress::check_abort()) { return false; }
-            if (timeout_seconds > 0) {
-                auto finish = chrono::steady_clock::now();
-                chrono::duration<double> duration = finish - start;
-                if (duration.count() > timeout_seconds) {
-                    Rcpp::warning("Computation timed out.");
-                    return false;
-                }
+        //std::cerr << iterations << "," << residual << std::endl;
+        if (RcppProg::Progress::check_abort()) { return false; }
+        if (timeout_seconds > craam::EPSILON) {
+            auto finish = chrono::steady_clock::now();
+            chrono::duration<double> duration = finish - start;
+            if (duration.count() > timeout_seconds) {
+                Rcpp::warning("Computation timed out.");
+                return false;
             }
-            progress.update(iterations);
         }
+        progress.update(iterations);
         return true;
     }
 };
@@ -447,9 +445,11 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::List options) {
     } else if (Rcpp::as<string>(options["algorithm"]) == "pi") {
         // Gauss-seidel value iteration
         if (is_randomized) {
-            rsol = solve_pi_r(m, discount, numvec(0), rpolicy, iterations, precision);
+            rsol = solve_pi_r(m, discount, numvec(0), rpolicy, iterations, precision,
+                              progress);
         } else {
-            sol = solve_pi(m, discount, numvec(0), policy, iterations, precision);
+            sol =
+                solve_pi(m, discount, numvec(0), policy, iterations, precision, progress);
         }
     }
 #ifdef GUROBI_USE
@@ -619,7 +619,7 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
         if (!options.containsElementNamed("algorithm") ||
             Rcpp::as<string>(options["algorithm"]) == "ppi") {
             sol = rsolve_ppi(m, discount, std::move(natparsed), numvec(0), indvec(0),
-                             iterations, precision);
+                             iterations, precision, progress);
         } else if (Rcpp::as<string>(options["algorithm"]) == "mpi") {
             Rcpp::warning("The robust version of the mpi method may cycle forever "
                           "without converging.");
