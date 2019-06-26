@@ -514,6 +514,28 @@ rsolve_vi(const MDPO& mdp, prec_t discount, const algorithms::SANature& nature,
 }
 
 /**
+ * @ingroup PolicyIteration
+ * Robust policy iteration with an s,a-rectangular nature.
+ *
+ * WARNING: This method is not guaranteed to converge to the optimal solution
+ * or converge at all. The divergence of the method is shown in:
+ * Condon, A. (1993). On algorithms for simple stochastic games.
+ * Advances in Computational Complexity Theory, DIMACS Series in Discrete Mathematics
+ * and Theoretical Computer Science, 13, 51–71.
+ */
+inline SARobustSolution
+rsolve_pi(const MDPO& mdp, prec_t discount, const algorithms::SANature& nature,
+          numvec valuefunction = numvec(0), const indvec& policy = indvec(0),
+          unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
+          const std::function<bool(size_t, prec_t)>& progress =
+              algorithms::internal::empty_progress) {
+
+    return algorithms::pi(algorithms::SARobustOutcomeBellman(mdp, move(nature), policy),
+                          discount, move(valuefunction), iterations, maxresidual,
+                          progress);
+}
+
+/**
  * @ingroup ModifiedPolicyIteration
  *
  * Robust modified policy iteration with an s,a-rectangular nature.

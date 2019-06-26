@@ -112,7 +112,7 @@ inline Rcpp::NumericMatrix as_matrix(const Eigen::MatrixXd& matrix) {
  *
  * Also checks whether the values passed are consistent with the MDP definition.
  *
- * @param frame Dataframe with 3 comlumns, idstatefrom, idaction, idstateto, reward, probability.
+ * @param frame Dataframe with columns: idstatefrom, idaction, idstateto, reward, probability.
  *              Multiple state-action-state rows have summed probabilities and averaged rewards.
  *
  * @returns Corresponding MDP definition
@@ -134,14 +134,14 @@ inline craam::MDP mdp_from_dataframe(const Rcpp::DataFrame& data) {
 }
 
 /**
- * Parses a data frame to an MDPO (mdp with outcomes)
+ * Parses a data frame  to an MDPO. Each outcome represents a possible outcome of nature
  *
- * Also checks whether the values passed are consistent with the MDPO definition.
+ * Also checks whether the values passed are consistent with the MDP definition.
  *
- * @param frame Dataframe with 3 comlumns, idstatefrom, idaction, idoutcome, idstateto, reward, probability.
- *              Multiple state-action-state rows have summed probabilities and averaged rewards.
+ * @param frame Dataframe with columns: idstatefrom, idaction, idoutcome, idstateto, reward, probability.
+ *              Multiple state-action-outcome-state rows have summed probabilities and averaged rewards.
  *
- * @returns Corresponding MDP definition
+ * @returns Corresponding MDPO definition
  */
 inline craam::MDPO mdpo_from_dataframe(const Rcpp::DataFrame& data) {
     // idstatefrom, idaction, idstateto, probability, reward
