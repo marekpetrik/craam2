@@ -304,8 +304,10 @@ BOOST_AUTO_TEST_CASE(construct_mdp_from_samples_si_pol) {
 
     auto samples = make_samples<CounterTerminal>();
     simulate(sim, samples, random_pol, 50, 50);
-    simulate(sim, samples, [](int) { return 1; }, 10, 20);
-    simulate(sim, samples, [](int) { return -1; }, 10, 20);
+    simulate(
+        sim, samples, [](int) { return 1; }, 10, 20);
+    simulate(
+        sim, samples, [](int) { return -1; }, 10, 20);
 
     SampleDiscretizerSD<typename CounterTerminal::State, typename CounterTerminal::Action>
         sd;
@@ -464,12 +466,18 @@ BOOST_AUTO_TEST_CASE(inventory_simulator) {
 BOOST_AUTO_TEST_CASE(population_simulator) {
     long horizon = 10, num_runs = 5, initial_population = 30, carrying_capacity = 1000;
     int rand_seed = 7;
-    long n_hat = 300, threshold_control = 0;
-    prec_t mean_lambda = 1.02, sigma2_lambda = 0.02, sigma2_y = 20, beta_1 = 0.001,
-           beta_2 = -0.0000021, prob_control = 0.5;
+    uint threshold_control = 100;
+    prec_t prob_control = 0.8;
 
-    PopulationSim simulator(initial_population, carrying_capacity, mean_lambda,
-                            sigma2_lambda, sigma2_y, beta_1, beta_2, n_hat, rand_seed);
+    numvecvec mean_rate = {numvec(1 + carrying_capacity, 1.03),
+                           numvec(1 + carrying_capacity, 0.95)};
+    numvecvec std_rate = {numvec(1 + carrying_capacity, 0.5),
+                          numvec(1 + carrying_capacity, 0.5)};
+    numvecvec rewards = {numvec(1 + carrying_capacity, -1.0),
+                         numvec(1 + carrying_capacity, 0.2)};
+
+    PopulationSim simulator(carrying_capacity, initial_population, 2, mean_rate, std_rate,
+                            rewards, rand_seed);
     PopulationPol rp(simulator, threshold_control, prob_control, rand_seed);
 
     auto samples = simulate(simulator, rp, horizon, num_runs, -1, 0.0, rand_seed);

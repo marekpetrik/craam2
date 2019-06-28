@@ -461,61 +461,63 @@ public:
     SampledMDP() : mdp(make_shared<MDP>()), initial(), state_action_weights() {}
 
     /**
-  Constructs or adds states and actions based on the
-  provided samples.
-
-  Sample sets can be added iteratively. Assume that the current
-  transition probabilities are constructed based on a sample set
-  \f$ \Sigma = (s_i, a_i, s_i', r_i, w_i)_{i=0}^{m-1} \f$ and add_samples
-  is called with sample set \f$ \Sigma' = (s_j, a_j, s_j', r_j, w_j)_{i=m}^{n-1}
-  \f$. The result is the same as if simultaneously adding samples \f$ 0 \ldots
-  (n-1) \f$.
-
-  New MDP values are updates as follows:
-      - Cumulative state-action weights \f$ z'\f$:
-          \f[ z'(s,a) =  z(s,a) + \sum_{j=m}^{n-1} w_j 1\{ s = s_j, a = a_j \}
-  \f]
-      - Transition probabilities \f$ P \f$:
-          \f{align*}{
-          P'(s,a,s') &= \frac{z(s,a) * P(s,a,s') +
-                      \sum_{j=m}^{n-1} w_j 1\{ s = s_j, a = a_j, s' = s_j' \} }
-                          { z'(s,a) } = \\
-              &= \frac{P(s,a,s') +
-              (1 / z(s,a)) \sum_{j=m}^{n-1} w_j 1\{ s = s_j, a = a_j, s' = s_j'
-  \} } { z'(s,a) / z(s,a)  }
-
-          \f}
-          The denominator is computed implicitly by normalizing transition
-  probabilities.
-      - Rewards \f$ r' \f$:
-          \f{align*}
-          r'(s,a,s')
-              &= \frac{r(s,a,s') z(s,a) P(s,a,s') +
-                     \sum_{j=m}^{n-1} r_j w_j 1\{ s = s_j, a = a_j, s' = s_j'
-  \}}
-                     {z'(s,a)P'(s,a,s')} \\
-          r'(s,a,s')
-              &= \frac{r(s,a,s') z(s,a) P(s,a,s') +
-                     \sum_{j=m}^{n-1} r_j w_j 1\{ s = s_j, a = a_j, s' = s_j'
-  \}}
-                     {z'(s,a)P'(s,a,s')} \\
-              &= \frac{r(s,a,s') P(s,a,s') +
-                   \sum_{j=m}^{n-1}r_j (w_j/z(s,a)) 1\{ s = s_j, a = a_j, s' =
-  s_j' \}}
-                     {z'(s,a)P'(s,a,s')/ z(s,a)} \\
-              &= \frac{r(s,a,s') P(s,a,s') +
-                  \sum_{j=m}^{n-1} r_j (w_j/z(s,a) 1\{ s = s_j, a = a_j, s' =
-  s_j' \}} {P(s,a,s') + \sum_{j=m}^{n-1} (w_j/z(s,a)) 1\{ s = s_j, a = a_j, s' =
-  s_j' \}} \f} The last line follows from the definition of \f$ P(s,a,s') \f$.
-          This corresponds to the operation of Transition::add_sample
-          repeatedly for \f$ j = m \ldots (n-1) \f$ with
-          \f{align*}
-          p &= (w_j/z(s,a)) 1\{ s = s_j, a = a_j, s' = s_j' \}\\
-          r &= r_j \f}.
-
-  \param samples New sample set to add to transition probabilities and
-                  rewards
-  */
+     *  Constructs or adds states and actions based on the
+     *  provided samples.
+     *
+     *  Sample sets can be added iteratively. Assume that the current
+     *  transition probabilities are constructed based on a sample set
+     *  \f$ \Sigma = (s_i, a_i, s_i', r_i, w_i)_{i=0}^{m-1} \f$ and add_samples
+     *  is called with sample set \f$ \Sigma' = (s_j, a_j, s_j', r_j, w_j)_{i=m}^{n-1}
+     *  \f$. The result is the same as if simultaneously adding samples \f$ 0 \ldots
+     *  (n-1) \f$.
+     *
+     *  New MDP values are updates as follows:
+     *     - Cumulative state-action weights \f$ z'\f$:
+     *          \f[ z'(s,a) =  z(s,a) + \sum_{j=m}^{n-1} w_j 1\{ s = s_j, a = a_j \}
+     *   \f]
+     *      - Transition probabilities \f$ P \f$:
+     *
+     *   \f{align*}{
+     *      P'(s,a,s') &= \frac{z(s,a) * P(s,a,s') +
+     *                    \sum_{j=m}^{n-1} w_j 1\{ s = s_j, a = a_j, s' = s_j' \} }
+     *        { z'(s,a) } = \\
+     *            &= \frac{P(s,a,s') +
+     *               (1 / z(s,a)) \sum_{j=m}^{n-1} w_j 1\{ s = s_j, a = a_j, s' = s_j'
+     *   \} } { z'(s,a) / z(s,a)  }
+     *   \f}
+     *
+     *  The denominator is computed implicitly by normalizing transition
+     *  probabilities.
+     *    - Rewards \f$ r' \f$:
+     *   \f{align*}
+     *      r'(s,a,s')
+     *       &= \frac{r(s,a,s') z(s,a) P(s,a,s') +
+     *         \sum_{j=m}^{n-1} r_j w_j 1\{ s = s_j, a = a_j, s' = s_j'
+     *    \}}
+     *    {z'(s,a)P'(s,a,s')} \\
+     *    r'(s,a,s')
+     *        &= \frac{r(s,a,s') z(s,a) P(s,a,s') +
+     *             \sum_{j=m}^{n-1} r_j w_j 1\{ s = s_j, a = a_j, s' = s_j'
+     *    \}}
+     *    {z'(s,a)P'(s,a,s')} \\
+     *         &= \frac{r(s,a,s') P(s,a,s') +
+     *             \sum_{j=m}^{n-1}r_j (w_j/z(s,a)) 1\{ s = s_j, a = a_j, s' =
+     *          s_j' \}}
+     *    {z'(s,a)P'(s,a,s')/ z(s,a)} \\
+     *        &= \frac{r(s,a,s') P(s,a,s') +
+     *           \sum_{j=m}^{n-1} r_j (w_j/z(s,a) 1\{ s = s_j, a = a_j, s' =
+     *      s_j' \}} {P(s,a,s') + \sum_{j=m}^{n-1} (w_j/z(s,a)) 1\{ s = s_j, a = a_j, s' =
+     *      s_j' \}} \f} The last line follows from the definition of \f$ P(s,a,s') \f$.
+     *
+     *    This corresponds to the operation of Transition::add_sample
+     *      repeatedly for \f$ j = m \ldots (n-1) \f$ with
+     *      \f{align*}
+     *        p &= (w_j/z(s,a)) 1\{ s = s_j, a = a_j, s' = s_j' \}\\
+     *           r &= r_j \f}.
+     *
+     *   @param samples New sample set to add to transition probabilities and
+     *                  rewards
+     */
     void add_samples(const DiscreteSamples& samples) {
         // copy the state and action counts to be
         auto old_state_action_weights = state_action_weights;

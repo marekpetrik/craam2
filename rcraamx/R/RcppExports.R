@@ -9,20 +9,20 @@ pack_actions <- function(mdp) {
     .Call(`_rcraam_pack_actions`, mdp)
 }
 
-solve_mdp <- function(mdp, discount, options) {
-    .Call(`_rcraam_solve_mdp`, mdp, discount, options)
+solve_mdp <- function(mdp, discount, options_n = NULL) {
+    .Call(`_rcraam_solve_mdp`, mdp, discount, options_n)
 }
 
 compute_qvalues <- function(mdp, valuefunction, discount) {
     .Call(`_rcraam_compute_qvalues`, mdp, valuefunction, discount)
 }
 
-rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, options) {
-    .Call(`_rcraam_rsolve_mdp_sa`, mdp, discount, nature, nature_par, options)
+rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, options_n = NULL) {
+    .Call(`_rcraam_rsolve_mdp_sa`, mdp, discount, nature, nature_par, options_n)
 }
 
-rsolve_mdp_s <- function(mdp, discount, nature, nature_par, options) {
-    .Call(`_rcraam_rsolve_mdp_s`, mdp, discount, nature, nature_par, options)
+rsolve_mdp_s <- function(mdp, discount, nature, nature_par, options_n = NULL) {
+    .Call(`_rcraam_rsolve_mdp_s`, mdp, discount, nature, nature_par, options_n)
 }
 
 set_rcraam_threads <- function(n) {

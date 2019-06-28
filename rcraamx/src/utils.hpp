@@ -30,27 +30,6 @@
 #include <string>
 
 /**
- * A very simple test MDP.
- */
-inline craam::MDP create_test_mdp() {
-    craam::MDP rmdp(3);
-
-    // nonrobust and deterministic
-    // action 1 is optimal, with transition matrix [[0,1,0],[0,0,1],[0,0,1]] and rewards [0,0,1.1]
-    // action 0 has a transition matrix [[1,0,0],[1,0,0], [0,1,0]] and rewards [0,1.0,1.0]
-    add_transition(rmdp, 0, 1, 1, 1.0, 0.0);
-    add_transition(rmdp, 1, 1, 2, 1.0, 0.0);
-    add_transition(rmdp, 2, 1, 2, 1.0, 1.1);
-
-    add_transition(rmdp, 0, 0, 0, 1.0, 0.0);
-    add_transition(rmdp, 1, 0, 0, 1.0, 1.0);
-
-    add_transition(rmdp, 2, 0, 1, 1.0, 1.0);
-
-    return rmdp;
-}
-
-/**
  * Constructs a data frame from the MDP definition
  */
 inline Rcpp::DataFrame mdp_to_dataframe(const craam::MDP& mdp) {

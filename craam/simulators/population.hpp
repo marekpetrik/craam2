@@ -41,10 +41,30 @@ using namespace util::lang;
 
 /**
  * A simulator of an exponential population model with a control action.
- * The effectiveness of the control action is piecewiese quadratic
- * as a function of the population.
+ * The effectiveness of the control action depends on the population level.
  */
 class PopulationSim {
+
+public:
+    /// The type of the growth model
+    enum class Growth { Exponential, Logistic };
+
+protected:
+    /// Population starts and limits
+    long carrying_capacity, init_population;
+    /// The expectation and std of the growth rate
+    /// for each action and population level
+    numvecvec mean_growth_rate, std_growth_rate;
+    /// Rewards for each action and population
+    /// level
+    numvecvec rewards;
+    /// Number of available actions: each one represents a
+    /// different treatment type or intensity
+    uint actioncount;
+    /// How growth rate interacts with the population level
+    Growth growth_model;
+    /// Random number when generating new states
+    default_random_engine gen;
 
 public:
     /// Type of state: current population
@@ -52,74 +72,107 @@ public:
     /// Type of actions: whether to apply control/treatment or not
     using Action = long;
 
-    /// The type of the growth model
-    enum class Growth { Exponential, Logistic };
-
     /**
-     * Initializes to an exponential growth model by default.
+     * Initializes to an exponential growth model by default. The possible
+     * population levels are from 0 to the carrying capacity (inclusive).
      *
-     * @param initial_population Starting population to start the simulation
-     * @param carrying_capacity Maximum possible amount of population
-     * @param mean_growth_rate Mean of the population growth rate
-     * @param std_growth_rate Standard deviation of the growth rate
-     * @param std_observation Standard deviation for the observation from the actual underlying population
-     * @param beta_1 Coefficient of effectiveness
-     * @param beta_2 Coefficient of effectiveness for the quadratic term
-     * @param n_hat Threshold when the quadratic control effects kick in
+     * @param carrying_capacity Maximum possible  population
+     * @param initial_population Population at the start of the simulation
+     * @param actioncount Number of actions available to the decision maker,
+     *          each action represents a different treatment type or intensity
+     *          and has a different growth rate associated with it
+     * @param mean_growth_rate Mean of the population growth rate for
+     *                          each action and each population level:
+     *                          mean_growth_rate[action][population]
+     * @param std_growth_rate Standard deviation of the growth rate for
+     *                          each action and each population level:
+     *                          std_growth_rate[action][population]
+     * @param rewards Received rewards for each action and each population level:
+     *                          reward[action][population]
+     * @param std_observation Standard deviation for the observation from the
+     *                          actual underlying population
      * @param seed Seed for random number generation
      */
-    PopulationSim(long initial_population, long carrying_capacity,
-                  prec_t mean_growth_rate, prec_t std_growth_rate, prec_t std_observation,
-                  prec_t beta_1, prec_t beta_2, long n_hat,
-                  random_device::result_type seed = random_device{}())
-        : initial_population(initial_population), carrying_capacity(carrying_capacity),
+    PopulationSim(long carrying_capacity, long init_population, uint actioncount,
+                  numvecvec mean_growth_rate, numvecvec std_growth_rate,
+                  numvecvec rewards, random_device::result_type seed = random_device{}())
+        : carrying_capacity(carrying_capacity), init_population(init_population),
           mean_growth_rate(mean_growth_rate), std_growth_rate(std_growth_rate),
-          std_observation(std_observation), beta_1(beta_1), beta_2(beta_2), n_hat(n_hat),
-          growth_model(Growth::Exponential), gen(seed) {}
+          rewards(rewards), actioncount(actioncount), growth_model(Growth::Exponential),
+          gen(seed) {
 
-    /// Rteurns the initial state
-    long init_state() const { return initial_population; }
+        // check whether the provided growth rate parameters are of the correct
+        // dimensions
+
+        if (mean_growth_rate.size() != actioncount)
+            throw invalid_argument(
+                "Growth rate exp size must match the number of actions.");
+        if (std_growth_rate.size() != actioncount)
+            throw invalid_argument(
+                "Growth rate std size must match the number of actions.");
+        if (rewards.size() != actioncount)
+            throw invalid_argument(
+                "Growth rate std size must match the number of actions.");
+
+        for (long ai = 0; ai < actioncount; ai++) {
+            if (State(mean_growth_rate[ai].size()) != 1 + carrying_capacity)
+                throw invalid_argument(
+                    "Mean growth rate size must match carrying capacity + 1 for action" +
+                    std::to_string(ai));
+
+            if (State(std_growth_rate[ai].size()) != 1 + carrying_capacity)
+                throw invalid_argument("Std of growth rate size must match carrying "
+                                       "capacity + 1 for action" +
+                                       std::to_string(ai));
+
+            if (State(rewards[ai].size()) != 1 + carrying_capacity)
+                throw invalid_argument(
+                    "Rewards size must match carrying capacity + 1 for action" +
+                    std::to_string(ai));
+        }
+    }
+
+    /// Returns the initial state
+    long init_state() const { return init_population; }
 
     /// The simulation does not have a defined end
     bool end_condition(State population) const { return false; }
 
     /**
-        Returns a sample of the reward and a population level following an action & current population level
-
-        When the treatment action is not chosen (action=0),
-        then growth_rate = max(0,Normal(mean_growth_rate, std_growth_rate)), In this case, the growth rate is independent of the current population level.
-
-        When the treatment is applied (action=1),
-        then the growth rate depends on the current population level & the beta_x parameters come into play.
-
-        The next population is obtained using the logistic or exponential population growth model:
-            min(carrying_capacity, growth_rate * current_population * (carrying_capacity-current_population)/carrying_capacity)
-
-        The observed population deviates from the actual population & is stored in observed_population.
-
-        The treatment action carries a fixed cost control_reward (or a negative reward of -4000) of applying the treatment. There is a variable population dependent
-        cost invasive_reward (-1) that represents the economic (or ecological) damage of the invasive species.
-
-        @param current_population Current population level
-        @param action Whether the control measure should be taken or not
-
-        \returns a pair of reward & next population level
-    */
+      * Returns a sample of the reward and a population level following an action & current population level
+      *
+      * The actions represent different types of intensities of management.
+      *
+      * The treatment action carries a fixed cost control_reward (or a negative reward of -4000) of applying the treatment.
+      * There is a variable population dependent
+      * cost invasive_reward (-1) that represents the economic (or ecological) damage of the invasive species.
+      *
+      * The realized growth rate is a random variable with normal noise around the
+      * true expected rate.
+      *
+      * @param current_population Current population level
+      * @param action Which control action to take
+      *
+      * \returns a pair of reward & next population level
+      s*/
     pair<prec_t, State> transition(State current_population, Action action) {
-        assert(current_population >= 0);
 
-        //
-        const prec_t action_multiplier = action ? 1.0 : 0.0;
+        if (action >= actioncount) {
+            throw invalid_argument("Action must be less than actioncount.");
+        }
+        if (current_population > carrying_capacity) {
+            throw invalid_argument("Population must be at most the carrying capacity.");
+        }
 
-        const prec_t growth_rate_adj =
-            action_multiplier * current_population * beta_1 +
-            action_multiplier * pow(max(current_population - n_hat, 0l), 2) * beta_2;
-        const prec_t exp_growth_rate = max(0.0, mean_growth_rate - growth_rate_adj);
-        normal_distribution<prec_t> growth_rate_distribution(exp_growth_rate,
-                                                             std_growth_rate);
+        const prec_t exp_growth_rate_act = mean_growth_rate[action][current_population];
+        const prec_t std_growth_rate_act = std_growth_rate[action][current_population];
+        normal_distribution<prec_t> growth_rate_distribution(exp_growth_rate_act,
+                                                             std_growth_rate_act);
 
-        prec_t growth_rate = growth_rate_distribution(gen);
+        // make sure that the growth rate cannot be negative
+        prec_t growth_rate = std::max(0.0, growth_rate_distribution(gen));
         long next_population = 0;
+
         if (growth_model == Growth::Exponential) {
             next_population =
                 clamp(long(growth_rate * current_population), 0l, carrying_capacity);
@@ -132,26 +185,13 @@ public:
             throw invalid_argument("Unsupported population model.");
         }
 
-        normal_distribution<prec_t> observation_distribution(next_population,
-                                                             std_observation);
-        long observed_population = max(0l, (long)observation_distribution(gen));
-        prec_t reward = next_population * (-1) + action * (-4000);
-        return make_pair(reward, observed_population);
+        prec_t reward = rewards[action][current_population];
+        return make_pair(reward, next_population);
     }
 
     Growth get_growth() const { return growth_model; }
 
     void set_growth(Growth model) { growth_model = model; }
-
-protected:
-    /// Random number engine
-    long initial_population, carrying_capacity;
-    prec_t mean_growth_rate, std_growth_rate, std_observation, beta_1, beta_2;
-    long n_hat;
-    /// Growth model
-    Growth growth_model;
-    /// Used for simulation purposes
-    default_random_engine gen;
 };
 
 /**
@@ -176,8 +216,10 @@ public:
     }
 
     /**
-     * Provides a control action depending on the current population level. If the population level is below a certain threshold,
-     * the policy is not to take the control measure. Otherwise, it takes a control measure with a specific probability (which introduces
+     * Provides a control action depending on the current population level.
+     * If the population level is below a certain threshold,
+     * the policy is not to take the control measure. Otherwise,
+     * it takes a control measure with a specific probability (which introduces
      * randomness in the policy).
     */
     long operator()(long current_state) {

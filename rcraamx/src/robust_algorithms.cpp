@@ -127,6 +127,41 @@ Rcpp::List worstcase_l1(Rcpp::NumericVector z, Rcpp::NumericVector q, double t) 
 }
 
 /**
+ * Turns a dataframe `frame` to a matrix (array of arrays) of dimensions
+ * dim1 x dim2. Index1 and index2 are the name of the columns with the
+ * indices and value is the name of the value column. def_value is the
+ * default value for any elements that are not provided.
+ */
+inline numvecvec frame2matrix(const Rcpp::DataFrame& frame, uint dim1, uint dim2,
+                              const string& index1, const string& index2,
+                              const string& value, double def_value) {
+
+    numvecvec result(dim1);
+    for (long i = 0; i < dim1; i++) {
+        result[i] = numvec(dim2, def_value);
+    }
+
+    Rcpp::IntegerVector idvec1 = frame[index1], idvec2 = frame[index2];
+    Rcpp::NumericVector values = frame[value];
+
+    for (long i = 0; i < idvec1.size(); i++) {
+        long id1 = idvec1[i], id2 = idvec2[i];
+
+        if (id1 < 0) Rcpp::stop("idstate must be non-negative");
+        if (id1 > dim1)
+            Rcpp::stop("idstate must be smaller than the number of MDP states");
+        if (id2 < 0) Rcpp::stop("idaction must be non-negative");
+        if (id2 > dim2)
+            Rcpp::stop("idaction must be smaller than the number of actions for the "
+                       "corresponding state");
+
+        result[id1][id2] = values[i];
+    }
+
+    return result;
+}
+
+/**
  * Parses a data frame definition of values that correspond to states.
  *
  * Also checks whether the values passed are consistent with the MDP definition.
@@ -154,8 +189,7 @@ vector<T> parse_s_values(const MDP& mdp, const Rcpp::DataFrame& frame, T def_val
         if (idstate > mdp.size())
             Rcpp::stop("idstate must be smaller than the number of MDP states");
 
-        T value = values[i];
-        result[idstate] = value;
+        result[idstate] = values[i];
     }
     return result;
 }
@@ -205,7 +239,7 @@ numvecvec parse_sa_values(const MDP& mdp, const Rcpp::DataFrame& frame,
 
 /**
  * Parses a data frame definition of values that correspond to starting states, actions,
- * ans taget states.
+ * and taget states.
  *
  * Also checks whether the values passed are consistent with the MDP definition.
  *
@@ -355,8 +389,11 @@ Rcpp::List pack_actions(Rcpp::DataFrame mdp) {
  *          policy_rand: evalute the randomized policy
  */
 // [[Rcpp::export]]
-Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::List options) {
+Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount,
+                     Rcpp::Nullable<Rcpp::List> options_n = R_NilValue) {
     Rcpp::List result;
+    Rcpp::List options =
+        options_n.isNotNull() ? Rcpp::List(options_n.get()) : Rcpp::List();
 
     MDP m = mdp_from_dataframe(mdp);
 
@@ -584,8 +621,12 @@ algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
  */
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String nature,
-                         SEXP nature_par, Rcpp::List options) {
+                         SEXP nature_par,
+                         Rcpp::Nullable<Rcpp::List> options_n = R_NilValue) {
     Rcpp::List result;
+    Rcpp::List options =
+        options_n.isNotNull() ? Rcpp::List(options_n.get()) : Rcpp::List();
+
     try {
 
         MDP m = mdp_from_dataframe(mdp);
@@ -710,14 +751,20 @@ algorithms::SNature parse_nature_s(const MDP& mdp, const string& nature,
         Rcpp::stop("unknown nature");
     }
 }
+
 /**
  * Solves a robust MDP version of the problem with s-rectangular ambiguity
  */
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String nature,
-                        SEXP nature_par, Rcpp::List options) {
-    MDP m = mdp_from_dataframe(mdp);
+                        SEXP nature_par,
+                        Rcpp::Nullable<Rcpp::List> options_n = R_NilValue) {
+
     Rcpp::List result;
+    Rcpp::List options =
+        options_n.isNotNull() ? Rcpp::List(options_n.get()) : Rcpp::List();
+    MDP m = mdp_from_dataframe(mdp);
+
     if (options.containsElementNamed("pack_actions") &&
         Rcpp::as<bool>(options["pack_actions"])) {
         result["action_map"] = m.pack_actions();
