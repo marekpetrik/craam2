@@ -24,6 +24,7 @@
 #include "utils.hpp"
 
 #include "craam/simulators/inventory.hpp"
+#include "craam/simulators/population.hpp"
 
 /**
  * A very simple test MDP.
@@ -101,7 +102,9 @@ Rcpp::DataFrame mdp_inventory(Rcpp::List params) {
 
 /**
  * Creates a population model MDP
- * @param params
  */
 //[[Rcpp::export]]
-Rcpp::DataFrame mdp_population() {}
+Rcpp::DataFrame mdp_population(int capacity, int initial,
+                               Rcpp::NumericMatrix growth_rates_exp,
+                               Rcpp::NumericMatrix growth_rates_std,
+                               Rcpp::NumericMatrix rewards) {}

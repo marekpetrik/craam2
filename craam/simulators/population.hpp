@@ -190,8 +190,10 @@ public:
     }
 
     Growth get_growth() const { return growth_model; }
-
     void set_growth(Growth model) { growth_model = model; }
+
+    size_t state_count() const { return carrying_capacity + 1; }
+    size_t action_count(State s) const { return actioncount; }
 };
 
 /**
