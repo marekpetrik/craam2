@@ -452,4 +452,53 @@ protected:
     numvec rewards;
 };
 
+/**
+ * Joins two transition probability vectors into one,
+ * by merging the indexes. The missing transition probabilities
+ * are treated as zeros.
+ */
+inline pair<numvec, numvec> join_probs(const Transition& t1, const Transition& t2) {
+
+    constexpr prec_t defval = 0.0;
+
+    auto i1 = t1.get_indices().cbegin(), i2 = t2.get_indices().cbegin(),
+         i1e = t1.get_indices().cend(), i2e = t2.get_indices().cend();
+    auto p1 = t1.get_probabilities().cbegin(), p2 = t2.get_probabilities().cbegin();
+
+    numvec result1, result2;
+    auto sizemin = std::max(t1.size(), t2.size());
+    result1.reserve(sizemin);
+    result2.reserve(sizemin);
+
+    while (i1 < i1e && i2 < i2e) {
+        prec_t pr1 = defval, pr2 = defval;
+        if (*i1 == *i2) {
+            pr1 = *(p1++);
+            pr2 = *(p2++);
+            ++i1;
+            ++i2;
+        } else if (*i1 < *i2) {
+            ++i1;
+            pr1 = *(p1++);
+        } else if (*i1 > *i2) {
+            ++i2;
+            pr2 = *(p2++);
+        }
+        result1.push_back(pr1);
+        result2.push_back(pr2);
+    }
+    // finish off whatever is left when one reaches the end
+    while (i1 < i1e) {
+        result1.push_back(*(p1++));
+        result2.push_back(defval);
+        ++i1;
+    }
+    while (i2 < i2e) {
+        result2.push_back(*(p2++));
+        result1.push_back(defval);
+        ++i2;
+    }
+    return {move(result1), move(result2)};
+}
+
 } // namespace craam

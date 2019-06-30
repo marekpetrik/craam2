@@ -31,6 +31,7 @@
 #include "craam/definitions.hpp"
 #include "craam/modeltools.hpp"
 #include "craam/optimization/bisection.hpp"
+#include "craam/optimization/norms.hpp"
 #include "craam/optimization/srect_gurobi.hpp"
 #include "craam/solvers.hpp"
 
@@ -1673,3 +1674,29 @@ BOOST_AUTO_TEST_CASE(test_piecewise_minimization) {
 }
 
 #endif //__cplusplus >= 2017
+
+// ********************************************************************************
+//  Test Bayesian Models
+// ********************************************************************************
+
+BOOST_AUTO_TEST_CASE(join_probs_test) {
+    Transition t1, t2;
+
+    t1.add_sample(2, 0.2, 1.5);
+    t1.add_sample(6, 0.1, 1.5);
+    t1.add_sample(8, 0.7, 1.5);
+
+    t2.add_sample(1, 0.5, 1.5);
+    t2.add_sample(2, 0.3, 1.5);
+    t2.add_sample(7, 0.2, 1.5);
+
+    numvec p1, p2;
+    std::tie(p1, p2) = craam::join_probs(t1, t2);
+
+    // correct values, should have these indices:
+    // 1,2,6,7,8
+    numvec p1c{0.0, 0.2, 0.1, 0.0, 0.7}, p2c{0.5, 0.3, 0.0, 0.2, 0.0};
+
+    CHECK_CLOSE_COLLECTION(p1, p1c, 1.0);
+    CHECK_CLOSE_COLLECTION(p2, p2c, 1.0);
+}

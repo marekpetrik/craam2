@@ -129,6 +129,7 @@ set (SRCS
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/optimization/optimization.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/optimization/bisection.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/optimization/srect_gurobi.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/optimization/norms.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/values.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/values_mdp.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/values_mdpo.hpp
