@@ -41,3 +41,7 @@ mdp_inventory <- function(params) {
     .Call(`_rcraam_mdp_inventory`, params)
 }
 
+mdp_population <- function(capacity, initial, growth_rates_exp, growth_rates_std, rewards) {
+    .Call(`_rcraam_mdp_population`, capacity, initial, growth_rates_exp, growth_rates_std, rewards)
+}
+

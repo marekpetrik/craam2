@@ -23,8 +23,9 @@
 
 #pragma once
 
-#include "Samples.hpp"
-#include "definitions.hpp"
+#include "craam/MDP.hpp"
+#include "craam/Samples.hpp"
+#include "craam/definitions.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -605,5 +606,40 @@ using ModelDeterministicPolicy = DeterministicPolicy<ModelSimulator>;
 
 /// Stochastic policy to be used with MDP model simulator
 using ModelStochasticPolicy = StochasticPolicy<ModelSimulator>;
+
+// ************************************************************************************
+// **** Constructing MDP ****
+// ************************************************************************************
+
+/**
+* Builds an MDP from a simulator.
+*
+* Requires that the states and actions have discrete numbers starting with 0.
+*
+* @param sim Simulator. This is passed not as a constant because simulation
+*                       affects the random number generator.
+* @param sample_count Number of samples to take for each state and action
+*/
+template <class S> inline MDP build_mdp(S& sim, uint sample_count) {
+
+    MDP result;
+    // the problem with parallelizing this loop is that it may affect te random
+    // number generator in an inpredictable way
+    for (long statefrom = 0; statefrom < sim.state_count(); ++statefrom) {
+        for (long action = 0; action < sim.action_count(statefrom); ++action) {
+            for (long i = 0; i < sample_count; ++i) {
+                // simulate a single step of the transition probabilities
+                long stateto;
+                prec_t reward;
+                std::tie(reward, stateto) = sim.transition(statefrom, action);
+                const prec_t probability = 1.0 / prec_t(sample_count);
+                // add transition probability,
+                // should be aggregated automatically
+                add_transition(result, statefrom, action, stateto, probability, reward);
+            }
+        }
+    }
+    return result;
+}
 
 }} // namespace craam::msen

@@ -23,6 +23,7 @@
 
 #include "utils.hpp"
 
+#include "craam/simulation.hpp"
 #include "craam/simulators/inventory.hpp"
 #include "craam/simulators/population.hpp"
 
@@ -101,10 +102,33 @@ Rcpp::DataFrame mdp_inventory(Rcpp::List params) {
 }
 
 /**
+ * Converts a NUmeric matrix to a vector of vectors. The rows translate
+ * to the outer vector.
+ */
+craam::numvecvec matrix2nestedvec(const Rcpp::NumericMatrix& matrix) {
+    craam::numvecvec result(matrix.nrow());
+    for (int i = 0; i < matrix.nrow(); i++) {
+        Rcpp::ConstMatrixRow row = matrix.row(i);
+        craam::numvec x(row.size());
+        std::copy(row.cbegin(), row.cend(), x.begin());
+    }
+    return result;
+}
+
+/**
  * Creates a population model MDP
  */
 //[[Rcpp::export]]
 Rcpp::DataFrame mdp_population(int capacity, int initial,
                                Rcpp::NumericMatrix growth_rates_exp,
                                Rcpp::NumericMatrix growth_rates_std,
-                               Rcpp::NumericMatrix rewards) {}
+                               Rcpp::NumericMatrix rewards) {
+
+    auto sim = craam::msen::PopulationSim(
+        capacity, initial, growth_rates_exp.nrow(), matrix2nestedvec(growth_rates_exp),
+        matrix2nestedvec(growth_rates_std), matrix2nestedvec(rewards));
+
+    craam::MDP mdp = craam::msen::build_mdp(sim, 1000);
+
+    return mdp_to_dataframe(mdp);
+}
