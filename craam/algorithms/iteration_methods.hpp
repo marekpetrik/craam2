@@ -444,7 +444,7 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
 
     auto finish = chrono::steady_clock::now();
     chrono::duration<double> duration = finish - start;
-    int status = residual_pi <= residual_pi ? 0 : 1;
+    int status = residual_pi <= maxresidual ? 0 : 1;
     return Solution<policy_type>(move(valuefunction), move(output_policy), residual_pi,
                                  iterations, duration.count(), status);
 }

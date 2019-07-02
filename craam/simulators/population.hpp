@@ -116,19 +116,23 @@ public:
 
         for (long ai = 0; ai < actioncount; ai++) {
             if (State(mean_growth_rate[ai].size()) != 1 + carrying_capacity)
-                throw invalid_argument(
-                    "Mean growth rate size must match carrying capacity + 1 for action" +
-                    std::to_string(ai));
+                throw invalid_argument("Mean growth rate size (" +
+                                       std::to_string(mean_growth_rate[ai].size()) +
+                                       ") must match carrying capacity + 1 for action " +
+                                       std::to_string(ai));
 
             if (State(std_growth_rate[ai].size()) != 1 + carrying_capacity)
-                throw invalid_argument("Std of growth rate size must match carrying "
-                                       "capacity + 1 for action" +
+                throw invalid_argument("Std of growth rate size (" +
+                                       std::to_string(std_growth_rate[ai].size()) +
+                                       ") must match carrying "
+                                       "capacity + 1 for action " +
                                        std::to_string(ai));
 
             if (State(rewards[ai].size()) != 1 + carrying_capacity)
-                throw invalid_argument(
-                    "Rewards size must match carrying capacity + 1 for action" +
-                    std::to_string(ai));
+                throw invalid_argument("Rewards size (" +
+                                       std::to_string(rewards[ai].size()) +
+                                       ") must match carrying capacity + 1 for action " +
+                                       std::to_string(ai));
         }
     }
 
@@ -171,22 +175,24 @@ public:
 
         // make sure that the growth rate cannot be negative
         prec_t growth_rate = std::max(0.0, growth_rate_distribution(gen));
+
         long next_population = 0;
 
         if (growth_model == Growth::Exponential) {
-            next_population =
-                clamp(long(growth_rate * current_population), 0l, carrying_capacity);
-        } else if (growth_model == Growth::Logistic) {
-            next_population = clamp(long(growth_rate * current_population *
-                                         (carrying_capacity - current_population) /
-                                         prec_t(carrying_capacity)),
+            next_population = clamp(long(std::round(growth_rate * current_population)),
                                     0l, carrying_capacity);
+        } else if (growth_model == Growth::Logistic) {
+            next_population =
+                clamp(long(std::round(growth_rate * current_population *
+                                      (carrying_capacity - current_population) /
+                                      prec_t(carrying_capacity))),
+                      0l, carrying_capacity);
         } else {
             throw invalid_argument("Unsupported population model.");
         }
 
         prec_t reward = rewards[action][current_population];
-        return make_pair(reward, next_population);
+        return {reward, next_population};
     }
 
     Growth get_growth() const { return growth_model; }

@@ -127,188 +127,6 @@ Rcpp::List worstcase_l1(Rcpp::NumericVector z, Rcpp::NumericVector q, double t) 
 }
 
 /**
- * Turns a dataframe `frame` to a matrix (array of arrays) of dimensions
- * dim1 x dim2. Index1 and index2 are the name of the columns with the
- * indices and value is the name of the value column. def_value is the
- * default value for any elements that are not provided.
- */
-inline numvecvec frame2matrix(const Rcpp::DataFrame& frame, uint dim1, uint dim2,
-                              const string& index1, const string& index2,
-                              const string& value, double def_value) {
-
-    numvecvec result(dim1);
-    for (long i = 0; i < dim1; i++) {
-        result[i] = numvec(dim2, def_value);
-    }
-
-    Rcpp::IntegerVector idvec1 = frame[index1], idvec2 = frame[index2];
-    Rcpp::NumericVector values = frame[value];
-
-    for (long i = 0; i < idvec1.size(); i++) {
-        long id1 = idvec1[i], id2 = idvec2[i];
-
-        if (id1 < 0) Rcpp::stop("idstate must be non-negative");
-        if (id1 > dim1)
-            Rcpp::stop("idstate must be smaller than the number of MDP states");
-        if (id2 < 0) Rcpp::stop("idaction must be non-negative");
-        if (id2 > dim2)
-            Rcpp::stop("idaction must be smaller than the number of actions for the "
-                       "corresponding state");
-
-        result[id1][id2] = values[i];
-    }
-
-    return result;
-}
-
-/**
- * Parses a data frame definition of values that correspond to states.
- *
- * Also checks whether the values passed are consistent with the MDP definition.
- *
- * @param mdp The definition of the MDP to know how many states and actions there are.
- * @param frame Dataframe with 2 comlumns, idstate, value. Here, idstate
- *              determines which value should be set.
- *              Only the last value is used if multiple rows are present.
- * @param def_value The default value for when frame does not
- *                  specify anything for the state action pair
- * @param value_column Name of the column with the value
- *
- * @returns A vector over states with the included values
- */
-template <class T>
-vector<T> parse_s_values(const MDP& mdp, const Rcpp::DataFrame& frame, T def_value = 0,
-                         const string& value_column = "value") {
-    vector<T> result(mdp.size());
-    Rcpp::IntegerVector idstates = frame["idstate"];
-    Rcpp::NumericVector values = frame[value_column];
-    for (long i = 0; i < idstates.size(); i++) {
-        long idstate = idstates[i];
-
-        if (idstate < 0) Rcpp::stop("idstate must be non-negative");
-        if (idstate > mdp.size())
-            Rcpp::stop("idstate must be smaller than the number of MDP states");
-
-        result[idstate] = values[i];
-    }
-    return result;
-}
-
-/**
-* Parses a data frame definition of values that correspond to states and
-* actions.
-*
-* Also checks whether the values passed are consistent with the MDP definition.
-*
-* @param mdp The definition of the MDP to know how many states and actions there are.
-* @param frame Dataframe with 3 comlumns, idstate, idaction, value. Here, idstate and idaction
-*              determine which value should be set.
-*              Only the last value is used if multiple rows are present.
-* @param def_value The default value for when frame does not specify anything for the state action pair
-*
-* @returns A vector over states with an inner vector of actions
-*/
-numvecvec parse_sa_values(const MDP& mdp, const Rcpp::DataFrame& frame,
-                          double def_value = 0) {
-
-    vector<numvec> result(mdp.size());
-    for (long i = 0; i < mdp.size(); i++) {
-        result[i] = numvec(mdp[i].size(), def_value);
-    }
-
-    Rcpp::IntegerVector idstates = frame["idstate"], idactions = frame["idaction"];
-    Rcpp::NumericVector values = frame["value"];
-
-    for (long i = 0; i < idstates.size(); i++) {
-        long idstate = idstates[i], idaction = idactions[i];
-
-        if (idstate < 0) Rcpp::stop("idstate must be non-negative");
-        if (idstate > mdp.size())
-            Rcpp::stop("idstate must be smaller than the number of MDP states");
-        if (idaction < 0) Rcpp::stop("idaction must be non-negative");
-        if (idaction > mdp[idstate].size())
-            Rcpp::stop("idaction must be smaller than the number of actions for the "
-                       "corresponding state");
-
-        double value = values[i];
-        result[idstate][idaction] = value;
-    }
-
-    return result;
-}
-
-/**
- * Parses a data frame definition of values that correspond to starting states, actions,
- * and taget states.
- *
- * Also checks whether the values passed are consistent with the MDP definition.
- *
- * @param mdp The definition of the MDP to know how many states and actions there are.
- * @param frame Dataframe with 3 comlumns, idstatefrom, idaction, idstateto, value.
- *              Here, idstate(from,to) and idaction determine which value should be set
- *              Only the last value is used if multiple rows are present.
- * @param def_value The default value for when frame does not specify anything for the state action pair
- *
- * @returns A vector over states, action, with an inner vector of actions
- */
-vector<vector<numvec>> parse_sas_values(const MDP& mdp, const Rcpp::DataFrame& frame,
-                                        double def_value = 0) {
-
-    vector<vector<numvec>> result(mdp.size());
-    for (long i = 0; i < mdp.size(); i++) {
-        result[i] = numvecvec(mdp[i].size());
-        for (long j = 0; j < mdp[i].size(); j++) {
-            // this is the number of non-zero transition probabilities
-            result[i][j] = numvec(mdp[i][j].size(), def_value);
-        }
-    }
-
-    Rcpp::IntegerVector idstatesfrom = frame["idstatefrom"],
-                        idactions = frame["idaction"], idstatesto = frame["idstateto"];
-    Rcpp::NumericVector values = frame["value"];
-
-    for (long i = 0; i < idstatesfrom.size(); i++) {
-        long idstatefrom = idstatesfrom[i], idstateto = idstatesto[i],
-             idaction = idactions[i];
-
-        if (idstatefrom < 0) {
-            Rcpp::warning("idstatefrom must be non-negative");
-            continue;
-        }
-        if (idstatefrom > mdp.size()) {
-            Rcpp::warning("idstatefrom must be smaller than the number of MDP states");
-            continue;
-        }
-        if (idaction < 0) {
-            Rcpp::warning("idaction must be non-negative");
-            continue;
-        }
-        if (idaction > mdp[idstatefrom].size()) {
-            Rcpp::warning("idaction must be smaller than the number of actions for the "
-                          "corresponding state");
-            continue;
-        }
-        if (idstateto < 0) {
-            Rcpp::warning("idstateto must be non-negative");
-            continue;
-        }
-
-        long indexto = mdp[idstatefrom][idaction].index_of(idstateto);
-        //cout << idstatefrom << "," << idaction << "," << idstateto << "," << indexto
-        //     << endl;
-
-        if (indexto < 0) {
-            Rcpp::warning("idstateto must be one of the states with non-zero probability."
-                          "idstatefrom = " +
-                          to_string(idstatefrom) + ", idaction = " + to_string(idaction));
-        } else {
-            result[idstatefrom][idaction][indexto] = values[i];
-        }
-    }
-    return result;
-}
-
-/**
  * Turns a deterministic policy to a dataframe with state and action
  * as the columns
  *
@@ -428,6 +246,7 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount,
         Rcpp::stop("Cannot provide both a deterministic and a randomized policy.");
     }
 
+    // whether the provided policy is randomized
     bool is_randomized = options.containsElementNamed("policy_rand");
 
     // use one of the solutions, stochastic or deterministic
@@ -627,86 +446,100 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
     Rcpp::List options =
         options_n.isNotNull() ? Rcpp::List(options_n.get()) : Rcpp::List();
 
-    try {
+    MDP m = mdp_from_dataframe(mdp);
 
-        MDP m = mdp_from_dataframe(mdp);
+    if (options.containsElementNamed("pack_actions") &&
+        Rcpp::as<bool>(options["pack_actions"])) {
+        result["action_map"] = m.pack_actions();
+    }
 
-        if (options.containsElementNamed("pack_actions") &&
-            Rcpp::as<bool>(options["pack_actions"])) {
-            result["action_map"] = m.pack_actions();
-        }
+    long iterations = options.containsElementNamed("iterations")
+                          ? Rcpp::as<long>(options["iterations"])
+                          : defaults::iterations;
+    double precision = options.containsElementNamed("precision")
+                           ? Rcpp::as<double>(options["precision"])
+                           : defaults::maxresidual;
 
-        long iterations = options.containsElementNamed("iterations")
-                              ? Rcpp::as<long>(options["iterations"])
-                              : defaults::iterations;
-        double precision = options.containsElementNamed("precision")
-                               ? Rcpp::as<double>(options["precision"])
-                               : defaults::maxresidual;
+    double timeout = options.containsElementNamed("timeout")
+                         ? Rcpp::as<double>(options["timeout"])
+                         : defaults::timeout;
 
-        double timeout = options.containsElementNamed("timeout")
-                             ? Rcpp::as<double>(options["timeout"])
-                             : defaults::timeout;
+    bool show_progress = options.containsElementNamed("progress")
+                             ? Rcpp::as<bool>(options["progress"])
+                             : defaults::show_progress;
 
-        bool show_progress = options.containsElementNamed("progress")
-                                 ? Rcpp::as<bool>(options["progress"])
-                                 : defaults::show_progress;
+    // outputs the matrix of transition probabilities and the
+    // vector of rewards
+    bool output_mat = options.containsElementNamed("output_tran")
+                          ? Rcpp::as<bool>(options["output_tran"])
+                          : false;
 
-        SARobustSolution sol;
-        algorithms::SANature natparsed = parse_nature_sa(m, nature, nature_par);
+    // policy: the method can be used to compute the robust solution for a policy
+    indvec policy =
+        options.containsElementNamed("policy")
+            ? parse_s_values<long>(m, Rcpp::as<Rcpp::DataFrame>(options["policy"]), -1,
+                                   "idaction")
+            : indvec(0);
 
-        ComputeProgress progress(iterations, precision, show_progress, timeout);
+    SARobustSolution sol;
+    algorithms::SANature natparsed = parse_nature_sa(m, nature, nature_par);
 
-        // the default method is to use ppa
-        if (!options.containsElementNamed("algorithm") ||
-            Rcpp::as<string>(options["algorithm"]) == "ppi") {
-            sol = rsolve_ppi(m, discount, std::move(natparsed), numvec(0), indvec(0),
-                             iterations, precision, progress);
-        } else if (Rcpp::as<string>(options["algorithm"]) == "mpi") {
-            Rcpp::warning("The robust version of the mpi method may cycle forever "
-                          "without converging.");
-            sol =
-                rsolve_mpi(m, discount, std::move(natparsed), numvec(0), indvec(0),
-                           sqrt(iterations), precision, sqrt(iterations), 0.5, progress);
-        } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
-            sol = rsolve_vi(m, discount, std::move(natparsed), numvec(0), indvec(0),
-                            iterations, precision, progress);
+    ComputeProgress progress(iterations, precision, show_progress, timeout);
 
-        } else if (Rcpp::as<string>(options["algorithm"]) == "vi_j") {
-            // Jacobian value iteration, simulated using mpi
-            sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), indvec(0),
-                             iterations, precision, 1, 0.5, progress);
-        } else if (Rcpp::as<string>(options["algorithm"]) == "pi") {
-            Rcpp::warning("The robust version of the pi method may cycle forever without "
-                          "converging.");
-            sol = rsolve_pi(m, discount, std::move(natparsed), numvec(0), indvec(0),
-                            iterations, precision, progress);
-        } else {
-            Rcpp::stop("Unknown solver type.");
-        }
+    // the default method is to use ppa
+    if (!options.containsElementNamed("algorithm") ||
+        Rcpp::as<string>(options["algorithm"]) == "ppi") {
+        sol = rsolve_ppi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
+                         precision, progress);
+    } else if (Rcpp::as<string>(options["algorithm"]) == "mpi") {
+        Rcpp::warning("The robust version of the mpi method may cycle forever "
+                      "without converging.");
+        sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), policy,
+                         sqrt(iterations), precision, sqrt(iterations), 0.5, progress);
+    } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
+        sol = rsolve_vi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
+                        precision, progress);
 
-        result["iters"] = sol.iterations;
-        result["residual"] = sol.residual;
-        result["time"] = sol.time;
+    } else if (Rcpp::as<string>(options["algorithm"]) == "vi_j") {
+        // Jacobian value iteration, simulated using mpi
+        sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
+                         precision, 1, 0.5, progress);
+    } else if (Rcpp::as<string>(options["algorithm"]) == "pi") {
+        Rcpp::warning("The robust version of the pi method may cycle forever without "
+                      "converging.");
+        sol = rsolve_pi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
+                        precision, progress);
+    } else {
+        Rcpp::stop("Unknown solver type.");
+    }
+
+    result["iters"] = sol.iterations;
+    result["residual"] = sol.residual;
+    result["time"] = sol.time;
 
 #if __cplusplus >= 201703L
-        auto [dec_pol, nat_pol] = unzip(sol.policy);
+    auto [dec_pol, nat_pol] = unzip(sol.policy);
 #else
-        craam::indvec dec_pol;
-        std::vector<craam::numvec> nat_pol;
-        std::tie(dec_pol, nat_pol) = unzip(sol.policy);
+    craam::indvec dec_pol;
+    std::vector<craam::numvec> nat_pol;
+    std::tie(dec_pol, nat_pol) = unzip(sol.policy);
 #endif
 
-        result["policy"] = output_policy(dec_pol);
-        result["policy.nature"] = move(nat_pol);
-        result["valuefunction"] = move(sol.valuefunction);
-        result["status"] = sol.status;
-        if (sol.status != 0)
-            Rcpp::warning(
-                "Ran out of time or iterations. The solution may be suboptimal.");
-
-    } catch (std::exception& ex) { forward_exception_to_r(ex); } catch (...) {
-        ::Rf_error("c++ exception (unknown reason)");
+    if (output_mat) {
+        auto pb = craam::algorithms::SARobustBellman(m, natparsed);
+        auto tmat = craam::algorithms::transition_mat(pb, sol.policy);
+        auto rew = craam::algorithms::rewards_vec(pb, sol.policy);
+        result["mat"] = as_matrix(tmat);
+        result["rew"] = rew;
     }
+
+    result["policy"] = output_policy(dec_pol);
+    result["policy.nature"] = move(nat_pol);
+    result["valuefunction"] = move(sol.valuefunction);
+    result["status"] = sol.status;
+    if (sol.status != 0)
+        Rcpp::warning("Ran out of time or iterations. The solution may be suboptimal.");
+
     return result;
 }
 

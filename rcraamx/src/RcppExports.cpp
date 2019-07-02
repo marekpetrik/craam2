@@ -144,6 +144,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// simulate_mdp
+Rcpp::DataFrame simulate_mdp(Rcpp::DataFrame mdp, int initial_state, Rcpp::DataFrame policy, int horizon, int episodes);
+RcppExport SEXP _rcraam_simulate_mdp(SEXP mdpSEXP, SEXP initial_stateSEXP, SEXP policySEXP, SEXP horizonSEXP, SEXP episodesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type mdp(mdpSEXP);
+    Rcpp::traits::input_parameter< int >::type initial_state(initial_stateSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type policy(policySEXP);
+    Rcpp::traits::input_parameter< int >::type horizon(horizonSEXP);
+    Rcpp::traits::input_parameter< int >::type episodes(episodesSEXP);
+    rcpp_result_gen = Rcpp::wrap(simulate_mdp(mdp, initial_state, policy, horizon, episodes));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_rcraam_worstcase_l1", (DL_FUNC) &_rcraam_worstcase_l1, 3},
@@ -157,6 +172,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_rcraam_mdp_example", (DL_FUNC) &_rcraam_mdp_example, 1},
     {"_rcraam_mdp_inventory", (DL_FUNC) &_rcraam_mdp_inventory, 1},
     {"_rcraam_mdp_population", (DL_FUNC) &_rcraam_mdp_population, 5},
+    {"_rcraam_simulate_mdp", (DL_FUNC) &_rcraam_simulate_mdp, 5},
     {NULL, NULL, 0}
 };
 

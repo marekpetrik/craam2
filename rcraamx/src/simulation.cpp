@@ -23,6 +23,7 @@
 
 #include "utils.hpp"
 
+#include "craam/Samples.hpp"
 #include "craam/simulation.hpp"
 #include "craam/simulators/inventory.hpp"
 #include "craam/simulators/population.hpp"
@@ -102,14 +103,15 @@ Rcpp::DataFrame mdp_inventory(Rcpp::List params) {
 }
 
 /**
- * Converts a NUmeric matrix to a vector of vectors. The rows translate
+ * Converts a numeric matrix to a vector of vectors. The rows translate
  * to the outer vector.
  */
 craam::numvecvec matrix2nestedvec(const Rcpp::NumericMatrix& matrix) {
-    craam::numvecvec result(matrix.nrow());
+    craam::numvecvec result;
+    result.reserve(matrix.nrow());
     for (int i = 0; i < matrix.nrow(); i++) {
         Rcpp::ConstMatrixRow row = matrix.row(i);
-        craam::numvec x(row.size());
+        craam::numvec& x = result.emplace_back(row.size());
         std::copy(row.cbegin(), row.cend(), x.begin());
     }
     return result;
@@ -131,4 +133,50 @@ Rcpp::DataFrame mdp_population(int capacity, int initial,
     craam::MDP mdp = craam::msen::build_mdp(sim, 1000);
 
     return mdp_to_dataframe(mdp);
+}
+
+/**
+ * Converts samples from a simulation to a dataframe
+ */
+Rcpp::DataFrame samples_to_dtf(const craam::msen::DiscreteSamples& samples) {
+
+    return Rcpp::DataFrame::create(Rcpp::Named("idstatefrom") = samples.get_states_from(),
+                                   Rcpp::Named("idaction") = samples.get_actions(),
+                                   Rcpp::Named("idstateto") = samples.get_states_to(),
+                                   Rcpp::Named("reward") = samples.get_rewards(),
+                                   Rcpp::Named("step") = samples.get_steps(),
+                                   Rcpp::Named("episode") = samples.get_runs());
+}
+
+/**
+ * Simulates an mdp for the given number of steps.
+ * @param mdp Definition of the MDP
+ * @param initial_state The index of the initial state
+ * @param policy Assumes a randomized policy as the input
+ * @param horizon How many steps to execute for each episode
+ * @param episodes Number of episodes to run
+ * @return A dataframe with the states, actions, and rewards received
+ */
+// [[Rcpp::export]]
+Rcpp::DataFrame simulate_mdp(Rcpp::DataFrame mdp, int initial_state,
+                             Rcpp::DataFrame policy, int horizon, int episodes) {
+
+    craam::MDP m = mdp_from_dataframe(mdp);
+    craam::numvecvec rpolicy_par = parse_sa_values(m, policy, 0.0);
+
+    //Rcpp::Rcout << rpolicy_par[0][0] << std::endl;
+
+    // initial transition probability
+    craam::Transition init;
+    init.add_sample(initial_state, 1.0, 0.0);
+    auto sim_model =
+        craam::msen::ModelSimulator(std::make_shared<const craam::MDP>(m), init);
+
+    craam::msen::RandomizedPolicy<craam::msen::ModelSimulator> rpolicy(sim_model,
+                                                                       rpolicy_par);
+
+    craam::msen::DiscreteSamples samples;
+    craam::msen::simulate(sim_model, samples, rpolicy, horizon, episodes);
+
+    return samples_to_dtf(samples);
 }

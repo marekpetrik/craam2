@@ -315,7 +315,7 @@ public:
      */
     pair<prec_t, policy_type> policy_update(long stateid, const numvec& valuefunction,
                                             prec_t discount) const {
-        prec_t newvalue = 0;
+        prec_t newvalue = std::nan("");
         policy_type action;
         numvec transition;
 
@@ -329,13 +329,12 @@ public:
         }
         // fixed-action, do not copy
         else {
-            prec_t newvalue;
             const long actionid = decision_policy[stateid];
             tie(transition, newvalue) = value_fix_state(
                 mdp[stateid], valuefunction, discount, actionid, stateid, nature);
             action = make_pair(actionid, move(transition));
         }
-        return make_pair(newvalue, move(action));
+        return {newvalue, move(action)};
     }
 
     /**
@@ -403,15 +402,13 @@ public:
     void set_decision_policy(
         const vector<dec_policy_type>& policy = vector<dec_policy_type>(0)) {
         if (policy.empty()) {
-            if (!decision_policy.empty()) {
+            if (initial_policy.empty()) {
                 // if it is empty, then this should have no effect,
                 // but it prevents repeated shortening of the vector
                 fill(decision_policy.begin(), decision_policy.end(), -1);
-
             } else {
                 decision_policy = initial_policy;
             }
-
         } else {
             assert(policy.size() == mdp.size());
             decision_policy = policy;
@@ -484,7 +481,7 @@ public:
      */
     pair<prec_t, policy_type> policy_update(long stateid, const numvec& valuefunction,
                                             prec_t discount) const {
-        prec_t newvalue = 0;
+        prec_t newvalue;
         numvec action;
         vector<numvec> transitions;
 
@@ -501,7 +498,7 @@ public:
         assert(!isinf(newvalue));
         assert(action.size() == state.size());
         policy_type action_response = make_pair(move(action), move(transitions));
-        return make_pair(newvalue, move(action_response));
+        return {newvalue, move(action_response)};
     }
 
     /**
@@ -578,15 +575,13 @@ public:
     void set_decision_policy(
         const vector<dec_policy_type>& policy = vector<dec_policy_type>(0)) {
         if (policy.empty()) {
-            if (!decision_policy.empty()) {
+            if (initial_policy.empty()) {
                 // if it is empty, then this should have no effect,
                 // but it prevents repeated shortening of the vector
                 fill(decision_policy.begin(), decision_policy.end(), numvec(0));
-
             } else {
                 decision_policy = initial_policy;
             }
-
         } else {
             assert(policy.size() == mdp.size());
             decision_policy = policy;

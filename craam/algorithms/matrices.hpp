@@ -35,7 +35,8 @@ using namespace std;
 using namespace Eigen;
 
 /**
- * @brief Updates transition probabilities according to the provided policy.
+ * Updates transition probabilities according to the provided policy.
+ *
  * @param response BellmanOperator class (e.g. PlainBellman)
  * @param transition Transition probabilities for @a old_policy
  * @param new_policy Policy used to update transition probabilities

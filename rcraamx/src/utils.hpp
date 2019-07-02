@@ -137,3 +137,189 @@ inline craam::MDPO mdpo_from_dataframe(const Rcpp::DataFrame& data) {
     }
     return m;
 }
+
+/**
+ * Turns a dataframe `frame` to a matrix (array of arrays) of dimensions
+ * dim1 x dim2. Index1 and index2 are the name of the columns with the
+ * indices and value is the name of the value column. def_value is the
+ * default value for any elements that are not provided.
+ */
+inline craam::numvecvec frame2matrix(const Rcpp::DataFrame& frame, uint dim1, uint dim2,
+                                     const std::string& index1, const std::string& index2,
+                                     const std::string& value, double def_value) {
+
+    craam::numvecvec result(dim1);
+    for (long i = 0; i < dim1; i++) {
+        result[i] = craam::numvec(dim2, def_value);
+    }
+
+    Rcpp::IntegerVector idvec1 = frame[index1], idvec2 = frame[index2];
+    Rcpp::NumericVector values = frame[value];
+
+    for (long i = 0; i < idvec1.size(); i++) {
+        long id1 = idvec1[i], id2 = idvec2[i];
+
+        if (id1 < 0) Rcpp::stop("idstate must be non-negative");
+        if (id1 > dim1)
+            Rcpp::stop("idstate must be smaller than the number of MDP states");
+        if (id2 < 0) Rcpp::stop("idaction must be non-negative");
+        if (id2 > dim2)
+            Rcpp::stop("idaction must be smaller than the number of actions for the "
+                       "corresponding state");
+
+        result[id1][id2] = values[i];
+    }
+
+    return result;
+}
+
+/**
+ * Parses a data frame definition of values that correspond to states.
+ *
+ * Also checks whether the values passed are consistent with the MDP definition.
+ *
+ * @param mdp The definition of the MDP to know how many states and actions there are.
+ * @param frame Dataframe with 2 comlumns, idstate, value. Here, idstate
+ *              determines which value should be set.
+ *              Only the last value is used if multiple rows are present.
+ * @param def_value The default value for when frame does not
+ *                  specify anything for the state action pair
+ * @param value_column Name of the column with the value
+ *
+ * @returns A vector over states with the included values
+ */
+template <class T>
+inline std::vector<T> parse_s_values(const craam::MDP& mdp, const Rcpp::DataFrame& frame,
+                                     T def_value = 0,
+                                     const std::string& value_column = "value") {
+    std::vector<T> result(mdp.size());
+    Rcpp::IntegerVector idstates = frame["idstate"];
+    Rcpp::NumericVector values = frame[value_column];
+    for (long i = 0; i < idstates.size(); i++) {
+        long idstate = idstates[i];
+
+        if (idstate < 0) Rcpp::stop("idstate must be non-negative");
+        if (idstate > mdp.size())
+            Rcpp::stop("idstate must be smaller than the number of MDP states");
+
+        result[idstate] = values[i];
+    }
+    return result;
+}
+
+/**
+* Parses a data frame definition of values that correspond to states and
+* actions.
+*
+* Also checks whether the values passed are consistent with the MDP definition.
+*
+* @param mdp The definition of the MDP to know how many states and actions there are.
+* @param frame Dataframe with 3 comlumns, idstate, idaction, value. Here, idstate and idaction
+*              determine which value should be set.
+*              Only the last value is used if multiple rows are present.
+* @param def_value The default value for when frame does not specify anything for the state action pair
+*
+* @returns A vector over states with an inner vector of actions
+*/
+inline craam::numvecvec parse_sa_values(const craam::MDP& mdp,
+                                        const Rcpp::DataFrame& frame,
+                                        double def_value = 0) {
+
+    craam::numvecvec result(mdp.size());
+    for (long i = 0; i < mdp.size(); i++) {
+        result[i] = craam::numvec(mdp[i].size(), def_value);
+    }
+
+    Rcpp::IntegerVector idstates = frame["idstate"], idactions = frame["idaction"];
+    Rcpp::NumericVector values = frame["value"];
+
+    for (long i = 0; i < idstates.size(); i++) {
+        long idstate = idstates[i], idaction = idactions[i];
+
+        if (idstate < 0) Rcpp::stop("idstate must be non-negative");
+        if (idstate > mdp.size())
+            Rcpp::stop("idstate must be smaller than the number of MDP states");
+        if (idaction < 0) Rcpp::stop("idaction must be non-negative");
+        if (idaction > mdp[idstate].size())
+            Rcpp::stop("idaction must be smaller than the number of actions for the "
+                       "corresponding state");
+
+        double value = values[i];
+        result[idstate][idaction] = value;
+    }
+
+    return result;
+}
+
+/**
+ * Parses a data frame definition of values that correspond to starting states, actions,
+ * and taget states.
+ *
+ * Also checks whether the values passed are consistent with the MDP definition.
+ *
+ * @param mdp The definition of the MDP to know how many states and actions there are.
+ * @param frame Dataframe with 3 comlumns, idstatefrom, idaction, idstateto, value.
+ *              Here, idstate(from,to) and idaction determine which value should be set
+ *              Only the last value is used if multiple rows are present.
+ * @param def_value The default value for when frame does not specify anything for the state action pair
+ *
+ * @returns A vector over states, action, with an inner vector of actions
+ */
+inline std::vector<craam::numvecvec> parse_sas_values(const craam::MDP& mdp,
+                                                      const Rcpp::DataFrame& frame,
+                                                      double def_value = 0) {
+
+    std::vector<craam::numvecvec> result(mdp.size());
+    for (long i = 0; i < mdp.size(); i++) {
+        result[i] = craam::numvecvec(mdp[i].size());
+        for (long j = 0; j < mdp[i].size(); j++) {
+            // this is the number of non-zero transition probabilities
+            result[i][j] = craam::numvec(mdp[i][j].size(), def_value);
+        }
+    }
+
+    Rcpp::IntegerVector idstatesfrom = frame["idstatefrom"],
+                        idactions = frame["idaction"], idstatesto = frame["idstateto"];
+    Rcpp::NumericVector values = frame["value"];
+
+    for (long i = 0; i < idstatesfrom.size(); i++) {
+        long idstatefrom = idstatesfrom[i], idstateto = idstatesto[i],
+             idaction = idactions[i];
+
+        if (idstatefrom < 0) {
+            Rcpp::warning("idstatefrom must be non-negative");
+            continue;
+        }
+        if (idstatefrom > mdp.size()) {
+            Rcpp::warning("idstatefrom must be smaller than the number of MDP states");
+            continue;
+        }
+        if (idaction < 0) {
+            Rcpp::warning("idaction must be non-negative");
+            continue;
+        }
+        if (idaction > mdp[idstatefrom].size()) {
+            Rcpp::warning("idaction must be smaller than the number of actions for the "
+                          "corresponding state");
+            continue;
+        }
+        if (idstateto < 0) {
+            Rcpp::warning("idstateto must be non-negative");
+            continue;
+        }
+
+        long indexto = mdp[idstatefrom][idaction].index_of(idstateto);
+        //cout << idstatefrom << "," << idaction << "," << idstateto << "," << indexto
+        //     << endl;
+
+        if (indexto < 0) {
+            Rcpp::warning("idstateto must be one of the states with non-zero probability."
+                          "idstatefrom = " +
+                          std::to_string(idstatefrom) +
+                          ", idaction = " + std::to_string(idaction));
+        } else {
+            result[idstatefrom][idaction][indexto] = values[i];
+        }
+    }
+    return result;
+}

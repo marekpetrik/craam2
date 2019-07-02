@@ -225,7 +225,7 @@ Samples<typename Sim::State, typename Sim::Action> make_samples(U&&... u) {
 
 /** Samples in which the states and actions are identified by integers. */
 using DiscreteSamples = Samples<long, long>;
-/** Integral expectation sample */
+/** Integral sample */
 using DiscreteSample = Sample<long, long>;
 
 /**

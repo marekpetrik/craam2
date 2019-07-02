@@ -45,3 +45,7 @@ mdp_population <- function(capacity, initial, growth_rates_exp, growth_rates_std
     .Call(`_rcraam_mdp_population`, capacity, initial, growth_rates_exp, growth_rates_std, rewards)
 }
 
+simulate_mdp <- function(mdp, initial_state, policy, horizon, episodes) {
+    .Call(`_rcraam_simulate_mdp`, mdp, initial_state, policy, horizon, episodes)
+}
+

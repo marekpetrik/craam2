@@ -298,7 +298,7 @@ public:
                   the object should not be deleted
       \param probabilities List of action probabilities for each state
       */
-    RandomizedPolicy(const Sim& sim, const vector<numvec>& probabilities,
+    RandomizedPolicy(const Sim& sim, const numvecvec& probabilities,
                      random_device::result_type seed = random_device{}())
         : gen(seed), distributions(probabilities.size()), sim(sim) {
 
@@ -468,11 +468,11 @@ public:
     typedef long Action;
 
     /**
-  Build a model simulator and share and MDP
-
-  The initial transition is copied internally to the object,
-  while the MDP object is stored internally.
-  */
+     * Build a model simulator and share an MDP
+     *
+     * The initial transition is copied internally to the object,
+     *   while the MDP object is references internally.
+     */
     ModelSimulator(const shared_ptr<const MDP>& mdp, const Transition& initial,
                    random_device::result_type seed = random_device{}())
         : gen(seed), mdp(mdp), initial(initial) {
@@ -482,11 +482,11 @@ public:
     }
 
     /**
-  Build a model simulator and share and MDP
-
-  The initial transition is copied internally to the object,
-  while the MDP object is stored internally.
-  */
+     * Build a model simulator and share and MDP
+     *
+     * The initial transition is copied internally to the object,
+     *  while the MDP object is stored internally.
+     */
     ModelSimulator(const shared_ptr<MDP>& mdp, const Transition& initial,
                    random_device::result_type seed = random_device{}())
         : ModelSimulator(const_pointer_cast<const MDP>(mdp), initial, seed){};
@@ -554,15 +554,12 @@ public:
     }
 
     /**
-  Checks whether the decision state is terminal. A state is
-  assumed to be terminal when:
-      1. Its index is too large. That is, the index is equal or greater
-         than the number of states is considered to be terminal
-      2. It has no actions (not even invalid ones)
-  */
-    bool end_condition(State s) const {
-        return (size_t(s) >= mdp->size()) || (action_count(s) == 0);
-    };
+     * Checks whether the decision state is terminal. A state is
+     * assumed to be terminal when its index is too large.
+     * That is, the index is equal or greater
+     * than the number of states is considered to be terminal
+     */
+    bool end_condition(State s) const { return (size_t(s) >= mdp->size()); };
 
     /// State dependent action list
     size_t action_count(State state) const { return (*mdp)[state].size(); };
@@ -608,7 +605,7 @@ using ModelDeterministicPolicy = DeterministicPolicy<ModelSimulator>;
 using ModelStochasticPolicy = StochasticPolicy<ModelSimulator>;
 
 // ************************************************************************************
-// **** Constructing MDP ****
+// **** Constructing MDP from a simulator ****
 // ************************************************************************************
 
 /**
