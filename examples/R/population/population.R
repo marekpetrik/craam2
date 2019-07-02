@@ -3,7 +3,7 @@ library(dplyr)
 library(ggplot2)
 theme_set(theme_light())
 
-l1error <- 1.0
+l1error <- 0.2
 
 ### ***** Problem definition *************
 max.population <- 50
@@ -30,11 +30,15 @@ pop.model.mdp <- rcraam::mdp_population(max.population, init.population,
                                     exp.growth.rate, sd.growth.rate, 
                                     rewards)
 
+# plots using plot.matrix
+#plot(mdp_rsol$mat, col=gray.colors, breaks = seq(0,0.3,by=0.01) )
+
 ### ***** Optimal non-robust solution *************
 
 # solve for the optimal policy
 
-mdp_sol <- solve_mdp(pop.model.mdp, discount, list(algorithm = "pi"))
+mdp_sol <- solve_mdp(pop.model.mdp, discount, list(algorithm = "pi", 
+                                                   output_tran = TRUE))
 dpolicy <- mdp_sol$policy
 print(mdp_sol$valuefunction)
 print(dpolicy$idaction)
@@ -49,7 +53,8 @@ print(discount^sim.samples$step %*% sim.samples$reward)
 ### **** Robust evaluation of the nonrobust policy ****************
 
 mdp_rsol <- rsolve_mdp_sa(pop.model.mdp, discount, "l1u", l1error, list(policy = mdp_sol$policy,
-                                                                    algorithm = "ppi"))
+                                                                    algorithm = "ppi",
+                                                                    output_tran = TRUE))
 
 ### ***** Robust policy *************
 # test a robust value function
