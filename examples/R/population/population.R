@@ -3,7 +3,7 @@ library(dplyr)
 library(ggplot2)
 theme_set(theme_light())
 
-l1error <- 0.2
+l1error <- 0.5
 
 ### ***** Problem definition *************
 max.population <- 50
