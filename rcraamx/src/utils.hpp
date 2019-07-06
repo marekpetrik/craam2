@@ -87,16 +87,18 @@ inline Rcpp::NumericMatrix as_matrix(const Eigen::MatrixXd& matrix) {
 }
 
 /**
- * Parses a data frame  to an MDP
+ * Parses a data frame  to an MDP.
  *
  * Also checks whether the values passed are consistent with the MDP definition.
  *
  * @param frame Dataframe with columns: idstatefrom, idaction, idstateto, reward, probability.
  *              Multiple state-action-state rows have summed probabilities and averaged rewards.
+ * @param force Whether transitions with probability 0 should be focibly added to the transitions.
+ *              This makes a difference with robust MDPs.
  *
  * @returns Corresponding MDP definition
  */
-inline craam::MDP mdp_from_dataframe(const Rcpp::DataFrame& data) {
+inline craam::MDP mdp_from_dataframe(const Rcpp::DataFrame& data, bool force = false) {
     // idstatefrom, idaction, idstateto, probability, reward
     Rcpp::IntegerVector idstatefrom = data["idstatefrom"], idaction = data["idaction"],
                         idstateto = data["idstateto"];
@@ -107,7 +109,7 @@ inline craam::MDP mdp_from_dataframe(const Rcpp::DataFrame& data) {
 
     for (size_t i = 0; i < n; i++) {
         craam::add_transition(m, idstatefrom[i], idaction[i], idstateto[i],
-                              probability[i], reward[i]);
+                              probability[i], reward[i], force);
     }
     return m;
 }

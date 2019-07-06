@@ -1,4 +1,4 @@
-// This file is part of CRAAM, a C++ library for solving plain
+﻿// This file is part of CRAAM, a C++ library for solving plain
 // and robust Markov decision processes.
 //
 // MIT License
@@ -49,6 +49,7 @@ namespace craam {
  * @param valuefunction Initial value function. Passed by value, because it is
  * modified. Optional, use all zeros when not provided. Ignored when size is 0.
  * @param policy Partial policy specification. Optimize only actions that are policy[state] = -1
+ * @param rpolicy Randomized policy with a probability for each state and action
  * @param iterations Maximal number of iterations to run
  * @param maxresidual Stop when the maximal residual falls below this value.
  * @param progress An optional function for reporting progress and can
@@ -67,11 +68,11 @@ policy.
  *
  * Note that the total number of iterations will be bounded by iterations_pi *
  * iterations_vi
- * @param type Type of realization of the uncertainty
  * @param discount Discount factor
  * @param valuefunction Initial value function
  * @param policy Partial policy specification. Optimize only actions that are
  * policy[state] = -1
+ * @param rpolicy Randomized policy with a probability for each state and action
  * @param iterations_pi Maximal number of policy iteration steps
  * @param maxresidual_pi Stop the outer policy iteration when the residual drops
  * below this threshold.
@@ -99,11 +100,11 @@ policy.
  *
  * Note that the total number of iterations will be bounded by iterations_pi *
  * iterations_vi
- * @param type Type of realization of the uncertainty
  * @param discount Discount factor
  * @param valuefunction Initial value function
  * @param policy Partial policy specification. Optimize only actions that are
  * policy[state] = -1
+ * @param rpolicy Randomized policy with a probability for each state and action
  * @param iterations_pi Maximal number of policy iteration steps
  * @param maxresidual_pi Stop the outer policy iteration when the residual drops
  * below this threshold.
@@ -398,6 +399,21 @@ rsolve_s_vi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
 }
 
 /**
+ * @ingroup ValueIteration
+ * Robust value iteration with an s-rectangular nature.
+ */
+inline SRobustSolution
+rsolve_s_vi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
+            numvec valuefunction = numvec(0), const numvecvec& rpolicy = numvecvec(0),
+            unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
+            const std::function<bool(size_t, prec_t)>& progress =
+                algorithms::internal::empty_progress) {
+
+    return algorithms::vi_gs(algorithms::SRobustBellman(mdp, nature, rpolicy), discount,
+                             move(valuefunction), iterations, maxresidual, progress);
+}
+
+/**
  * @ingroup ModifiedPolicyIteration
  *
  * Robust modified policy iteration with an s-rectangular nature.
@@ -421,8 +437,41 @@ rsolve_s_mpi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
 }
 
 /**
+ * @ingroup ModifiedPolicyIteration
+ *
+ * Robust modified policy iteration with an s-rectangular nature.
+ *
+ * WARNING: The algorithm may loop forever without converging.
+ * There is no proof of convergence for this method. This is not the
+ * same algorithm as in: Kaufman, D. L., & Schaefer, A. J. (2013). Robust
+ * modified policy iteration. INFORMS Journal on Computing, 25(3), 396–410. See
+ * the discussion in the paper on methods like this one (e.g. Seid, White)
+ *
+ */
+inline SRobustSolution
+rsolve_s_mpi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
+             const numvec& valuefunction = numvec(0),
+             const numvecvec& rpolicy = numvecvec(0),
+             unsigned long iterations_pi = MAXITER, prec_t maxresidual_pi = SOLPREC,
+             unsigned long iterations_vi = MAXITER, prec_t maxresidual_vi = 0.9,
+             const std::function<bool(size_t, prec_t)>& progress =
+                 algorithms::internal::empty_progress) {
+
+    return algorithms::mpi_jac(algorithms::SRobustBellman(mdp, nature, rpolicy), discount,
+                               valuefunction, iterations_pi, maxresidual_pi,
+                               iterations_vi, maxresidual_vi, progress);
+}
+
+/**
  * @ingroup ValueIteration
  * Robust value iteration with an s-rectangular nature.
+ *
+ * WARNING: The algorithm may loop forever without converging.
+ * There is no proof of convergence for this method. This is not the
+ * same algorithm as in: Kaufman, D. L., & Schaefer, A. J. (2013). Robust
+ * modified policy iteration. INFORMS Journal on Computing, 25(3), 396–410. See
+ * the discussion in the paper on methods like this one (e.g. Seid, White)
+ *
  */
 inline SRobustSolution
 rsolve_s_pi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
@@ -436,7 +485,33 @@ rsolve_s_pi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
 }
 
 /**
+ * @ingroup ValueIteration
+ * Robust value iteration with an s-rectangular nature.
+ *
+ * WARNING: The algorithm may loop forever without converging.
+ * There is no proof of convergence for this method. This is not the
+ * same algorithm as in: Kaufman, D. L., & Schaefer, A. J. (2013). Robust
+ * modified policy iteration. INFORMS Journal on Computing, 25(3), 396–410. See
+ * the discussion in the paper on methods like this one (e.g. Seid, White)
+ *
+ */
+inline SRobustSolution
+rsolve_s_pi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
+            numvec valuefunction = numvec(0), const numvecvec& rpolicy = numvecvec(0),
+            unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
+            const std::function<bool(size_t, prec_t)>& progress =
+                algorithms::internal::empty_progress) {
+    return algorithms::pi(algorithms::SRobustBellman(mdp, nature, rpolicy), discount,
+                          move(valuefunction), iterations, maxresidual, progress);
+}
+
+/**
  * @ingroup PartialPolicyIteration
+ *
+ * Partial policy iteration. Computes approximations to the value function with
+ * an increasing precision. Each decision maker's policy is evaluated using
+ * an MDP solver. By default, policy iteration is used.
+ *
  */
 inline SRobustSolution
 rsolve_s_ppi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
@@ -446,6 +521,34 @@ rsolve_s_ppi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
                  algorithms::internal::empty_progress) {
 
     auto rpolicy = policy_det2rand(mdp, policy);
+    return algorithms::rppi(algorithms::SRobustBellman(mdp, move(nature), rpolicy),
+                            discount, move(valuefunction), iterations, maxresidual, 1.0,
+                            discount * discount, progress);
+}
+
+/**
+ * @ingroup PartialPolicyIteration
+ *
+ * @param mdp Definition of the MDP
+ * @param discount Discount factor
+ * @param valuefunction Initial value function
+ * @param policy Partial policy specification. Optimize only actions that are
+ * policy[state] = -1
+ * @param rpolicy Randomized policy with a probability for each state and action
+ * @param iterations_pi Maximal number of policy iteration steps
+ * @param maxresidual_pi Stop the outer policy iteration when the residual drops
+ * below this threshold.
+ * @param progress An optional function for reporting progress and can
+                return false to stop computation
+
+ */
+inline SRobustSolution
+rsolve_s_ppi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
+             numvec valuefunction = numvec(0), const numvecvec& rpolicy = numvecvec(0),
+             unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
+             const std::function<bool(size_t, prec_t)>& progress =
+                 algorithms::internal::empty_progress) {
+
     return algorithms::rppi(algorithms::SRobustBellman(mdp, move(nature), rpolicy),
                             discount, move(valuefunction), iterations, maxresidual, 1.0,
                             discount * discount, progress);

@@ -24,6 +24,7 @@
 #include "utils.hpp"
 
 #include "craam/Samples.hpp"
+#include "craam/Solution.hpp"
 #include "craam/algorithms/nature_declarations.hpp"
 #include "craam/algorithms/nature_response.hpp"
 #include "craam/definitions.hpp"
@@ -328,14 +329,14 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount,
             auto pb = craam::algorithms::PlainBellmanRand(m);
             auto tmat = craam::algorithms::transition_mat(pb, rsol.policy);
             auto rew = craam::algorithms::rewards_vec(pb, rsol.policy);
-            result["mat"] = as_matrix(tmat);
-            result["rew"] = rew;
+            result["transitions"] = as_matrix(tmat);
+            result["rewards"] = rew;
         } else {
             auto pb = craam::algorithms::PlainBellman(m);
             auto tmat = craam::algorithms::transition_mat(pb, sol.policy);
             auto rew = craam::algorithms::rewards_vec(pb, sol.policy);
-            result["mat"] = as_matrix(tmat);
-            result["rew"] = rew;
+            result["transitions"] = as_matrix(tmat);
+            result["rewards"] = rew;
         }
     }
 
@@ -446,7 +447,7 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
     Rcpp::List options =
         options_n.isNotNull() ? Rcpp::List(options_n.get()) : Rcpp::List();
 
-    MDP m = mdp_from_dataframe(mdp);
+    MDP m = mdp_from_dataframe(mdp, true);
 
     if (options.containsElementNamed("pack_actions") &&
         Rcpp::as<bool>(options["pack_actions"])) {
@@ -529,8 +530,8 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
         auto pb = craam::algorithms::SARobustBellman(m, natparsed);
         auto tmat = craam::algorithms::transition_mat(pb, sol.policy);
         auto rew = craam::algorithms::rewards_vec(pb, sol.policy);
-        result["mat"] = as_matrix(tmat);
-        result["rew"] = rew;
+        result["transitions"] = as_matrix(tmat);
+        result["rewards"] = rew;
     }
 
     result["policy"] = output_policy(dec_pol);
@@ -596,7 +597,8 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     Rcpp::List result;
     Rcpp::List options =
         options_n.isNotNull() ? Rcpp::List(options_n.get()) : Rcpp::List();
-    MDP m = mdp_from_dataframe(mdp);
+
+    MDP m = mdp_from_dataframe(mdp, true);
 
     if (options.containsElementNamed("pack_actions") &&
         Rcpp::as<bool>(options["pack_actions"])) {
@@ -616,27 +618,39 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     bool show_progress = options.containsElementNamed("progress")
                              ? Rcpp::as<bool>(options["progress"])
                              : defaults::show_progress;
-    SRobustSolution sol;
+    // outputs the matrix of transition probabilities and the
+    // vector of rewards
+    bool output_mat = options.containsElementNamed("output_tran")
+                          ? Rcpp::as<bool>(options["output_tran"])
+                          : false;
+
+    // policy: the method can be used to compute the robust solution for a policy
+    numvecvec rpolicy =
+        options.containsElementNamed("policy_rand")
+            ? parse_sa_values(m, Rcpp::as<Rcpp::DataFrame>(options["policy_rand"]), 0.0)
+            : numvecvec(0);
+
+    craam::SRobustSolution sol;
     algorithms::SNature natparsed = parse_nature_s(m, nature, nature_par);
 
     ComputeProgress progress(iterations, precision, show_progress, timeout);
 
     if (!options.containsElementNamed("algorithm") ||
         Rcpp::as<string>(options["algorithm"]) == "ppi") {
-        sol = rsolve_s_ppi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+        sol = rsolve_s_ppi(m, discount, std::move(natparsed), numvec(0), rpolicy,
                            iterations, precision, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "mpi") {
-        sol = rsolve_s_mpi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+        sol = rsolve_s_mpi(m, discount, std::move(natparsed), numvec(0), rpolicy,
                            sqrt(iterations), precision, sqrt(iterations), 0.5, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
-        sol = rsolve_s_vi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+        sol = rsolve_s_vi(m, discount, std::move(natparsed), numvec(0), rpolicy,
                           iterations, precision, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi_j") {
         // Jacobian value iteration, simulated using mpi
-        sol = rsolve_s_mpi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+        sol = rsolve_s_mpi(m, discount, std::move(natparsed), numvec(0), rpolicy,
                            iterations, precision, 1, 0.5, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "pi") {
-        sol = rsolve_s_pi(m, discount, std::move(natparsed), numvec(0), indvec(0),
+        sol = rsolve_s_pi(m, discount, std::move(natparsed), numvec(0), rpolicy,
                           iterations, precision, progress);
     } else {
         Rcpp::stop("Unknown algorithm type: " + Rcpp::as<string>(options["algorithm"]));
@@ -651,6 +665,15 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     std::vector<std::vector<craam::numvec>> nat_pol;
     std::tie(dec_pol, nat_pol) = unzip(sol.policy);
 #endif
+
+    if (output_mat) {
+        auto pb = craam::algorithms::SRobustBellman(m, natparsed);
+        auto tmat = craam::algorithms::transition_mat(pb, sol.policy);
+        auto rew = craam::algorithms::rewards_vec(pb, sol.policy);
+        result["transitions"] = as_matrix(tmat);
+        result["rewards"] = rew;
+    }
+
     result["policy"] = output_policy(dec_pol);
     result["policy.nature"] = move(nat_pol);
     result["valuefunction"] = move(sol.valuefunction);

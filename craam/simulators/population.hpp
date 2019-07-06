@@ -95,10 +95,11 @@ public:
      */
     PopulationSim(long carrying_capacity, long init_population, uint actioncount,
                   numvecvec mean_growth_rate, numvecvec std_growth_rate,
-                  numvecvec rewards, random_device::result_type seed = random_device{}())
+                  numvecvec rewards, Growth growth_model = Growth::Exponential,
+                  random_device::result_type seed = random_device{}())
         : carrying_capacity(carrying_capacity), init_population(init_population),
           mean_growth_rate(mean_growth_rate), std_growth_rate(std_growth_rate),
-          rewards(rewards), actioncount(actioncount), growth_model(Growth::Exponential),
+          rewards(rewards), actioncount(actioncount), growth_model(growth_model),
           gen(seed) {
 
         // check whether the provided growth rate parameters are of the correct

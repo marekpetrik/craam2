@@ -110,9 +110,9 @@ craam::numvecvec matrix2nestedvec(const Rcpp::NumericMatrix& matrix) {
     craam::numvecvec result;
     result.reserve(matrix.nrow());
     for (int i = 0; i < matrix.nrow(); i++) {
-        Rcpp::ConstMatrixRow row = matrix.row(i);
-        craam::numvec& x = result.emplace_back(row.size());
-        std::copy(row.cbegin(), row.cend(), x.begin());
+        auto row = matrix.row(i);
+        result.emplace_back(row.size());
+        std::copy(row.cbegin(), row.cend(), result.back().begin());
     }
     return result;
 }
@@ -124,11 +124,23 @@ craam::numvecvec matrix2nestedvec(const Rcpp::NumericMatrix& matrix) {
 Rcpp::DataFrame mdp_population(int capacity, int initial,
                                Rcpp::NumericMatrix growth_rates_exp,
                                Rcpp::NumericMatrix growth_rates_std,
-                               Rcpp::NumericMatrix rewards) {
+                               Rcpp::NumericMatrix rewards, Rcpp::String s_growth_model) {
 
+    craam::msen::PopulationSim::Growth growth;
+
+    if (s_growth_model == "logistic") {
+        growth = craam::msen::PopulationSim::Growth::Logistic;
+    } else if (s_growth_model == "exponential") {
+        growth = craam::msen::PopulationSim::Growth::Exponential;
+    } else {
+        Rcpp::stop("Unknown growth model. Use 'exponential' or 'logistic'.");
+        return Rcpp::DataFrame();
+    }
+
+    // use the logistic growth model by default
     auto sim = craam::msen::PopulationSim(
         capacity, initial, growth_rates_exp.nrow(), matrix2nestedvec(growth_rates_exp),
-        matrix2nestedvec(growth_rates_std), matrix2nestedvec(rewards));
+        matrix2nestedvec(growth_rates_std), matrix2nestedvec(rewards), growth);
 
     craam::MDP mdp = craam::msen::build_mdp(sim, 1000);
 
