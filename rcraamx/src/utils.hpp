@@ -220,12 +220,14 @@ inline std::vector<T> parse_s_values(const craam::MDP& mdp, const Rcpp::DataFram
 *              determine which value should be set.
 *              Only the last value is used if multiple rows are present.
 * @param def_value The default value for when frame does not specify anything for the state action pair
+* @param val_name Name of the value column
 *
 * @returns A vector over states with an inner vector of actions
 */
 inline craam::numvecvec parse_sa_values(const craam::MDP& mdp,
                                         const Rcpp::DataFrame& frame,
-                                        double def_value = 0) {
+                                        double def_value = 0,
+                                        const std::string val_name = "value") {
 
     craam::numvecvec result(mdp.size());
     for (long i = 0; i < mdp.size(); i++) {
@@ -233,7 +235,7 @@ inline craam::numvecvec parse_sa_values(const craam::MDP& mdp,
     }
 
     Rcpp::IntegerVector idstates = frame["idstate"], idactions = frame["idaction"];
-    Rcpp::NumericVector values = frame["value"];
+    Rcpp::NumericVector values = frame[val_name];
 
     for (long i = 0; i < idstates.size(); i++) {
         long idstate = idstates[i], idaction = idactions[i];

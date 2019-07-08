@@ -142,7 +142,7 @@ Rcpp::DataFrame mdp_population(int capacity, int initial,
         capacity, initial, growth_rates_exp.nrow(), matrix2nestedvec(growth_rates_exp),
         matrix2nestedvec(growth_rates_std), matrix2nestedvec(rewards), growth);
 
-    craam::MDP mdp = craam::msen::build_mdp(sim, 1000);
+    craam::MDP mdp = craam::msen::build_mdp(sim, 10000);
 
     return mdp_to_dataframe(mdp);
 }

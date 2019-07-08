@@ -262,7 +262,8 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount,
             : indvec(0);
     numvecvec rpolicy =
         options.containsElementNamed("policy_rand")
-            ? parse_sa_values(m, Rcpp::as<Rcpp::DataFrame>(options["policy_rand"]), 0.0)
+            ? parse_sa_values(m, Rcpp::as<Rcpp::DataFrame>(options["policy_rand"]), 0.0,
+                              "probability")
             : numvecvec(0);
 
     ComputeProgress progress(iterations, precision, show_progress, timeout);
@@ -344,7 +345,7 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount,
         result["iters"] = rsol.iterations;
         result["residual"] = rsol.residual;
         result["time"] = rsol.time;
-        result["policy"] = output_policy(rsol.policy);
+        result["policy_rand"] = output_policy(rsol.policy);
         result["valuefunction"] = move(rsol.valuefunction);
         result["status"] = rsol.status;
         if (rsol.status != 0)
@@ -361,7 +362,6 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount,
             Rcpp::warning(
                 "Ran out of time or iterations. The solution may be suboptimal.");
     }
-
     return result;
 }
 
@@ -376,7 +376,6 @@ Rcpp::DataFrame compute_qvalues(Rcpp::DataFrame mdp, Rcpp::NumericVector valuefu
     if (m.size() != size_t(valuefunction.size())) {
         Rcpp::stop("value function must have the same size as the MDP.");
     }
-
     vector<numvec> qvalue = craam::algorithms::compute_qfunction(
         m, Rcpp::as<numvec>(valuefunction), discount);
 
@@ -535,7 +534,7 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
     }
 
     result["policy"] = output_policy(dec_pol);
-    result["policy.nature"] = move(nat_pol);
+    result["nature"] = move(nat_pol);
     result["valuefunction"] = move(sol.valuefunction);
     result["status"] = sol.status;
     if (sol.status != 0)
@@ -627,7 +626,8 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     // policy: the method can be used to compute the robust solution for a policy
     numvecvec rpolicy =
         options.containsElementNamed("policy_rand")
-            ? parse_sa_values(m, Rcpp::as<Rcpp::DataFrame>(options["policy_rand"]), 0.0)
+            ? parse_sa_values(m, Rcpp::as<Rcpp::DataFrame>(options["policy_rand"]), 0.0,
+                              "probability")
             : numvecvec(0);
 
     craam::SRobustSolution sol;
@@ -674,8 +674,8 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
         result["rewards"] = rew;
     }
 
-    result["policy"] = output_policy(dec_pol);
-    result["policy.nature"] = move(nat_pol);
+    result["policy_rand"] = output_policy(dec_pol);
+    result["nature"] = move(nat_pol);
     result["valuefunction"] = move(sol.valuefunction);
     result["status"] = sol.status;
     if (sol.status != 0)

@@ -183,11 +183,12 @@ public:
             next_population = clamp(long(std::round(growth_rate * current_population)),
                                     0l, carrying_capacity);
         } else if (growth_model == Growth::Logistic) {
-            next_population =
-                clamp(long(std::round(growth_rate * current_population *
-                                      (carrying_capacity - current_population) /
-                                      prec_t(carrying_capacity))),
-                      0l, carrying_capacity);
+            // see https://en.wikipedia.org/wiki/Logistic_function#In_ecology:_modeling_population_growth
+            auto pop_increase = (growth_rate - 1.0) * current_population *
+                                (carrying_capacity - current_population) /
+                                prec_t(carrying_capacity);
+            next_population = clamp(long(std::round(current_population + pop_increase)),
+                                    0l, carrying_capacity);
         } else {
             throw invalid_argument("Unsupported population model.");
         }
