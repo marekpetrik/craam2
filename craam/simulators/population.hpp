@@ -61,6 +61,10 @@ protected:
     /// Number of available actions: each one represents a
     /// different treatment type or intensity
     uint actioncount;
+    /// External population supply (mean) - normal distribution
+    prec_t external_mean;
+    /// External population supply (std) - normal distribution
+    prec_t external_std;
     /// How growth rate interacts with the population level
     Growth growth_model;
     /// Random number when generating new states
@@ -89,18 +93,19 @@ public:
      *                          std_growth_rate[action][population]
      * @param rewards Received rewards for each action and each population level:
      *                          reward[action][population]
-     * @param std_observation Standard deviation for the observation from the
-     *                          actual underlying population
+     * @param external_mean External population supply (mean). Normally distributed.
+     * @param external_mean External population supply (std). Normally distributed.
      * @param seed Seed for random number generation
      */
     PopulationSim(long carrying_capacity, long init_population, uint actioncount,
                   numvecvec mean_growth_rate, numvecvec std_growth_rate,
-                  numvecvec rewards, Growth growth_model = Growth::Exponential,
+                  numvecvec rewards, prec_t external_mean, prec_t external_std,
+                  Growth growth_model = Growth::Exponential,
                   random_device::result_type seed = random_device{}())
         : carrying_capacity(carrying_capacity), init_population(init_population),
           mean_growth_rate(mean_growth_rate), std_growth_rate(std_growth_rate),
-          rewards(rewards), actioncount(actioncount), growth_model(growth_model),
-          gen(seed) {
+          rewards(rewards), actioncount(actioncount), external_mean(external_mean),
+          external_std(external_std), growth_model(growth_model), gen(seed) {
 
         // check whether the provided growth rate parameters are of the correct
         // dimensions
@@ -192,6 +197,12 @@ public:
         } else {
             throw invalid_argument("Unsupported population model.");
         }
+
+        // add the external population supply
+        normal_distribution<prec_t> external_distribution(external_mean, external_std);
+        prec_t external = std::max(0.0, external_distribution(gen));
+        next_population =
+            clamp(long(std::round(next_population + external)), 0l, carrying_capacity);
 
         prec_t reward = rewards[action][current_population];
         return {reward, next_population};

@@ -130,8 +130,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // mdp_population
-Rcpp::DataFrame mdp_population(int capacity, int initial, Rcpp::NumericMatrix growth_rates_exp, Rcpp::NumericMatrix growth_rates_std, Rcpp::NumericMatrix rewards, Rcpp::String s_growth_model);
-RcppExport SEXP _rcraam_mdp_population(SEXP capacitySEXP, SEXP initialSEXP, SEXP growth_rates_expSEXP, SEXP growth_rates_stdSEXP, SEXP rewardsSEXP, SEXP s_growth_modelSEXP) {
+Rcpp::DataFrame mdp_population(int capacity, int initial, Rcpp::NumericMatrix growth_rates_exp, Rcpp::NumericMatrix growth_rates_std, Rcpp::NumericMatrix rewards, double external_mean, double external_std, Rcpp::String s_growth_model);
+RcppExport SEXP _rcraam_mdp_population(SEXP capacitySEXP, SEXP initialSEXP, SEXP growth_rates_expSEXP, SEXP growth_rates_stdSEXP, SEXP rewardsSEXP, SEXP external_meanSEXP, SEXP external_stdSEXP, SEXP s_growth_modelSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -140,8 +140,10 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type growth_rates_exp(growth_rates_expSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type growth_rates_std(growth_rates_stdSEXP);
     Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type rewards(rewardsSEXP);
+    Rcpp::traits::input_parameter< double >::type external_mean(external_meanSEXP);
+    Rcpp::traits::input_parameter< double >::type external_std(external_stdSEXP);
     Rcpp::traits::input_parameter< Rcpp::String >::type s_growth_model(s_growth_modelSEXP);
-    rcpp_result_gen = Rcpp::wrap(mdp_population(capacity, initial, growth_rates_exp, growth_rates_std, rewards, s_growth_model));
+    rcpp_result_gen = Rcpp::wrap(mdp_population(capacity, initial, growth_rates_exp, growth_rates_std, rewards, external_mean, external_std, s_growth_model));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -172,7 +174,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_rcraam_mdp_from_samples", (DL_FUNC) &_rcraam_mdp_from_samples, 1},
     {"_rcraam_mdp_example", (DL_FUNC) &_rcraam_mdp_example, 1},
     {"_rcraam_mdp_inventory", (DL_FUNC) &_rcraam_mdp_inventory, 1},
-    {"_rcraam_mdp_population", (DL_FUNC) &_rcraam_mdp_population, 6},
+    {"_rcraam_mdp_population", (DL_FUNC) &_rcraam_mdp_population, 8},
     {"_rcraam_simulate_mdp", (DL_FUNC) &_rcraam_simulate_mdp, 5},
     {NULL, NULL, 0}
 };

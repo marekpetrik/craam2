@@ -124,7 +124,8 @@ craam::numvecvec matrix2nestedvec(const Rcpp::NumericMatrix& matrix) {
 Rcpp::DataFrame mdp_population(int capacity, int initial,
                                Rcpp::NumericMatrix growth_rates_exp,
                                Rcpp::NumericMatrix growth_rates_std,
-                               Rcpp::NumericMatrix rewards, Rcpp::String s_growth_model) {
+                               Rcpp::NumericMatrix rewards, double external_mean,
+                               double external_std, Rcpp::String s_growth_model) {
 
     craam::msen::PopulationSim::Growth growth;
 
@@ -140,7 +141,8 @@ Rcpp::DataFrame mdp_population(int capacity, int initial,
     // use the logistic growth model by default
     auto sim = craam::msen::PopulationSim(
         capacity, initial, growth_rates_exp.nrow(), matrix2nestedvec(growth_rates_exp),
-        matrix2nestedvec(growth_rates_std), matrix2nestedvec(rewards), growth);
+        matrix2nestedvec(growth_rates_std), matrix2nestedvec(rewards), external_mean,
+        external_std, growth);
 
     craam::MDP mdp = craam::msen::build_mdp(sim, 10000);
 
@@ -174,7 +176,7 @@ Rcpp::DataFrame simulate_mdp(Rcpp::DataFrame mdp, int initial_state,
                              Rcpp::DataFrame policy, int horizon, int episodes) {
 
     craam::MDP m = mdp_from_dataframe(mdp);
-    craam::numvecvec rpolicy_par = parse_sa_values(m, policy, 0.0);
+    craam::numvecvec rpolicy_par = parse_sa_values(m, policy, 0.0, "probability");
 
     //Rcpp::Rcout << rpolicy_par[0][0] << std::endl;
 
