@@ -44,8 +44,8 @@ cat("MDP policy:", mdp_sol$policy$idaction)
 rpolicy <- mutate(mdp_sol$policy, value = 1.0) # needs a randomized policy for now
 
 
-#sim.samples <- simulate_mdp(pop.model.mdp, init.population, rpolicy, 300, 1)
-#print(sim.samples$idstatefrom)
+sim.samples <- simulate_mdp(pop.model.mdp, init.population, rpolicy, 300, 1)
+print(sim.samples$idstatefrom)
 #print(discount^sim.samples$step %*% sim.samples$reward)
 
 # simulate the model
