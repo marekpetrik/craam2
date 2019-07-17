@@ -40,7 +40,7 @@ pop.model.mdp <- rcraam::mdp_population(max.population, init.population,
                                         exp.growth.rate, sd.growth.rate, 
                                         rewards, external.pop, external.pop/2, "logistic")
 
-### ***** Nominal Solution *************
+### ----- Nominal Solution -------------
 
 # solve for the optimal policy
 
@@ -56,40 +56,98 @@ sim.samples <- simulate_mdp(pop.model.mdp, init.population, rpolicy, 300, 1)
 print(sim.samples$idstatefrom)
 print(discount^sim.samples$step %*% sim.samples$reward)
 
-
-### ****** Fit a model to the solution *********************
+### ------ Fit a model to the solution ---------------------
 
 library(rjags)
 
 pop <- sim.samples$idstatefrom
+pop.next <- sim.samples$idstateto
 act <- sim.samples$idaction
 
-model1.string <-"
+model_str <-"
 model {
-  for (i in 2:N){
+  for (i in 1:N){
     ext[i] ~ dnorm(ext_mu, ext_std)
-    pop[i] ~ dnorm(mu[act[i] + 1] * pop[i-1]  + ext[i], sigma[act[i] + 1])
+    next_mean[i] <- ifelse(act[i] == 0, 
+                  mu * pop[i],
+                  mu0 * pop[i] + mu1 * pop[i]^2 + mu2 * pop[i]^3)
+    pop_next[i] ~ dnorm(next_mean[i] + ext[i], sigma[act[i] + 1])
   }
   for (j in 1:M){
-    mu[j] ~ dnorm(1.0,0.5)
     sigma[j] ~ dunif(0,5)
   }
-  ext_mu ~ dnorm(5, 2)
-  ext_std ~ dnorm(2, 2) 
+  mu ~ dunif(0.5, 3)
+  mu0 ~ dnorm(1.0, 3)
+  mu1 ~ dnorm(0.0, 3)
+  mu2 ~ dnorm(0.0, 3)
+  ext_mu ~ dunif(0, 20)
+  ext_std ~ dunif(0, 5) 
 }
 "
-model1.spec<-textConnection(model1.string)
 
-jags <- jags.model(model1.spec,
+model_spec <- textConnection(model_str)
+
+jags <- jags.model(model_spec,
                    data = list(pop = pop,
+                               pop_next = pop.next,
                                act = act,
                                N = length(pop),
                                M = length(unique(act))),
                    n.chains=4,
                    n.adapt=100)
 
-update(jags, 1000)
+# warmup
+update(jags, 5000)
 
-jags.samples(jags,
-             c('mu', 'sigma', 'ext_mu'),
+post_samples <- jags.samples(jags,
+             c('mu', 'mu0',  'mu1', 'mu2', 'sigma', 'ext_mu'),
              1000)
+
+cat("Estimated parameters:")
+print(post_samples)
+
+### ------ Plot the true vs estimated effectiveness --------
+
+population_range <- seq(0,max.population)
+efficiency_true <- data.frame(population = population_range, type = "true", 
+                       rate = growth.app)
+
+# returns the function that estimates the pest growth 
+# after action1 is applied
+efficiency_sampled <- matrix(0, nrow = dim(post_samples$mu0)[2] * dim(post_samples$mu0)[3],
+                                ncol = length(population_range))
+k <- 1
+for(i in 1:dim(post_samples$mu0)[2]){
+  for(j in 1:dim(post_samples$mu0)[3]){
+    efficiency_sampled[k,] <- post_samples$mu0[1,i,j] + 
+            post_samples$mu1[1,i,j] * population_range   + 
+            post_samples$mu2[1,i,j] * population_range^2
+    k <- k + 1
+  }
+}
+
+#ggplot(mapping=aes(x=population, y=rate)) + 
+#  geom_line(data=efficiency_true)
+
+efficiency_sampled.df <- reshape2::melt(efficiency_sampled, value.name = "Rate")
+colnames(efficiency_sampled.df) <- c("Sample", "Population", "Rate")
+efficiency_sampled.df$Population <- efficiency_sampled.df$Population - 1
+
+plt <- ggplot(efficiency_sampled.df, aes(x = Population, y = Rate)) + 
+        geom_hex() + 
+        geom_line(mapping=aes(x=population, y=rate), data=efficiency_true, color = "red")
+
+print(plt)
+
+### ------ Solve nominal problem ---------------------
+
+# fist action: no control, second action: pesticide
+exp.growth.rate <- rbind(rep(2.0, max.population+1), growth.app,
+                         growth.app, growth.app, growth.app)
+sd.growth.rate <- rbind(rep(0.6, max.population+1), rep(0.6, max.population+1), 
+                        rep(0.5, max.population+1), rep(0.4, max.population+1),
+                        rep(0.3, max.population+1))
+
+pop.model.mdp <- rcraam::mdp_population(max.population, init.population, 
+                                        exp.growth.rate, sd.growth.rate, 
+                                        rewards, external.pop, external.pop/2, "logistic")
