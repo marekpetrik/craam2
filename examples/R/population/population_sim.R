@@ -100,7 +100,7 @@ jags <- jags.model(model_spec,
                    n.adapt=100)
 
 # warmup
-update(jags, 5000)
+update(jags, 1000)
 
 post_samples <- jags.samples(jags,
              c('mu', 'mu0',  'mu1', 'mu2', 'sigma', 'ext_mu'),

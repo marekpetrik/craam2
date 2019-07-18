@@ -6,7 +6,7 @@ library(readr)
 library(reticulate)
 library(splines)
 
-source("discretized.R")
+#source("discretized.R")
 
 # ------ Program parameters ------
 
@@ -200,7 +200,7 @@ cat ("Solving MDP\n")
 mdp <- rcraam::mdp_from_samples(samples.frame)
 
 write_csv(mdp, "cartpole_mdp.csv")
-solution <- rcraam::solve_mdp(mdp, discount, list(algorithm="pi"))
+solution <- rcraam::solve_mdp(mdp, discount, list(algorithm="mpi", iterations = 10000))
 rsolution <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.1, list(algorithm="vi",
                                                                   iterations = 10000))
 rsolution <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.1, list(algorithm="ppi",

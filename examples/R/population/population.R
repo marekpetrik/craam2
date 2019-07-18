@@ -15,9 +15,10 @@ max.population <- 50
 init.population <- 10
 actions <- 5
 discount <- 0.98
+external.pop <- 3
+
 plot.breaks <- seq(0,0.4,by=0.005)
 show.plots <- TRUE
-external.pop <- 3
 
 corr <- (seq(0,max.population) - (max.population/2))^2 
 growth.app <- 0.2 + corr / max(corr) 
