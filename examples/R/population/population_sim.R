@@ -1,7 +1,6 @@
 library(rcraam)
 library(dplyr)
 library(ggplot2)
-library(plot.matrix)
 theme_set(theme_light())
 
 error_size <- 0.1
@@ -57,6 +56,7 @@ print(sim.samples$idstatefrom)
 print(discount^sim.samples$step %*% sim.samples$reward)
 
 ### ------ Fit a model to the solution ---------------------
+
 sim.samples <- simulate_mdp(pop.model.mdp, init.population, rpolicy, 300, 1)
 print(sim.samples$idstatefrom)
 #print(discount^sim.samples$step %*% sim.samples$reward)
