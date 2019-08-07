@@ -38,23 +38,25 @@ typedef SAState<ActionO> StateO;
 using MDPO = GMDP<StateO>;
 
 /**
-Adds a transition probability and reward for a particular outcome.
-
-\param mdp model to add the transition to
-\param fromid Starting state ID
-\param actionid Action ID
-\param toid Destination ID
-\param probability Probability of the transition (must be non-negative)
-\param reward The reward associated with the transition.
+ * Adds a transition probability and reward for a particular outcome.
+ *
+ * @param mdp model to add the transition to
+ * @param fromid Zero-based id of the state transition from
+ * @param actionid Zero-based id
+ * @param outcomeis Zero-based id of the nature's action
+ * @param toid Zero-based id of the state transitioning to
+ * @param probability Probability of the transition (must be non-negative)
+ * @param reward The reward associated with the transition.
 */
 inline void add_transition(MDPO& mdp, long fromid, long actionid, long outcomeid,
-                           long toid, prec_t probability, prec_t reward) {
+                           long toid, prec_t probability, prec_t reward,
+                           bool force = false) {
     // make sure that the destination state exists
     mdp.create_state(toid);
     auto& state_from = mdp.create_state(fromid);
     auto& action = state_from.create_action(actionid);
     Transition& outcome = action.create_outcome(outcomeid);
-    outcome.add_sample(toid, probability, reward);
+    outcome.add_sample(toid, probability, reward, force);
 }
 
 /**

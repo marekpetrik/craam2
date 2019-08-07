@@ -257,8 +257,8 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount,
     // initialized policies from the parameter
     indvec policy =
         options.containsElementNamed("policy")
-            ? parse_s_values<long>(m, Rcpp::as<Rcpp::DataFrame>(options["policy"]), -1,
-                                   "idaction")
+            ? parse_s_values<long>(m.size(), Rcpp::as<Rcpp::DataFrame>(options["policy"]),
+                                   -1, "idaction")
             : indvec(0);
     numvecvec rpolicy =
         options.containsElementNamed("policy_rand")
@@ -272,12 +272,11 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount,
         Rcpp::as<string>(options["algorithm"]) == "mpi") {
         // Modified policy iteration
         if (is_randomized) {
-            rsol =
-                solve_mpi_r(m, discount, numvec(0), rpolicy, sqrt(iterations), precision,
-                            std::min(sqrt(iterations), 1000.0), 0.9, progress);
+            rsol = solve_mpi_r(m, discount, numvec(0), rpolicy, iterations, precision,
+                               std::min(long(sqrt(iterations)), 50l), 0.9, progress);
         } else {
-            sol = solve_mpi(m, discount, numvec(0), policy, sqrt(iterations), precision,
-                            std::min(sqrt(iterations), 1000.0), 0.9, progress);
+            sol = solve_mpi(m, discount, numvec(0), policy, iterations, precision,
+                            std::min(long(sqrt(iterations)), 50l), 0.9, progress);
         }
 
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi_j") {
@@ -388,37 +387,32 @@ algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
                                      SEXP nature_par) {
     if (nature == "l1u") {
         return algorithms::nats::robust_l1u(Rcpp::as<double>(nature_par));
-    }
-    if (nature == "l1") {
+    } else if (nature == "l1") {
         numvecvec values =
             parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0);
         return algorithms::nats::robust_l1(values);
-    }
-    if (nature == "l1w") {
+    } else if (nature == "l1w") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
         auto budgets =
             parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["budgets"]), 0.0);
         auto weights =
             parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]), 1.0);
         return algorithms::nats::robust_l1w(budgets, weights);
-    }
-    if (nature == "evaru") {
+    } else if (nature == "evaru") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
         return algorithms::nats::robust_var_exp_u(Rcpp::as<double>(par["alpha"]),
                                                   Rcpp::as<double>(par["beta"]));
-    }
-    if (nature == "eavaru") {
+    } else if (nature == "eavaru") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
         return algorithms::nats::robust_avar_exp_u(Rcpp::as<double>(par["alpha"]),
                                                    Rcpp::as<double>(par["beta"]));
     }
 #ifdef GUROBI_USE
-    if (nature == "l1_g") {
+    else if (nature == "l1_g") {
         vector<numvec> values =
             parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0);
         return algorithms::nats::robust_l1w_gurobi(values);
-    }
-    if (nature == "l1w_g") {
+    } else if (nature == "l1w_g") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
         auto budgets =
             parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["budgets"]), 0.0);
@@ -431,12 +425,32 @@ algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
         Rcpp::stop("unknown nature");
     }
 }
+
+/**
+ * Parses the name and the parameter of the provided nature
+ */
+algorithms::SANature parse_nature_sa(const MDPO& mdpo, const string& nature,
+                                     SEXP nature_par) {
+
+    if (nature == "evaru") {
+        Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
+        return algorithms::nats::robust_var_exp_u(Rcpp::as<double>(par["alpha"]),
+                                                  Rcpp::as<double>(par["beta"]));
+    } else if (nature == "eavaru") {
+        Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
+        return algorithms::nats::robust_avar_exp_u(Rcpp::as<double>(par["alpha"]),
+                                                   Rcpp::as<double>(par["beta"]));
+    } else {
+        Rcpp::stop("unknown nature");
+    }
+}
+
 /**
  * Solves a robust MDP version of the problem with sa-rectangular ambiguity
  *
  * The algorithms: pi, mpi may cycle infinitely without converging to a solution,
  * when solving a robust MDP.
- * The lagorithm ppi is guaranteed to converge to an optimal solition.
+ * The algorithm ppi is guaranteed to converge to an optimal solution.
  */
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String nature,
@@ -477,8 +491,8 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
     // policy: the method can be used to compute the robust solution for a policy
     indvec policy =
         options.containsElementNamed("policy")
-            ? parse_s_values<long>(m, Rcpp::as<Rcpp::DataFrame>(options["policy"]), -1,
-                                   "idaction")
+            ? parse_s_values<long>(m.size(), Rcpp::as<Rcpp::DataFrame>(options["policy"]),
+                                   -1, "idaction")
             : indvec(0);
 
     SARobustSolution sol;
@@ -494,8 +508,8 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
     } else if (Rcpp::as<string>(options["algorithm"]) == "mpi") {
         Rcpp::warning("The robust version of the mpi method may cycle forever "
                       "without converging.");
-        sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), policy,
-                         sqrt(iterations), precision, sqrt(iterations), 0.5, progress);
+        sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
+                         precision, std::min(long(sqrt(iterations)), 50l), 0.5, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
         sol = rsolve_vi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
                         precision, progress);
@@ -544,6 +558,123 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
 }
 
 /**
+ * Solves a robust MDP version of the problem with sa-rectangular ambiguity
+ *
+ * The algorithms: pi, mpi may cycle infinitely without converging to a solution,
+ * when solving a robust MDP.
+ * The algorithm ppi is guaranteed to converge to an optimal solution.
+ */
+// [[Rcpp::export]]
+Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String nature,
+                          SEXP nature_par,
+                          Rcpp::Nullable<Rcpp::List> options_n = R_NilValue) {
+    Rcpp::List result;
+    Rcpp::List options =
+        options_n.isNotNull() ? Rcpp::List(options_n.get()) : Rcpp::List();
+
+    // What would be the point of forcing to add transitions even if
+    // the  probabilities are 0?
+    // perhaps only if the RMDP is transformed to an MDP
+    // that is why this is set to true for now .... it is also easy to remove the 0s from
+    // the dataframe
+    MDPO m = mdpo_from_dataframe(mdpo, true);
+
+    if (options.containsElementNamed("pack_actions") &&
+        Rcpp::as<bool>(options["pack_actions"])) {
+        result["action_map"] = m.pack_actions();
+    }
+
+    long iterations = options.containsElementNamed("iterations")
+                          ? Rcpp::as<long>(options["iterations"])
+                          : defaults::iterations;
+    double precision = options.containsElementNamed("precision")
+                           ? Rcpp::as<double>(options["precision"])
+                           : defaults::maxresidual;
+
+    double timeout = options.containsElementNamed("timeout")
+                         ? Rcpp::as<double>(options["timeout"])
+                         : defaults::timeout;
+
+    bool show_progress = options.containsElementNamed("progress")
+                             ? Rcpp::as<bool>(options["progress"])
+                             : defaults::show_progress;
+
+    // outputs the matrix of transition probabilities and the
+    // vector of rewards
+    bool output_mat = options.containsElementNamed("output_tran")
+                          ? Rcpp::as<bool>(options["output_tran"])
+                          : false;
+
+    // policy: the method can be used to compute the robust solution for a policy
+    indvec policy =
+        options.containsElementNamed("policy")
+            ? parse_s_values<long>(m.size(), Rcpp::as<Rcpp::DataFrame>(options["policy"]),
+                                   -1, "idaction")
+            : indvec(0);
+
+    SARobustSolution sol;
+    algorithms::SANature natparsed = parse_nature_sa(m, nature, nature_par);
+
+    ComputeProgress progress(iterations, precision, show_progress, timeout);
+
+    // the default method is to use ppa
+    if (!options.containsElementNamed("algorithm") ||
+        Rcpp::as<string>(options["algorithm"]) == "ppi") {
+        sol = rsolve_ppi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
+                         precision, progress);
+    } else if (Rcpp::as<string>(options["algorithm"]) == "mpi") {
+        Rcpp::warning("The robust version of the mpi method may cycle forever "
+                      "without converging.");
+        sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
+                         precision, std::min(long(sqrt(iterations)), 50l), 0.5, progress);
+    } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
+        sol = rsolve_vi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
+                        precision, progress);
+
+    } else if (Rcpp::as<string>(options["algorithm"]) == "vi_j") {
+        // Jacobian value iteration, simulated using mpi
+        sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
+                         precision, 1, 0.5, progress);
+    } else if (Rcpp::as<string>(options["algorithm"]) == "pi") {
+        Rcpp::warning("The robust version of the pi method may cycle forever without "
+                      "converging.");
+        sol = rsolve_pi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
+                        precision, progress);
+    } else {
+        Rcpp::stop("Unknown solver type.");
+    }
+
+    result["iters"] = sol.iterations;
+    result["residual"] = sol.residual;
+    result["time"] = sol.time;
+
+#if __cplusplus >= 201703L
+    auto [dec_pol, nat_pol] = unzip(sol.policy);
+#else
+    craam::indvec dec_pol;
+    std::vector<craam::numvec> nat_pol;
+    std::tie(dec_pol, nat_pol) = unzip(sol.policy);
+#endif
+
+    if (output_mat) {
+        auto pb = craam::algorithms::SARobustOutcomeBellman(m, natparsed);
+        auto tmat = craam::algorithms::transition_mat(pb, sol.policy);
+        auto rew = craam::algorithms::rewards_vec(pb, sol.policy);
+        result["transitions"] = as_matrix(tmat);
+        result["rewards"] = rew;
+    }
+
+    result["policy"] = output_policy(dec_pol);
+    result["nature"] = move(nat_pol);
+    result["valuefunction"] = move(sol.valuefunction);
+    result["status"] = sol.status;
+    if (sol.status != 0)
+        Rcpp::warning("Ran out of time or iterations. The solution may be suboptimal.");
+
+    return result;
+}
+
+/**
  * Parses the name and the parameter of the provided nature
  */
 algorithms::SNature parse_nature_s(const MDP& mdp, const string& nature,
@@ -552,14 +683,14 @@ algorithms::SNature parse_nature_s(const MDP& mdp, const string& nature,
         return algorithms::nats::robust_s_l1u(Rcpp::as<double>(nature_par));
     }
     if (nature == "l1") {
-        numvec values =
-            parse_s_values<prec_t>(mdp, Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0);
+        numvec values = parse_s_values<prec_t>(
+            mdp.size(), Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0);
         return algorithms::nats::robust_s_l1(values);
     }
     if (nature == "l1w") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
         auto budgets =
-            parse_s_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["budgets"]), 0.0);
+            parse_s_values(mdp.size(), Rcpp::as<Rcpp::DataFrame>(par["budgets"]), 0.0);
         auto weights =
             parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]), 1.0);
         return algorithms::nats::robust_s_l1w(budgets, weights);
@@ -567,13 +698,14 @@ algorithms::SNature parse_nature_s(const MDP& mdp, const string& nature,
     // ----- gurobi only -----
 #ifdef GUROBI_USE
     if (nature == "l1_g") {
-        numvec values = parse_s_values(mdp, Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0);
+        numvec values =
+            parse_s_values(mdp.size(), Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0);
         return algorithms::nats::robust_s_l1_gurobi(values);
     }
     if (nature == "l1w_g") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
         auto budgets =
-            parse_s_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["budgets"]), 0.0);
+            parse_s_values(mdp.size(), Rcpp::as<Rcpp::DataFrame>(par["budgets"]), 0.0);
         auto weights =
             parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]), 1.0);
         return algorithms::nats::robust_s_l1w_gurobi(budgets, weights);
@@ -641,7 +773,8 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
                            iterations, precision, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "mpi") {
         sol = rsolve_s_mpi(m, discount, std::move(natparsed), numvec(0), rpolicy,
-                           sqrt(iterations), precision, sqrt(iterations), 0.5, progress);
+                           iterations, precision, std::min(long(sqrt(iterations)), 50l),
+                           0.5, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
         sol = rsolve_s_vi(m, discount, std::move(natparsed), numvec(0), rpolicy,
                           iterations, precision, progress);

@@ -121,10 +121,12 @@ inline craam::MDP mdp_from_dataframe(const Rcpp::DataFrame& data, bool force = f
  *
  * @param frame Dataframe with columns: idstatefrom, idaction, idoutcome, idstateto, reward, probability.
  *              Multiple state-action-outcome-state rows have summed probabilities and averaged rewards.
+ * @param force Whether transitions with probability 0 should be focibly added to the transitions.
+ *              This makes a difference with robust MDPs.
  *
  * @returns Corresponding MDPO definition
  */
-inline craam::MDPO mdpo_from_dataframe(const Rcpp::DataFrame& data) {
+inline craam::MDPO mdpo_from_dataframe(const Rcpp::DataFrame& data, bool force = false) {
     // idstatefrom, idaction, idstateto, probability, reward
     Rcpp::IntegerVector idstatefrom = data["idstatefrom"], idaction = data["idaction"],
                         idstateto = data["idstateto"], idoutcome = data["idoutcome"];
@@ -135,7 +137,7 @@ inline craam::MDPO mdpo_from_dataframe(const Rcpp::DataFrame& data) {
 
     for (size_t i = 0; i < n; i++) {
         craam::add_transition(m, idstatefrom[i], idaction[i], idoutcome[i], idstateto[i],
-                              probability[i], reward[i]);
+                              probability[i], reward[i], force);
     }
     return m;
 }
@@ -188,20 +190,22 @@ inline craam::numvecvec frame2matrix(const Rcpp::DataFrame& frame, uint dim1, ui
  *                  specify anything for the state action pair
  * @param value_column Name of the column with the value
  *
+ * @tparam T Type of the value to parse
+ *
  * @returns A vector over states with the included values
  */
 template <class T>
-inline std::vector<T> parse_s_values(const craam::MDP& mdp, const Rcpp::DataFrame& frame,
+inline std::vector<T> parse_s_values(size_t statecount, const Rcpp::DataFrame& frame,
                                      T def_value = 0,
                                      const std::string& value_column = "value") {
-    std::vector<T> result(mdp.size());
+    std::vector<T> result(statecount);
     Rcpp::IntegerVector idstates = frame["idstate"];
     Rcpp::NumericVector values = frame[value_column];
     for (long i = 0; i < idstates.size(); i++) {
         long idstate = idstates[i];
 
         if (idstate < 0) Rcpp::stop("idstate must be non-negative");
-        if (idstate > mdp.size())
+        if (idstate > statecount)
             Rcpp::stop("idstate must be smaller than the number of MDP states");
 
         result[idstate] = values[i];
