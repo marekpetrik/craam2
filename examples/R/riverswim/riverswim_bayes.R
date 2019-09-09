@@ -85,5 +85,6 @@ solve_mdp(mdp.bayesian, discount)
 
 mdpo.bayes <- do.call(rbind, lapply(seq(0:20), 
                                     function(ido){sample_mdp_bayes(posteriors, mdp, ido)}))
-rsolve_mdpo_sa(mdpo.bayes, discount, "eavaru", list(alpha = 0.1, beta = 0.5))
+#rsolve_mdpo_sa(mdpo.bayes, discount, "eavaru", 
+#               list(alpha = 0.1, beta = 0.5), list(algorithm = "vi"))
 

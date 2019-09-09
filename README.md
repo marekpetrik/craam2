@@ -170,11 +170,9 @@ By default, the project assumes that the [Gurobi](http://www.gurobi.com/) LP sol
 set (GUROBI_USE FALSE)
 ```
 
-<<<<<<< HEAD
 CMake assumes by default that C++17 is available. If it is not, change the corresponding line in `CMakeLists.txt`.  If the necessary Gurobi files (see above) are not found in the expected directories, Gurobi support is disabled by CMake.
-=======
+
 [QT creator](https://www.qt.io/download) is a nice IDE that can automatically parse and run cmake projects directly. As an alternative, CMake can be used to generate a [CodeBlocks](http://www.codeblocks.org/) project files too:
->>>>>>> 60dc72a9afc11543d2fcb395db5cde417578aa7c
 
 
 To help with development, CMake can be used to generate a [CodeBlocks](http://www.codeblocks.org/) project files too:
