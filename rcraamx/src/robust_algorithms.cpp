@@ -436,7 +436,7 @@ algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
  *
  * The algorithms: pi, mpi may cycle infinitely without converging to a solution,
  * when solving a robust MDP.
- * The lagorithm ppi is guaranteed to converge to an optimal solition.
+ * The algorithms ppi and mppi are guaranteed to converge to an optimal solition.
  */
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String nature,
@@ -491,6 +491,9 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
         Rcpp::as<string>(options["algorithm"]) == "ppi") {
         sol = rsolve_ppi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
                          precision, progress);
+    } else if (Rcpp::as<string>(options["algorithm"]) == "mppi") {
+        sol = rsolve_mppi(m, discount, std::move(natparsed), numvec(0), policy,
+                          iterations, precision, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "mpi") {
         Rcpp::warning("The robust version of the mpi method may cycle forever "
                       "without converging.");
@@ -637,21 +640,25 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
 
     if (!options.containsElementNamed("algorithm") ||
         Rcpp::as<string>(options["algorithm"]) == "ppi") {
-        sol = rsolve_s_ppi(m, discount, std::move(natparsed), numvec(0), rpolicy,
-                           iterations, precision, progress);
+        sol = rsolve_s_ppi_r(m, discount, std::move(natparsed), numvec(0), rpolicy,
+                             iterations, precision, progress);
+    } else if (Rcpp::as<string>(options["algorithm"]) == "mppi") {
+        sol = rsolve_s_mppi_r(m, discount, std::move(natparsed), numvec(0), rpolicy,
+                              iterations, precision, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "mpi") {
-        sol = rsolve_s_mpi(m, discount, std::move(natparsed), numvec(0), rpolicy,
+        sol =
+            rsolve_s_mpi_r(m, discount, std::move(natparsed), numvec(0), rpolicy,
                            sqrt(iterations), precision, sqrt(iterations), 0.5, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
-        sol = rsolve_s_vi(m, discount, std::move(natparsed), numvec(0), rpolicy,
-                          iterations, precision, progress);
+        sol = rsolve_s_vi_r(m, discount, std::move(natparsed), numvec(0), rpolicy,
+                            iterations, precision, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi_j") {
         // Jacobian value iteration, simulated using mpi
-        sol = rsolve_s_mpi(m, discount, std::move(natparsed), numvec(0), rpolicy,
-                           iterations, precision, 1, 0.5, progress);
+        sol = rsolve_s_mpi_r(m, discount, std::move(natparsed), numvec(0), rpolicy,
+                             iterations, precision, 1, 0.5, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "pi") {
-        sol = rsolve_s_pi(m, discount, std::move(natparsed), numvec(0), rpolicy,
-                          iterations, precision, progress);
+        sol = rsolve_s_pi_r(m, discount, std::move(natparsed), numvec(0), rpolicy,
+                            iterations, precision, progress);
     } else {
         Rcpp::stop("Unknown algorithm type: " + Rcpp::as<string>(options["algorithm"]));
     }

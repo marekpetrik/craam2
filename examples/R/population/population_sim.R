@@ -144,6 +144,8 @@ print(plt)
 
 ### ------ Solve nominal problem ---------------------
 
+# this is very much a model-based solution
+
 # fist action: no control, second action: pesticide
 exp.growth.rate <- rbind(rep(2.0, max.population+1), growth.app,
                          growth.app, growth.app, growth.app)

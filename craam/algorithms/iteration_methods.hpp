@@ -335,6 +335,9 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
                                  duration.count(), status);
 }
 
+/// Determines which solver to use internally
+enum class MDPSolver { pi, mpi };
+
 /**
  * Robust partial policy iteration, proposed in Ho 2019. Converges in robust settings to
  * the optimal solution, and probably converges in the robust setting.
@@ -349,6 +352,9 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
  * @param rob_residual_init Initial target residual for solving the robust problem
  * @param rob_residual_rate Multiplicative coefficient that controls the
  * decrese in the target rate. It needs to be smaller than the discount factor.
+ * @param mdp_solver What method to use to solve the MDP internally
+ * @param progress A method that handles reporting the progress and interrupting
+ *                  the computation
  *
  * @return Computed (approximate) solution
  */
@@ -357,7 +363,9 @@ inline Solution<typename ResponseType::policy_type>
 rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
      unsigned long iterations_pi = MAXITER, prec_t maxresidual = SOLPREC,
      const prec_t rob_residual_init = 1.0, const prec_t rob_residual_rate = 0.5,
+     MDPSolver mdp_solver = MDPSolver::pi,
      const std::function<bool(size_t, prec_t)>& progress = internal::empty_progress) {
+
     using policy_type = typename ResponseType::policy_type;
     using dec_policy_type = typename ResponseType::dec_policy_type;
 
@@ -403,16 +411,29 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
         bool inner_continue = true; // propagate a termination request from
                                     // the inner method
         response.set_decision_policy(dec_policy);
-        Solution<policy_type> solution_rob =
-            // track the number of iterations in the inner policy iteration too
-            pi(response, discount, valuefunction, iterations_pi - iterations,
-               target_residual,
-               [&iterations, residual_pi, &progress, &inner_continue](size_t iters,
-                                                                      prec_t res) {
-                   inner_continue = progress(iterations, residual_pi + res);
-                   ++iterations;
-                   return inner_continue;
-               });
+
+        // track the number of iterations in the inner optimization too
+        auto inner_progress = [&iterations, residual_pi, &progress,
+                               &inner_continue](size_t iters, prec_t res) {
+            inner_continue = progress(iterations, residual_pi + res);
+            ++iterations;
+            return inner_continue;
+        };
+
+        Solution<policy_type> solution_rob;
+        auto iters_left = iterations_pi - iterations;
+
+        if (mdp_solver == MDPSolver::pi) {
+            solution_rob = pi(response, discount, valuefunction, iters_left,
+                              target_residual, inner_progress);
+        } else if (mdp_solver == MDPSolver::mpi) {
+            solution_rob =
+                mpi_jac(response, discount, valuefunction, std::sqrt(iters_left),
+                        target_residual, std::sqrt(iters_left), 0.8, inner_progress);
+        } else {
+            throw invalid_argument("Unsupported mdp_solver parameter");
+        }
+
         valuefunction = move(solution_rob.valuefunction);
 
         // *** robust policy update ***

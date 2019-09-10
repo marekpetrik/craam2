@@ -31,11 +31,9 @@ namespace craam { namespace bayes {
 enum class Norm { L1, L2, Linf };
 
 /**
- * Computes the size of credibility intervals for sa-rectangular ambiguity sets.
+ * Computes the size of credible regions for sa-rectangular ambiguity sets.
  *
- *
- *
- * This is the cridibility interval for all states and actions
+ * This is the credible region for all states and actions
  * independently. That mean that each individual level is built with
  * credibility level delta:
  *
@@ -51,7 +49,8 @@ enum class Norm { L1, L2, Linf };
  * @return An MDP with the nominal points and the appropriate size of the confidence intervals
  *          for each state and action
  */
-pair<MDP, numvecvec> confidence_intervals_sa(const MDPO& mdpo, prec_t delta, Norm norm) {
+/*
+ pair<MDP, numvecvec> credible_regions_sa(const MDPO& mdpo, prec_t delta, Norm norm) {
     assert(delta >= 0.0 && delta <= 1.0);
 
     MDP nominal;
@@ -82,5 +81,5 @@ pair<MDP, numvecvec> confidence_intervals_sa(const MDPO& mdpo, prec_t delta, Nor
         }
     }
 }
-
+*/
 }} // namespace craam::bayes

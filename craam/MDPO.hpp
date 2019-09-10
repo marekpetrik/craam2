@@ -33,28 +33,31 @@ namespace craam {
 typedef SAState<ActionO> StateO;
 
 /**
- *An uncertain MDP with outcomes and weights. See craam::L1RobustState.
-*/
+ * An uncertain MDP with outcomes and weights. See craam::L1RobustState.
+ */
 using MDPO = GMDP<StateO>;
 
 /**
-Adds a transition probability and reward for a particular outcome.
-
-\param mdp model to add the transition to
-\param fromid Starting state ID
-\param actionid Action ID
-\param toid Destination ID
-\param probability Probability of the transition (must be non-negative)
-\param reward The reward associated with the transition.
+ * Adds a transition probability and reward for a particular outcome.
+ *
+ * @param mdp model to add the transition to
+ * @param fromid Starting state ID
+ * @param actionid Action ID
+ * @param toid Destination ID
+ * @param probability Probability of the transition (must be non-negative)
+ * @param reward The reward associated with the transition.
+ * @param force Whether to force adding the probability even when it is 0 or even
+ *                negative
 */
 inline void add_transition(MDPO& mdp, long fromid, long actionid, long outcomeid,
-                           long toid, prec_t probability, prec_t reward) {
+                           long toid, prec_t probability, prec_t reward,
+                           bool force = false) {
     // make sure that the destination state exists
     mdp.create_state(toid);
     auto& state_from = mdp.create_state(fromid);
     auto& action = state_from.create_action(actionid);
     Transition& outcome = action.create_outcome(outcomeid);
-    outcome.add_sample(toid, probability, reward);
+    outcome.add_sample(toid, probability, reward, force);
 }
 
 /**

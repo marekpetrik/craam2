@@ -196,16 +196,19 @@ samples.frame <- data.frame(idstatefrom = state.ids.from,
   
 # -------Solve MDP and save policy -------
 
-cat ("Solving MDP\n")
+
 mdp <- rcraam::mdp_from_samples(samples.frame)
 
 write_csv(mdp, "cartpole_mdp.csv")
+cat ("Solving MDP\n")
 solution <- rcraam::solve_mdp(mdp, discount, list(algorithm="mpi", iterations = 10000))
-rsolution <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.1, list(algorithm="vi",
+cat ("Solving RMDP VI")
+rsolution_vi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.1, list(algorithm="vi",
                                                                   iterations = 10000))
-rsolution <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.1, list(algorithm="ppi",
-                                                                  iterations = 5000))
-#rsolution <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.1, list(algorithm="ppi"))
+cat ("Solving RMDP MPPI")
+rsolution_mppi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.1, list(algorithm="mppi",
+                                                                  iterations = 10000))
+
 
 qvalues <- rcraam::compute_qvalues(mdp, solution$valuefunction, discount)
 

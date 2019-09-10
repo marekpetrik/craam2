@@ -477,7 +477,7 @@ BOOST_AUTO_TEST_CASE(population_simulator) {
                          numvec(1 + carrying_capacity, 0.2)};
 
     PopulationSim simulator(carrying_capacity, initial_population, 2, mean_rate, std_rate,
-                            rewards, rand_seed);
+                            rewards, 0, 0, PopulationSim::Growth::Exponential, rand_seed);
     PopulationPol rp(simulator, threshold_control, prob_control, rand_seed);
 
     auto samples = simulate(simulator, rp, horizon, num_runs, -1, 0.0, rand_seed);

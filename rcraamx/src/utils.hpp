@@ -121,10 +121,12 @@ inline craam::MDP mdp_from_dataframe(const Rcpp::DataFrame& data, bool force = f
  *
  * @param frame Dataframe with columns: idstatefrom, idaction, idoutcome, idstateto, reward, probability.
  *              Multiple state-action-outcome-state rows have summed probabilities and averaged rewards.
+ * @param force Whether transitions with probability 0 should be focibly added to the transitions.
+ *              This makes a difference with robust MDPs.
  *
  * @returns Corresponding MDPO definition
  */
-inline craam::MDPO mdpo_from_dataframe(const Rcpp::DataFrame& data) {
+inline craam::MDPO mdpo_from_dataframe(const Rcpp::DataFrame& data, bool force = false) {
     // idstatefrom, idaction, idstateto, probability, reward
     Rcpp::IntegerVector idstatefrom = data["idstatefrom"], idaction = data["idaction"],
                         idstateto = data["idstateto"], idoutcome = data["idoutcome"];
@@ -135,7 +137,7 @@ inline craam::MDPO mdpo_from_dataframe(const Rcpp::DataFrame& data) {
 
     for (size_t i = 0; i < n; i++) {
         craam::add_transition(m, idstatefrom[i], idaction[i], idoutcome[i], idstateto[i],
-                              probability[i], reward[i]);
+                              probability[i], reward[i], force);
     }
     return m;
 }
@@ -180,6 +182,9 @@ inline craam::numvecvec frame2matrix(const Rcpp::DataFrame& frame, uint dim1, ui
  *
  * Also checks whether the values passed are consistent with the MDP definition.
  *
+ * @tparam M Model that is either and MDP or MDPO
+ * @tparam T Type of the value to parse
+ *
  * @param mdp The definition of the MDP to know how many states and actions there are.
  * @param frame Dataframe with 2 comlumns, idstate, value. Here, idstate
  *              determines which value should be set.
@@ -190,8 +195,8 @@ inline craam::numvecvec frame2matrix(const Rcpp::DataFrame& frame, uint dim1, ui
  *
  * @returns A vector over states with the included values
  */
-template <class T>
-inline std::vector<T> parse_s_values(const craam::MDP& mdp, const Rcpp::DataFrame& frame,
+template <class T, class M>
+inline std::vector<T> parse_s_values(const M& mdp, const Rcpp::DataFrame& frame,
                                      T def_value = 0,
                                      const std::string& value_column = "value") {
     std::vector<T> result(mdp.size());
