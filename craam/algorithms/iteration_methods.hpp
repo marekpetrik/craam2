@@ -190,7 +190,7 @@ mpi_jac(const ResponseType& response, prec_t discount,
         residual_pi = *max_element(residuals.cbegin(), residuals.cend());
 
         // the residual is sufficiently small
-        if (residual_pi <= maxresidual_pi || !progress(i, residual_pi)) break;
+        if (residual_pi <= maxresidual_pi || !progress(iter_total, residual_pi)) break;
 
         // compute values using value iteration
 
