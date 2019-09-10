@@ -71,6 +71,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rsolve_mdpo_sa
+Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String nature, SEXP nature_par, Rcpp::Nullable<Rcpp::List> options_n);
+RcppExport SEXP _rcraam_rsolve_mdpo_sa(SEXP mdpoSEXP, SEXP discountSEXP, SEXP natureSEXP, SEXP nature_parSEXP, SEXP options_nSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type mdpo(mdpoSEXP);
+    Rcpp::traits::input_parameter< double >::type discount(discountSEXP);
+    Rcpp::traits::input_parameter< Rcpp::String >::type nature(natureSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type nature_par(nature_parSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::List> >::type options_n(options_nSEXP);
+    rcpp_result_gen = Rcpp::wrap(rsolve_mdpo_sa(mdpo, discount, nature, nature_par, options_n));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rsolve_mdp_s
 Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String nature, SEXP nature_par, Rcpp::Nullable<Rcpp::List> options_n);
 RcppExport SEXP _rcraam_rsolve_mdp_s(SEXP mdpSEXP, SEXP discountSEXP, SEXP natureSEXP, SEXP nature_parSEXP, SEXP options_nSEXP) {
@@ -169,6 +184,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_rcraam_solve_mdp", (DL_FUNC) &_rcraam_solve_mdp, 3},
     {"_rcraam_compute_qvalues", (DL_FUNC) &_rcraam_compute_qvalues, 3},
     {"_rcraam_rsolve_mdp_sa", (DL_FUNC) &_rcraam_rsolve_mdp_sa, 5},
+    {"_rcraam_rsolve_mdpo_sa", (DL_FUNC) &_rcraam_rsolve_mdpo_sa, 5},
     {"_rcraam_rsolve_mdp_s", (DL_FUNC) &_rcraam_rsolve_mdp_s, 5},
     {"_rcraam_set_rcraam_threads", (DL_FUNC) &_rcraam_set_rcraam_threads, 1},
     {"_rcraam_mdp_from_samples", (DL_FUNC) &_rcraam_mdp_from_samples, 1},

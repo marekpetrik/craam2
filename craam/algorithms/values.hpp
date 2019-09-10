@@ -67,7 +67,7 @@ inline pair<long, prec_t> value_max_state(const SAState<AType>& state,
     }
 
     // if the result has not been changed, that means that all actions are invalid
-    if (result == -1) throw invalid_argument("all actions are invalid.");
+    if (result == -1) throw std::invalid_argument("all actions are invalid.");
 
     return make_pair(result, maxvalue);
 }

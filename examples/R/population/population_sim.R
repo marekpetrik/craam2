@@ -80,9 +80,9 @@ model {
     sigma[j] ~ dunif(0,5)
   }
   mu ~ dunif(0.5, 3)
-  mu0 ~ dnorm(1.0, 3)
-  mu1 ~ dnorm(0.0, 3)
-  mu2 ~ dnorm(0.0, 3)
+  mu0 ~ dnorm(1.0, 1)
+  mu1 ~ dnorm(0.0, 10)
+  mu2 ~ dnorm(0.0, 10)
   ext_mu ~ dunif(0, 20)
   ext_std ~ dunif(0, 5) 
 }
@@ -129,18 +129,27 @@ for(i in 1:dim(post_samples$mu0)[2]){
   }
 }
 
-#ggplot(mapping=aes(x=population, y=rate)) + 
-#  geom_line(data=efficiency_true)
-
 efficiency_sampled.df <- reshape2::melt(efficiency_sampled, value.name = "Rate")
 colnames(efficiency_sampled.df) <- c("Sample", "Population", "Rate")
 efficiency_sampled.df$Population <- efficiency_sampled.df$Population - 1
 
+# plot the density of the posterior
 plt <- ggplot(efficiency_sampled.df, aes(x = Population, y = Rate)) + 
         geom_hex() + 
         geom_line(mapping=aes(x=population, y=rate), data=efficiency_true, color = "red")
 
 print(plt)
+
+#plt2 <- 
+# plot the posterior efficacy
+ggplot(efficiency_sampled.df %>% filter(Sample %% 50 == 0), 
+               aes(x = Population, y = Rate, group = Sample)) + 
+  geom_line(linetype = 3) +
+  geom_line(mapping=aes(x=population, y=rate), 
+            data=efficiency_true, color = "red", 
+            inherit.aes = FALSE)
+  
+
 
 ### ------ Solve nominal problem ---------------------
 

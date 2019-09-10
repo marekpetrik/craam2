@@ -193,20 +193,22 @@ inline craam::numvecvec frame2matrix(const Rcpp::DataFrame& frame, uint dim1, ui
  *                  specify anything for the state action pair
  * @param value_column Name of the column with the value
  *
+ * @tparam T Type of the value to parse
+ *
  * @returns A vector over states with the included values
  */
-template <class T, class M>
-inline std::vector<T> parse_s_values(const M& mdp, const Rcpp::DataFrame& frame,
+template <class T>
+inline std::vector<T> parse_s_values(size_t statecount, const Rcpp::DataFrame& frame,
                                      T def_value = 0,
                                      const std::string& value_column = "value") {
-    std::vector<T> result(mdp.size());
+    std::vector<T> result(statecount);
     Rcpp::IntegerVector idstates = frame["idstate"];
     Rcpp::NumericVector values = frame[value_column];
     for (long i = 0; i < idstates.size(); i++) {
         long idstate = idstates[i];
 
         if (idstate < 0) Rcpp::stop("idstate must be non-negative");
-        if (idstate > mdp.size())
+        if (idstate > statecount)
             Rcpp::stop("idstate must be smaller than the number of MDP states");
 
         result[idstate] = values[i];
