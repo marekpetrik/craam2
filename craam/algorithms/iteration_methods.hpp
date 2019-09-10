@@ -170,9 +170,9 @@ mpi_jac(const ResponseType& response, prec_t discount,
     static_assert(std::numeric_limits<prec_t>::has_infinity == true);
     prec_t residual_pi = numeric_limits<prec_t>::infinity();
 
-    size_t i; // defined here to be able to report the number of iterations
+    size_t iter_total = 0; // track the total number of iterations
 
-    for (i = 0; i < iterations_pi; i++) {
+    for (size_t i = 0; i < iterations_pi; i++) {
         // this just swaps pointers
         swap(targetvalue, sourcevalue);
 
@@ -207,12 +207,13 @@ mpi_jac(const ResponseType& response, prec_t discount,
                 targetvalue[s] = newvalue;
             }
             residual_vi = *max_element(residuals.begin(), residuals.end());
+            ++iter_total;
         }
     }
     auto finish = chrono::steady_clock::now();
     chrono::duration<double> duration = finish - start;
     int status = residual_pi <= maxresidual_pi ? 0 : 1;
-    return Solution<policy_type>(move(targetvalue), move(policy), residual_pi, i,
+    return Solution<policy_type>(move(targetvalue), move(policy), residual_pi, iter_total,
                                  duration.count(), status);
 }
 

@@ -778,9 +778,9 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
         sol = rsolve_s_mppi_r(m, discount, std::move(natparsed), numvec(0), rpolicy,
                               iterations, precision, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "mpi") {
-        sol = rsolve_s_mpi(m, discount, std::move(natparsed), numvec(0), rpolicy,
-                           iterations, precision, std::min(long(sqrt(iterations)), 50l),
-                           0.5, progress);
+        sol = rsolve_s_mpi_r(m, discount, std::move(natparsed), numvec(0), rpolicy,
+                             iterations, precision, std::min(long(sqrt(iterations)), 50l),
+                             0.5, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
         sol = rsolve_s_vi_r(m, discount, std::move(natparsed), numvec(0), rpolicy,
                             iterations, precision, progress);
