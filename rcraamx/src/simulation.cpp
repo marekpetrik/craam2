@@ -22,6 +22,7 @@
 // SOFTWARE.
 
 #include "utils.hpp"
+#include <array>
 
 #include "craam/Samples.hpp"
 #include "craam/simulation.hpp"
