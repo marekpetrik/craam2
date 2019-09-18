@@ -31,14 +31,13 @@
 #include <algorithm>
 #include <assert.h>
 #include <cmath>
+#include <iostream>
 #include <numeric>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
-#include <iostream>
-#include <string>
 
 namespace craam {
 
@@ -94,7 +93,7 @@ template <class T> inline std::string to_string(const std::vector<T>& v) {
         ss << x << ",";
     }
     // replace the last comma
-    ss.seekp(ss.tellp() - 1l);
+    ss.seekp(long(ss.tellp()) - 1l);
     ss << "]";
     return ss.str();
 }
@@ -249,7 +248,7 @@ inline constexpr const T& clamp(const T& v, const T& lo, const T& hi, Compare co
 }
 
 template <class T> inline constexpr const T& clamp(const T& v, const T& lo, const T& hi) {
-    return clamp(v, lo, hi, std::less<>());
+    return craam::clamp<T, std::less<>>(v, lo, hi, std::less<>());
 }
 #endif
 
