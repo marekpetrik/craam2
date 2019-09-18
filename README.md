@@ -25,13 +25,13 @@ To run a benchmark problem, download and decompress one of the following test fi
 
 These two benchmark problems were generated from a uniform random distribution.
 
-First, download the code.
+Download the code.
 
 ``` bash
     $ git clone --depth 1 https://gitlab.com/RLsquared/craam2
 ```
 
-Second, install Eigen in the includes directory (requires bash or cygwin on windows):
+Optionally, you can (re)install Eigen in the includes directory (requires bash or Cygwin on Windows). This is not necessary since the correct Eigen distribution is already included in the project git repository.
 
 ``` bash
     $ ./install_eigen.sh
