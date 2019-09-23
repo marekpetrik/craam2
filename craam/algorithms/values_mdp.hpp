@@ -213,11 +213,21 @@ inline vector<numvec> compute_qfunction(const MDP& mdp, const numvec& valuefunct
     vector<numvec> qfunction;
     qfunction.reserve(mdp.size());
 
-    for (const State& s : mdp) {
+    //for (const State& s : mdp) {
+    for (size_t is = 0; is < mdp.size(); ++is) {
+        const State& s = mdp[is];
         numvec qa;
         qa.reserve(s.size());
-        for (const Action& a : s) {
-            qa.push_back(value_action(a, valuefunction, discount));
+        //for (const Action& a : s) {
+        for (size_t ia = 0; ia < s.size(); ++ia) {
+            const Action& a = s[ia];
+            try {
+                qa.push_back(value_action(a, valuefunction, discount));
+            } catch (ModelError& e) {
+                e.set_action(ia);
+                e.set_state(is);
+                throw(e);
+            }
         }
         qfunction.push_back(move(qa));
     }

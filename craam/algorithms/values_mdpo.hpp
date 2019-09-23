@@ -56,9 +56,16 @@ inline vec_scal_t value_action(const ActionO& action, const numvec& valuefunctio
     if (action.get_outcomes().empty())
         throw invalid_argument("Action with no action.get_outcomes().");
 
+    // loop over all outcomes
     numvec outcomevalues(action.size());
-    for (size_t i = 0; i < action.size(); i++)
-        outcomevalues[i] = action[i].value(valuefunction, discount);
+    for (size_t i = 0; i < action.size(); i++) {
+        try {
+            outcomevalues[i] = action[i].value(valuefunction, discount);
+        } catch (ModelError& e) {
+            e.set_outcome(i);
+            throw e;
+        }
+    }
 
     return nature(stateid, actionid, action.get_distribution(), outcomevalues);
 }
@@ -83,8 +90,14 @@ inline prec_t value_action(const ActionO& action, numvec const& valuefunction,
 
     prec_t averagevalue = 0.0;
     const numvec& distribution = action.get_distribution();
-    for (size_t i = 0; i < action.get_outcomes().size(); i++)
-        averagevalue += distribution[i] * action[i].value(valuefunction, discount);
+    for (size_t i = 0; i < action.get_outcomes().size(); i++) {
+        try {
+            averagevalue += distribution[i] * action[i].value(valuefunction, discount);
+        } catch (ModelError& e) {
+            e.set_outcome(i);
+            throw e;
+        }
+    }
     return averagevalue;
 }
 
@@ -105,8 +118,14 @@ inline prec_t value_action(const ActionO& action, numvec const& valuefunction,
 
     prec_t averagevalue = 0.0;
     // TODO: simd?
-    for (size_t i = 0; i < action.get_outcomes().size(); i++)
-        averagevalue += distribution[i] * action[i].value(valuefunction, discount);
+    for (size_t i = 0; i < action.get_outcomes().size(); i++) {
+        try {
+            averagevalue += distribution[i] * action[i].value(valuefunction, discount);
+        } catch (ModelError& e) {
+            e.set_outcome(i);
+            throw e;
+        }
+    }
     return averagevalue;
 }
 

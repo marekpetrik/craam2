@@ -75,6 +75,57 @@ constexpr unsigned long MAXITER = 100000;
 /// Numerical threshold for reporting errors
 constexpr prec_t THRESHOLD = 1e-6;
 
+/// An exception class that indicates that the
+/// provided model was misspecified
+class ModelError : public std::exception {
+protected:
+    std::string message;
+    long idstate;
+    long idaction;
+    long idoutcome;
+    std::string fullmessage;
+
+    /// updates the full message if anything changes
+    void update_fullmsg() {
+        fullmessage = fullmessage =
+            "State: " + std::to_string(idstate) +
+            ", Action: " + std::to_string(idaction) +
+            (idoutcome >= 0 ? ", Outcome: " + std::to_string(idoutcome) : "") +
+            ", Message: '" + this->message + "'.";
+    }
+
+public:
+    ModelError(std::string message, long idstate = -1, long idaction = -1,
+               long idoutcome = -1)
+        : message(message), idstate(idstate), idaction(idaction), idoutcome(idoutcome) {
+        update_fullmsg();
+    };
+
+    /// Sets the state information
+    void set_state(long idstate) {
+        this->idstate = idstate;
+        update_fullmsg();
+    }
+
+    /// Sets the action information
+    void set_action(long idaction) {
+        this->idaction = idaction;
+        update_fullmsg();
+    }
+
+    /// Sets the outcome information
+    void set_outcome(long idoutcome) {
+        this->idoutcome = idoutcome;
+        update_fullmsg();
+    }
+
+    /**
+     * Returns the content of the exception. The caller takes
+     * the ownership of the string
+     */
+    const char* what() const noexcept override { return fullmessage.c_str(); };
+};
+
 /** This is a useful print functionality for debugging.  */
 template <class T> std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec) {
     for (const auto& p : vec) {
@@ -98,10 +149,11 @@ template <class T> inline std::string to_string(const std::vector<T>& v) {
     return ss.str();
 }
 
-/** \brief Sort indices by values in ascending order
+/**
+ * Sort indices by values in ascending order
  *
- * \param v List of values
- * \return Sorted indices
+ * @param v List of values
+ * @return Sorted indices
  */
 template <typename T> inline sizvec sort_indexes(std::vector<T> const& v) {
     // initialize original index locations
@@ -113,10 +165,11 @@ template <typename T> inline sizvec sort_indexes(std::vector<T> const& v) {
     return idx;
 }
 
-/** \brief Sort indices by values in descending order
+/**
+ * Sort indices by values in descending order
  *
- * \param v List of values
- * \return Sorted indices
+ * @param v List of values
+ * @return Sorted indices
  */
 template <typename T> inline sizvec sort_indexes_desc(std::vector<T> const& v) {
     // initialize original index locations
@@ -130,7 +183,7 @@ template <typename T> inline sizvec sort_indexes_desc(std::vector<T> const& v) {
 }
 
 /**
- * @brief Computes the l1 norm between two vectors of equal length
+ * Computes the l1 norm between two vectors of equal length
  */
 inline prec_t l1norm(numvec p1, numvec p2) {
     prec_t result = 0;
@@ -140,7 +193,7 @@ inline prec_t l1norm(numvec p1, numvec p2) {
 }
 
 /**
- * @brief Generates linearly spaced points
+ *  Generates linearly spaced points
  *
  * @param a Start value
  * @param b End value

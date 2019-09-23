@@ -55,15 +55,15 @@ public:
     Transition() : indices(0), probabilities(0), rewards(0) {}
 
     /**
-      Creates a single transition from raw data.
-
-      Because the transition indexes are stored increasingly sorted, this method
-      must sort (and aggregate duplicate) the indices.
-
-      \param indices The indexes of states to transition to
-      \param probabilities The probabilities of transitions
-      \param rewards The associated rewards with each transition
-      */
+     * Creates a single transition from raw data.
+     *
+     * Because the transition indexes are stored increasingly sorted, this method
+     * must sort (and aggregate duplicate) the indices.
+     *
+     * @param indices The indexes of states to transition to
+     * @param probabilities The probabilities of transitions
+     * @param rewards The associated rewards with each transition
+     */
     Transition(const indvec& indices, const numvec& probabilities, const numvec& rewards)
         : Transition() {
 
@@ -95,11 +95,11 @@ public:
     }
 
     /**
-      Creates a single transition from raw data with uniformly zero rewards,
-      where destination states are indexed automatically starting with 0.
-
-      \param probabilities The probabilities of transitions; indexes are implicit.
-      */
+     * Creates a single transition from raw data with uniformly zero rewards,
+     * where destination states are indexed automatically starting with 0.
+     *
+     * @param probabilities The probabilities of transitions; indexes are implicit.
+     */
     Transition(const numvec& probabilities) : Transition() {
         for (size_t k = 0; k < probabilities.size(); ++k)
             add_sample(long(k), probabilities[k], 0.0);
@@ -185,14 +185,15 @@ public:
         }
     }
 
+    /// Sums all probabilities
     prec_t sum_probabilities() const {
         return accumulate(probabilities.cbegin(), probabilities.cend(), 0.0);
     }
 
     /**
-  Normalizes the transition probabilities to sum to 1. Exception is thrown if
-  the distribution sums to 0.
-  */
+     * Normalizes the transition probabilities to sum to 1. Exception is thrown if
+     * the distribution sums to 0.
+     */
     void normalize() {
         // nothing to do if there are no transitions
         if (probabilities.empty()) return;
@@ -208,7 +209,7 @@ public:
     }
 
     /** \returns Whether the transition probabilities sum to 1. */
-    bool is_normalized() const {
+    bool is_normalized() const noexcept {
         if (indices.empty())
             return true;
         else
@@ -216,16 +217,16 @@ public:
     }
 
     /**
-       Computes value for the transition and a value function.
-
-       When there are no target states, the function terminates with an error.
-
-      \param valuefunction Value function, or an arbitrary vector of values
-      \param discount Discount factor, optional (default value 1)
-      \param probabilities Custom probability distribution. It must be of the same
-      length as the number of *nonzero* transition probabilities. The length is NOT
-      checked in a release build.
-       */
+     * Computes value for the transition and a value function.
+     *
+     * When there are no target states, the function terminates with an error.
+     *
+     * @param valuefunction Value function, or an arbitrary vector of values
+     * @param discount Discount factor, optional (default value 1)
+     * @param probabilities Custom probability distribution. It must be of the same
+     * length as the number of *nonzero* transition probabilities. The length is NOT
+     * checked in a release build.
+     */
     prec_t value(numvec const& valuefunction, prec_t discount,
                  numvec probabilities) const {
         assert(valuefunction.size() >= probabilities.size());
@@ -233,8 +234,8 @@ public:
         assert(probabilities.size() == indices.size());
 
         if (indices.empty())
-            throw range_error("No transitions defined for the state action-pair. "
-                              "Cannot compute value.");
+            throw ModelError("No transitions defined for the state action-pair. "
+                             "Cannot compute value.");
         prec_t value = 0.0;
 
         // Note: in simple benchmarks, the simd statement seems to speed up the
@@ -252,8 +253,8 @@ public:
      *
      * When there are no target states, the function terminates with an error.
      *
-     * \param valuefunction Value function, or an arbitrary vector of values
-     * \param discount Discount factor, optional (default value 1)
+     * @param valuefunction Value function, or an arbitrary vector of values
+     * @param discount Discount factor, optional (default value 1)
      */
     prec_t value(numvec const& valuefunction, prec_t discount = 1.0) const {
 
@@ -351,7 +352,7 @@ public:
      * Constructs and returns a dense vector of rewards, which
      * includes 0 transition probabilities. Rewards for indices with
      * zero transition probability are zero.
-     * \param size Size of the constructed vector
+     * @param size Size of the constructed vector
      */
     numvec rewards_vector(size_t size) const {
 
