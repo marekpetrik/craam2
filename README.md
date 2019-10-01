@@ -151,7 +151,7 @@ R version 3.4 and above is recommended, but the package probably works with earl
 
 ### Installing on macOS
 
-You need to make several additional changes to compile the 
+You need to make tho following changes to compile the R extension:
 
 1. Remove `-fopenmp` from 2 lines in `rcraam/src/Makevars`
 
