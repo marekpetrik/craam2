@@ -51,6 +51,8 @@ using indvec = std::vector<long>;
 using sizvec = std::vector<size_t>;
 /// A vector of numeric vectors
 using numvecvec = std::vector<numvec>;
+/// A probability distribution
+using pdist = numvec;
 
 /** Probability list */
 using prob_list_t = std::vector<prec_t>;
