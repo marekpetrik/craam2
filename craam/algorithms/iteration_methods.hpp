@@ -193,7 +193,6 @@ mpi_jac(const ResponseType& response, prec_t discount,
         if (residual_pi <= maxresidual_pi || !progress(iter_total, residual_pi)) break;
 
         // compute values using value iteration
-
         for (size_t j = 0;
              j < iterations_vi && residual_vi > maxresidual_vi_rel * residual_pi; j++) {
 

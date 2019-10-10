@@ -1,7 +1,7 @@
 # requires that python reticulate is installed
 # need to run pip install 
-library(ggplot2)
-library(dplyr)
+suppressMessages(library(ggplot2))
+suppressMessages(library(dplyr))
 library(readr)
 library(reticulate)
 library(splines)
@@ -11,26 +11,32 @@ library(splines)
 # ------ Program parameters ------
 
 # parameters
-plot.fits <- FALSE
+plot.fits <- TRUE
 standardize.features <- TRUE
 discount <- 0.999
 
-# prediction accuracy
-spline.count <- 2
-state.count <- 2000
+# synthetic model
+state.count <- 2000           # synthetic states
+syn.sample.count <- 60000    # synthetic samples
+use.low.discrepancy <- FALSE    # whether to use low discrepancy functions to generate synthetic samples
 
-# number of synthetic samples
-syn.sample.count <- 10000
-limits.lower <- c(-1, -3, -0.25, -3.1)
-limits.upper <- c(1, 3, 0.25, 3.1)
+# prediction model
+spline.count <- 3
+
+# mirror samples (whether double samples by creating a mirror image)
+sample.episodes <- 40
+mirror.samples <- TRUE
 
 # features
 feature.names <- c("CartPos","CartVelocity","PoleAngle", "PoleVelocity")
 action.names <- c(0,1)
+limits.lower <- c(-2.4, -3, -0.25, -3.1)
+limits.upper <- c(2.4, 3, 0.25, 3.1)
+
 
 # ------ Generate samples ------
 
-code_generate_samples <- "
+code_generate_samples <- paste0("
 import random
 import gym
 env = gym.make('CartPole-v1')
@@ -38,7 +44,7 @@ random.seed(2018)
 
 laststate = None
 samples = []
-for k in range(20):
+for k in range(",sample.episodes,"):
   env.reset()
   done = False
   for i in range(100):
@@ -51,7 +57,7 @@ for k in range(20):
       break
     [state,reward,done,info] = env.step(action) # take a random action
 env.close()
-"
+")
 
 res <- py_run_string(code_generate_samples)
 samples <- as.data.frame(t(sapply(res$samples, unlist)))
@@ -60,9 +66,10 @@ colnames(samples) <- c("Step", feature.names,"Action","Reward")
 # alternatively: load samples
 #samples <- read_csv("cartpole.csv")
 
-# ------ Prepare samples -----
+# ------ Prepare true samples -----
 
 # connect samples
+cat("Generated", nrow(samples), "sample transitions.\n")
 samples_step <- samples
 for(f in feature.names){
   samples_step[[paste0(f, "N")]] <- lead(samples_step[[f]], 1)  
@@ -73,14 +80,17 @@ samples_step <- samples_step %>%
   na.omit()
 
 # double samples by mirroring the left and right sides
-
-samples_mirror <- samples_step 
-for(f in feature.names){
-  samples_mirror[[f]] <- -samples_mirror[[f]]
-  samples_mirror[[paste0(f, "N")]] <- -samples_mirror[[paste0(f, "N")]]
+if(mirror.samples){
+  samples_mirror <- samples_step 
+  for(f in feature.names){
+    samples_mirror[[f]] <- -samples_mirror[[f]]
+    samples_mirror[[paste0(f, "N")]] <- -samples_mirror[[paste0(f, "N")]]
+  }
   samples_mirror$Action <- 1 - samples_mirror$Action
+  samples_step <- rbind(samples_step, samples_mirror)  
+  rm(samples_mirror)
 }
-samples_step <- rbind(samples_step, samples_mirror)
+
 
 # ------ Fit a linear model -------
 fit_data <- function(samples_step){
@@ -92,11 +102,15 @@ fit_data <- function(samples_step){
     
     for(f in feature.names){
       subset.data <- samples_step %>% filter(Action == !!a)
-      formula.fit <- paste(sapply(feature.names[f != feature.names], 
+      # make prediction as a linear combination of all current feature names
+      formula.fit <- paste(sapply(feature.names, 
                                   function(x){paste0("ns(", x, ", spline.count)")}), 
                            collapse = "+")
+      # append N to the end of the predicted feature name
       formula.fit <- paste0(f,"N~", formula.fit)
       models[[as]][[f]] <- lm(formula(formula.fit), data=subset.data)
+      cat("Prediction: action", as, "feature:", f, " = r.squared", 
+          summary(models[[as]][[f]])$r.squared,"\n")
     }
   }
   return(models)
@@ -104,7 +118,7 @@ fit_data <- function(samples_step){
 
 models <- fit_data(samples_step)
 
-# ------ Predict next state -------
+# ------ Predict next state (methods) -------
 
 #' Predicts the next state transition for many states simultaneously
 #' @param states.current A data frame with columns:
@@ -122,8 +136,8 @@ predict.next.many <- function(models, states.current, action){
 predict.reward <- function(stateaction){
   # state[1] = $cart.pos
   # state[3] = $pole.angle
-  ifelse(abs(stateaction[1]) < 2.4 && 
-         abs(stateaction[3]) < (12 / 180 * pi),1, 0)
+  ifelse(abs(stateaction[1]) < 2.0 && 
+         abs(stateaction[3]) < (12 / 180 * pi), 1, 0)
 }
 # ------ Construct synthetic samples -------
 
@@ -131,12 +145,25 @@ predict.reward <- function(stateaction){
 # locations to determine the actual states.
 
 cat("Generating", syn.sample.count, "synthetic samples from the model .... \n")
-samples.gen <- 
-  do.call(cbind, 
-          lapply(1:length(feature.names), function(i){
-                 runif(syn.sample.count,  
-                       min=limits.lower[i], 
-                       max=limits.upper[i])}))
+
+# generate the fake samples
+if(use.low.discrepancy){
+  loadNamespace("randtoolbox") # only needed for low-discrepancy sampling (use.low.discrepancy == TRUE)
+  # using a low-discrepancy metric to generate samples that
+  # better cover the space (library randtoolbox)
+  samples.gen <- randtoolbox::torus(syn.sample.count, dim = length(feature.names)) %*%
+    diag(limits.upper - limits.lower) + 
+    rep(1,syn.sample.count) %*% matrix(limits.lower, 1)
+  
+}else{
+  samples.gen <- 
+    do.call(cbind, 
+            lapply(1:length(feature.names), function(i){
+              runif(syn.sample.count,  
+                    min=limits.lower[i], 
+                    max=limits.upper[i])}))
+}
+
 # Construct predicted transition samples 
 samples.actions <- do.call(
   rbind, lapply(action.names, 
@@ -159,26 +186,24 @@ samples.rewards <- apply(samples.actions, 1, predict.reward)
 
 # Select the actual states randomly from the samples. 
 # Since the samples are randomly generated in the first place, we can simply take
-# the first $n$ to get a random selection.
+# the first $n$ to get a random selection. This also makes a lot of sense
+# when using low-discrepancy generated states (the first n will also have low dicrepancy)
 states <- samples.gen[1:state.count,]
 
 # Compute scales for each direction to be used with the nearest sample identification. 
 # WARNING: it is important to use the same scales when the policy is implemented.
 if(standardize.features){
-  scales <- apply(samples, 2, purrr::compose(max, abs))
+  scales <- apply(samples, 2, function(x){max(x) - min(x)}) # compute the span of the feature
   scales <- diag(1/scales[c('CartPos', 'CartVelocity','PoleAngle','PoleVelocity')])  
 }else{
   scales <- diag(c(1,1,1,1))  
 }
 
-#print(scales)
 write_csv(as.data.frame(scales), 'scales.csv')
 
 # Construct a data frame with the samples. Warning! KNN1 returns a factor, needs to be turned 
 # to an integer. Also, it is necessary to scale the features, the scale of 
 # the velocities is very different from the scale of the position and the angle.
-
-# NOTE: State 0 is considered to be a terminal state
 
 # --------Build MDP from samples ---------------------
 
@@ -186,9 +211,11 @@ write_csv(as.data.frame(scales), 'scales.csv')
 state.ids.from <- as.integer(rep(class::knn1(states %*% scales, 
                                              samples.gen %*% scales, 
                                              1:state.count), 2)) - 1
+
 state.ids.to <- as.integer(class::knn1(states %*% scales, 
                                        samples.nexts %*% scales, 
                                        1:state.count)) - 1
+
 samples.frame <- data.frame(idstatefrom = state.ids.from,
                             idaction = samples.actions[,5],
                             idstateto = state.ids.to,
@@ -202,12 +229,13 @@ mdp <- rcraam::mdp_from_samples(samples.frame)
 write_csv(mdp, "cartpole_mdp.csv")
 cat ("Solving MDP\n")
 solution <- rcraam::solve_mdp(mdp, discount, list(algorithm="mpi", iterations = 10000))
-cat ("Solving RMDP VI")
-rsolution_vi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.1, list(algorithm="vi",
-                                                                  iterations = 10000))
-cat ("Solving RMDP MPPI")
-rsolution_mppi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.1, list(algorithm="mppi",
-                                                                  iterations = 10000))
+
+#cat ("Solving RMDP VI")
+#rsolution_vi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.1, list(algorithm="vi",
+#                                                                  iterations = 10000))
+#cat ("Solving RMDP MPPI")
+#rsolution_mppi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.1, list(algorithm="mppi",
+#                                                                  iterations = 10000))
 
 
 qvalues <- rcraam::compute_qvalues(mdp, solution$valuefunction, discount)
@@ -248,7 +276,7 @@ if(plot.fits){
     geom_point() + theme_light()
   
   ggplot(samples_step %>% filter(Action==1), 
-         aes(x=PoleAngle, y=CartVelocityN-CartVelocity, 
+         aes(x=CartVelocity, y=CartVelocityN, 
              color=PoleVelocity)) +
     geom_point() + theme_light()
   

@@ -4,4 +4,6 @@ library(readr)
 
 mdp <- read_csv("riverswim_mdp.csv")
 
-solve_mdp(mdp, 0.99)
+sol <- solve_mdp(mdp, 0.99)
+
+print(sol)

@@ -47,8 +47,7 @@ import pandas as pa
 import numpy as np
 import time
 
-from gym.envs.registration import register
-
+#from gym.envs.registration import register
 #register(
 #    id='CartPole-v2',
 #    entry_point='gym.envs.classic_control:CartPoleEnv',

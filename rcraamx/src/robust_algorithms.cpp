@@ -56,6 +56,7 @@ constexpr size_t iterations = 1000;
 constexpr double maxresidual = 0.0001;
 constexpr double timeout = -1;
 constexpr bool show_progress = true;
+constexpr long mpi_vi_count = 50;
 } // namespace defaults
 
 class ComputeProgress {
@@ -272,11 +273,13 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount,
         Rcpp::as<string>(options["algorithm"]) == "mpi") {
         // Modified policy iteration
         if (is_randomized) {
-            rsol = solve_mpi_r(m, discount, numvec(0), rpolicy, iterations, precision,
-                               std::min(long(sqrt(iterations)), 50l), 0.9, progress);
+            rsol = solve_mpi_r(m, discount, numvec(0), rpolicy,
+                               iterations / defaults::mpi_vi_count, precision,
+                               defaults::mpi_vi_count, 0.9, progress);
         } else {
-            sol = solve_mpi(m, discount, numvec(0), policy, iterations, precision,
-                            std::min(long(sqrt(iterations)), 50l), 0.9, progress);
+            sol = solve_mpi(m, discount, numvec(0), policy,
+                            iterations / defaults::mpi_vi_count, precision,
+                            defaults::mpi_vi_count, 0.9, progress);
         }
 
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi_j") {
@@ -511,8 +514,9 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
     } else if (Rcpp::as<string>(options["algorithm"]) == "mpi") {
         Rcpp::warning("The robust version of the mpi method may cycle forever "
                       "without converging.");
-        sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
-                         precision, std::min(long(sqrt(iterations)), 50l), 0.5, progress);
+        sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), policy,
+                         iterations / defaults::mpi_vi_count, precision,
+                         defaults::mpi_vi_count, 0.5, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
         sol = rsolve_vi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
                         precision, progress);
@@ -628,8 +632,9 @@ Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String na
     } else if (Rcpp::as<string>(options["algorithm"]) == "mpi") {
         Rcpp::warning("The robust version of the mpi method may cycle forever "
                       "without converging.");
-        sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
-                         precision, std::min(long(sqrt(iterations)), 50l), 0.5, progress);
+        sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), policy,
+                         iterations / defaults::mpi_vi_count, precision,
+                         defaults::mpi_vi_count, 0.5, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
         sol = rsolve_vi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
                         precision, progress);
@@ -779,8 +784,8 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
                               iterations, precision, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "mpi") {
         sol = rsolve_s_mpi_r(m, discount, std::move(natparsed), numvec(0), rpolicy,
-                             iterations, precision, std::min(long(sqrt(iterations)), 50l),
-                             0.5, progress);
+                             iterations / defaults::mpi_vi_count, precision,
+                             defaults::mpi_vi_count, 0.5, progress);
     } else if (Rcpp::as<string>(options["algorithm"]) == "vi") {
         sol = rsolve_s_vi_r(m, discount, std::move(natparsed), numvec(0), rpolicy,
                             iterations, precision, progress);
