@@ -13,15 +13,15 @@ library(splines)
 # parameters
 plot.fits <- TRUE
 standardize.features <- TRUE
-discount <- 0.999
+discount <- 0.99
 
 # synthetic model
-state.count <- 2000           # synthetic states
-syn.sample.count <- 60000    # synthetic samples
+state.count <- 8000           # synthetic states
+syn.sample.count <- 200000    # synthetic samples
 use.low.discrepancy <- FALSE    # whether to use low discrepancy functions to generate synthetic samples
 
 # prediction model
-spline.count <- 3
+spline.count <- 2
 
 # mirror samples (whether double samples by creating a mirror image)
 sample.episodes <- 40
@@ -228,7 +228,7 @@ mdp <- rcraam::mdp_from_samples(samples.frame)
 
 write_csv(mdp, "cartpole_mdp.csv")
 cat ("Solving MDP\n")
-solution <- rcraam::solve_mdp(mdp, discount, list(algorithm="mpi", iterations = 10000))
+solution <- rcraam::solve_mdp(mdp, discount, list(algorithm="mpi", iterations = 50000))
 
 #cat ("Solving RMDP VI")
 #rsolution_vi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.1, list(algorithm="vi",
@@ -292,3 +292,4 @@ if(plot.fits){
          aes(x=PoleAngle,y=PoleVelocityN - PoleVelocity, color=CartVelocity )) + 
     geom_point() + theme_light()
 }
+
