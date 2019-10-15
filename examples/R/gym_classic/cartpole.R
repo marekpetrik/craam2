@@ -8,6 +8,7 @@ library(splines)     # approximate dynamics
 library(nabor)       # nearest neighbor (fast) that finds ids of neighbors
 loadNamespace("reshape2") # process nabor output
 loadNamespace("tidyr")    # plot value functions
+library(assertthat)
 
 #source("discretized.R")
 
@@ -16,12 +17,12 @@ loadNamespace("tidyr")    # plot value functions
 # parameters
 plot.fits <- TRUE
 standardize.features <- TRUE
-discount <- 0.9999
+discount <- 0.999
 
 # synthetic model
-state.count <- 1000           # synthetic states
+state.count <- 5000           # synthetic states
 syn.sample.count <- 20000    # synthetic samples
-use.low.discrepancy <- TRUE    # whether to use low discrepancy functions to generate synthetic samples
+use.low.discrepancy <- FALSE    # whether to use low discrepancy functions to generate synthetic samples
 
 # prediction model
 spline.count <- 2
@@ -36,6 +37,10 @@ action.names <- c(0,1)
 limits.lower <- c(-2.4, -3, -0.25, -3.1)
 limits.upper <- c(2.4, 3, 0.25, 3.1)
 
+#* add states that are nearby: this is to allow robust transitions to 
+#* states which may not be seen in the sample, but are possible
+fuzzy.neighbors <- 200
+robustness <- 0.05
 
 # ------ Generate samples ------
 
@@ -192,7 +197,6 @@ samples.rewards <- apply(samples.actions, 1, predict.reward)
 # the first $n$ to get a random selection. This also makes a lot of sense
 # when using low-discrepancy generated states (the first n will also have low dicrepancy)
 states <- samples.gen[1:state.count,]
-# TODO: needs to change from 1:state.count to 0:(state.count - 1)
 
 # Compute scales for each direction to be used with the nearest sample identification. 
 # WARNING: it is important to use the same scales when the policy is implemented.
@@ -215,55 +219,66 @@ cat("Building MDP .... \n")
 # repeat once for each action
 state.ids.from <- as.integer(rep(class::knn1(states %*% scales, 
                                              samples.gen %*% scales, 
-                                             0:(state.count-1) ), 2)) 
+                                             1:state.count ), 2)) - 1
+# warning: (0:(state.count - 1) ) does not work
+
+# the initial batch of samples should be just the
+# consequtive state ids (since the state center is closest to itself)
+assert_that(all(state.ids.from[1:state.count] == 0:(state.count - 1)))
 
 state.ids.to <- as.integer(class::knn1(states %*% scales, 
                                        samples.nexts %*% scales, 
-                                       0:(state.count-1) )) 
+                                       1:state.count )) - 1
+# warning: (0:(state.count - 1) ) does not work
 
 samples.frame <- data.frame(idstatefrom = state.ids.from,
                             idaction = samples.actions[,5],
                             idstateto = state.ids.to,
                             reward = samples.rewards)
 
-#* add states that are nearby: this is to allow robust transitions to 
-#* states which may not be seen in the sample, but are possible
-fuzzy.neighbors <- 15
 
-# this includes itself just in case
-fuzzy.states <- nabor::knn(as.data.frame(states), 
-                               as.data.frame(states), 
-                               fuzzy.neighbors)$nn.idx - 1
+# --------Construct fuzzy neighbors ---------------------
 
-fuzzy.transitions <- reshape2::melt(fuzzy.states, 
-               varnames = c("idstatefrom", "sample"), value.name="idstateto") %>% 
-  select(-sample) %>% mutate(idstatefrom = idstatefrom - 1) 
+# this assumes that there is some unsampled probablity that the
+# transition is to a neighboring state
+if(fuzzy.neighbors >= 1){
 
-# TODO: generalize this (this is too specific for 2 actions)
-# also: what should be the reward for these extra transitions? 0 does not
-# seem like something that would be universally right
-fuzzy.transitions <- 
-  rbind(fuzzy.transitions %>% mutate(idaction = 0), 
-        fuzzy.transitions %>% mutate(idaction = 1)) %>%
-  mutate(reward = 0, probability = 0)
-
+  # this includes itself just in case
+  fuzzy.states <- nabor::knn(as.data.frame(states), 
+                             as.data.frame(states), 
+                             fuzzy.neighbors)$nn.idx - 1
   
+  fuzzy.transitions <- reshape2::melt(fuzzy.states, 
+                                      varnames = c("idstatefrom", "sample"), value.name="idstateto") %>% 
+    select(-sample) %>% mutate(idstatefrom = idstatefrom - 1) 
+  
+  # TODO: generalize this (this is too specific for 2 actions)
+  # also: what should be the reward for these extra transitions? 0 does not
+  # seem like something that would be universally right
+  fuzzy.transitions <- 
+    rbind(fuzzy.transitions %>% mutate(idaction = 0), 
+          fuzzy.transitions %>% mutate(idaction = 1)) %>%
+    mutate(reward = 0, probability = 0)
+}
+
 # -------Solve MDP and save policy -------
 
 mdp <- rcraam::mdp_from_samples(samples.frame)
 
 # stop if there are any na values in the MDP
-mdp <- bind_rows(mdp, fuzzy.transitions) %>% na.fail
+if(fuzzy.neighbors >= 1){
+  mdp <- bind_rows(mdp, fuzzy.transitions) %>% na.fail
+}
 
 write_csv(mdp, "cartpole_mdp.csv")
 cat ("Solving MDP. ... \n")
-solution <- rcraam::solve_mdp(mdp, discount, list(algorithm="mpi", iterations = 100000))
+  solution <- rcraam::solve_mdp(mdp, discount, list(algorithm="mpi", iterations = 100000))
 
 #cat ("Solving RMDP VI ... ")
 #rsolution_vi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.1, list(algorithm="vi",
 #                                                                  iterations = 10000))
 #cat ("Solving RMDP MPPI ... ")
-rsolution_mppi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.05, list(algorithm="mppi",
+rsolution_mppi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", robustness, list(algorithm="mppi",
                                                                   iterations = 100000))
 
 # Compare value functions
@@ -271,7 +286,7 @@ vfs <- data.frame(vf=solution$valuefunction, rvf=rsolution_mppi$valuefunction) %
   arrange(vf+rvf) %>% mutate(x = row_number()) %>% 
   mutate(vf = vf / max(vf), rvf = rvf / max(rvf)) %>%
   tidyr::gather("algorithm", "value", vf, rvf)
-ggplot(vfs, aes(x=x, y=value, color=algorithm)) + geom_line() 
+print(ggplot(vfs, aes(x=x, y=value, color=algorithm)) + geom_line() )
 
 #' Saves the solution so it can be consumed by a python script
 save.solution <- function(mdp, solution){
