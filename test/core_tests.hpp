@@ -1700,3 +1700,134 @@ BOOST_AUTO_TEST_CASE(join_probs_test) {
     CHECK_CLOSE_COLLECTION(p1, p1c, 1.0);
     CHECK_CLOSE_COLLECTION(p2, p2c, 1.0);
 }
+
+// ********************************************************************************
+// Test Error Handling
+// ********************************************************************************
+
+BOOST_AUTO_TEST_CASE(model_error_test) {
+    MDP m;
+
+    add_transition(m, 0, 0, 0, 0.0, 0.0);
+
+    try {
+        auto sol = solve_mpi(m, 0.99);
+        BOOST_TEST(false); // the statement above is supposed to throw an exception
+    } catch (ModelError& e) {
+        BOOST_TEST((e.idstate == 0 && e.idaction == 0 && e.idoutcome == -1));
+    }
+
+    try {
+        auto sol = solve_mpi_r(m, 0.99);
+        BOOST_TEST(false); // the statement above is supposed to throw an exception
+    } catch (ModelError& e) {
+        BOOST_TEST((e.idstate == 0 && e.idaction == 0 && e.idoutcome == -1));
+    }
+
+    try {
+        auto sol = solve_vi(m, 0.99);
+        BOOST_TEST(false); // the statement above is supposed to throw an exception
+    } catch (ModelError& e) {
+        BOOST_TEST((e.idstate == 0 && e.idaction == 0 && e.idoutcome == -1));
+    }
+
+    try {
+        auto sol = solve_pi(m, 0.99);
+        BOOST_TEST(false); // the statement above is supposed to throw an exception
+    } catch (ModelError& e) {
+        BOOST_TEST((e.idstate == 0 && e.idaction == 0 && e.idoutcome == -1));
+    }
+
+#ifdef GUROBI_USE
+
+    try {
+        auto sol = solve_lp(m, 0.99);
+        BOOST_TEST(false); // the statement above is supposed to throw an exception
+    } catch (ModelError& e) {
+        BOOST_TEST((e.idstate == 0 && e.idaction == 0 && e.idoutcome == -1));
+    }
+
+#endif // GUROBI_USE
+}
+
+BOOST_AUTO_TEST_CASE(model_error_test_policy) {
+    MDP m;
+
+    add_transition(m, 0, 0, 0, 0.0, 0.0);
+
+    indvec policy{-1};
+    numvecvec rpolicy{{1.0}};
+
+    try {
+        auto sol = solve_mpi(m, 0.99, numvec(0), policy, 1000 / 50, 0.0001, 50, 0.9);
+        BOOST_TEST(false); // the statement above is supposed to throw an exception
+    } catch (ModelError& e) {
+        BOOST_TEST((e.idstate == 0 && e.idaction == 0 && e.idoutcome == -1));
+    }
+
+    try {
+        auto sol = solve_mpi_r(m, 0.99, numvec(0), rpolicy);
+        BOOST_TEST(false); // the statement above is supposed to throw an exception
+    } catch (ModelError& e) {
+        BOOST_TEST((e.idstate == 0 && e.idaction == 0 && e.idoutcome == -1));
+    }
+
+    try {
+        auto sol = solve_vi(m, 0.99, numvec(0), policy);
+        BOOST_TEST(false); // the statement above is supposed to throw an exception
+    } catch (ModelError& e) {
+        BOOST_TEST((e.idstate == 0 && e.idaction == 0 && e.idoutcome == -1));
+    }
+
+    try {
+        auto sol = solve_pi(m, 0.99, numvec(0), policy);
+        BOOST_TEST(false); // the statement above is supposed to throw an exception
+    } catch (ModelError& e) {
+        BOOST_TEST((e.idstate == 0 && e.idaction == 0 && e.idoutcome == -1));
+    }
+}
+
+BOOST_AUTO_TEST_CASE(model_error_test2) {
+    MDP m;
+
+    add_transition(m, 0, 1, 0, 1.0, 1.0);
+
+    try {
+        auto sol = solve_mpi(m, 0.99);
+        BOOST_TEST(false); // the statement above is supposed to throw an exception
+    } catch (ModelError& e) {
+        BOOST_TEST((e.idstate == 0 && e.idaction == 0 && e.idoutcome == -1));
+    }
+
+    try {
+        auto sol = solve_mpi_r(m, 0.99);
+        BOOST_TEST(false); // the statement above is supposed to throw an exception
+    } catch (ModelError& e) {
+        BOOST_TEST((e.idstate == 0 && e.idaction == 0 && e.idoutcome == -1));
+    }
+
+    try {
+        auto sol = solve_vi(m, 0.99);
+        BOOST_TEST(false); // the statement above is supposed to throw an exception
+    } catch (ModelError& e) {
+        BOOST_TEST((e.idstate == 0 && e.idaction == 0 && e.idoutcome == -1));
+    }
+
+    try {
+        auto sol = solve_pi(m, 0.99);
+        BOOST_TEST(false); // the statement above is supposed to throw an exception
+    } catch (ModelError& e) {
+        BOOST_TEST((e.idstate == 0 && e.idaction == 0 && e.idoutcome == -1));
+    }
+
+#ifdef GUROBI_USE
+
+    try {
+        auto sol = solve_lp(m, 0.99);
+        BOOST_TEST(false); // the statement above is supposed to throw an exception
+    } catch (ModelError& e) {
+        BOOST_TEST((e.idstate == 0 && e.idaction == 0 && e.idoutcome == -1));
+    }
+
+#endif // GUROBI_USE
+}

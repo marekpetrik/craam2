@@ -114,6 +114,49 @@ policy.
  * @return Computed (approximate) solution
  */
 
+// *************************************************************************************
+// **** Test model correctness
+// *************************************************************************************
+
+/**
+ * Checks whether the model is correct and throws ModelError
+ * exception when it is incorrect.
+ */
+void test_model(const MDP& mdp) {
+
+    for (long idstate = 0; idstate < long(mdp.size()); ++idstate) {
+        const auto& state = mdp[idstate];
+        for (long idaction = 0; idaction < long(state.size()); ++idaction) {
+            const auto& action = state[idaction];
+            if (action.empty())
+                throw ModelError("No transitions defined for the state and action. "
+                                 "Cannot compute a solution.",
+                                 idstate, idaction);
+        }
+    }
+}
+
+/**
+ * Checks whether the model is correct and throws ModelError
+ * exception when it is incorrect.
+ */
+void test_model(const MDPO& mdp) {
+
+    for (long idstate = 0; idstate < long(mdp.size()); ++idstate) {
+        const auto& state = mdp[idstate];
+        for (long idaction = 0; idaction < long(state.size()); ++idaction) {
+            const auto& action = state[idaction];
+            for (long idoutcome = 0; idoutcome < action.size(); ++idoutcome) {
+                const auto& outcome = action[idoutcome];
+                if (outcome.empty())
+                    throw ModelError("No transitions defined for the state and action. "
+                                     "Cannot compute a solution.",
+                                     idstate, idaction, idoutcome);
+            }
+        }
+    }
+}
+
 // **************************************************************************
 // Plain MDP methods
 // **************************************************************************
@@ -128,6 +171,7 @@ inline DetermSolution solve_vi(const MDP& mdp, prec_t discount,
                                prec_t maxresidual = SOLPREC,
                                const std::function<bool(size_t, prec_t)>& progress =
                                    algorithms::internal::empty_progress) {
+    test_model(mdp);
     return algorithms::vi_gs(algorithms::PlainBellman(mdp, policy), discount,
                              move(valuefunction), iterations, maxresidual, progress);
 }
@@ -142,7 +186,7 @@ solve_mpi(const MDP& mdp, prec_t discount, const numvec& valuefunction = numvec(
           prec_t maxresidual_vi = 0.9,
           const std::function<bool(size_t, prec_t)>& progress =
               algorithms::internal::empty_progress) {
-
+    test_model(mdp);
     return algorithms::mpi_jac(algorithms::PlainBellman(mdp, policy), discount,
                                valuefunction, iterations_pi, maxresidual_pi,
                                iterations_vi, maxresidual_vi, progress);
@@ -161,6 +205,7 @@ probabilities. This method requires computing a matrix inverse.
 inline numvec occupancies(const MDP& mdp, const Transition& initial, prec_t discount,
                           const indvec& policy) {
 
+    test_model(mdp);
     return algorithms::occfreq_mat(algorithms::PlainBellman(mdp), initial, discount,
                                    policy);
 }
@@ -175,6 +220,7 @@ inline DetermSolution solve_pi(const MDP& mdp, prec_t discount,
                                prec_t maxresidual = SOLPREC,
                                const std::function<bool(size_t, prec_t)>& progress =
                                    algorithms::internal::empty_progress) {
+    test_model(mdp);
     return algorithms::pi(algorithms::PlainBellman(mdp, policy), discount,
                           move(valuefunction), iterations, maxresidual, progress);
 }
@@ -219,9 +265,11 @@ inline DetermSolution solve_lp(const MDP& mdp, prec_t discount,
     // TODO add support for this, the parameter is here only for
     // future signature compatibility
     if (policy.size() > 0) {
-        throw logic_error("Partial policy specification is not supported yet.");
+        throw logic_error("Partial policy specification is not supported by the linear "
+                          "program MDP fomrulation yet.");
     }
 
+    test_model(mdp);
     return algorithms::solve_lp_primal(env, mdp, discount);
 }
 #endif // GUROBI_USE
@@ -241,6 +289,8 @@ inline RandSolution solve_vi_r(const MDP& mdp, prec_t discount,
                                prec_t maxresidual = SOLPREC,
                                const std::function<bool(size_t, prec_t)>& progress =
                                    algorithms::internal::empty_progress) {
+
+    test_model(mdp);
     return algorithms::vi_gs(algorithms::PlainBellmanRand(mdp, policy), discount,
                              move(valuefunction), iterations, maxresidual, progress);
 }
@@ -256,6 +306,7 @@ solve_mpi_r(const MDP& mdp, prec_t discount, const numvec& valuefunction = numve
             const std::function<bool(size_t, prec_t)>& progress =
                 algorithms::internal::empty_progress) {
 
+    test_model(mdp);
     return algorithms::mpi_jac(algorithms::PlainBellmanRand(mdp, policy), discount,
                                valuefunction, iterations_pi, maxresidual_pi,
                                iterations_vi, maxresidual_vi, progress);
@@ -287,6 +338,8 @@ inline RandSolution solve_pi_r(const MDP& mdp, prec_t discount,
                                prec_t maxresidual = SOLPREC,
                                const std::function<bool(size_t, prec_t)>& progress =
                                    algorithms::internal::empty_progress) {
+
+    test_model(mdp);
     return algorithms::pi(algorithms::PlainBellmanRand(mdp, policy), discount,
                           move(valuefunction), iterations, maxresidual, progress);
 }
@@ -305,7 +358,7 @@ rsolve_vi(const MDP& mdp, prec_t discount, const algorithms::SANature& nature,
           unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
           const std::function<bool(size_t, prec_t)>& progress =
               algorithms::internal::empty_progress) {
-
+    test_model(mdp);
     return algorithms::vi_gs(algorithms::SARobustBellman(mdp, move(nature), policy),
                              discount, move(valuefunction), iterations, maxresidual,
                              progress);
@@ -333,6 +386,7 @@ rsolve_mpi(const MDP& mdp, prec_t discount, const algorithms::SANature&& nature,
            unsigned long iterations_vi = MAXITER, prec_t maxresidual_vi = 0.9,
            const std::function<bool(size_t, prec_t)>& progress =
                algorithms::internal::empty_progress) {
+    test_model(mdp);
     return algorithms::mpi_jac(algorithms::SARobustBellman(mdp, nature, policy), discount,
                                valuefunction, iterations_pi, maxresidual_pi,
                                iterations_vi, maxresidual_vi, progress);
@@ -354,7 +408,7 @@ rsolve_pi(const MDP& mdp, prec_t discount, const algorithms::SANature& nature,
           unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
           const std::function<bool(size_t, prec_t)>& progress =
               algorithms::internal::empty_progress) {
-
+    test_model(mdp);
     return algorithms::pi(algorithms::SARobustBellman(mdp, move(nature), policy),
                           discount, move(valuefunction), iterations, maxresidual,
                           progress);
@@ -376,7 +430,7 @@ rsolve_ppi(const MDP& mdp, prec_t discount, const algorithms::SANature& nature,
            unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
            const std::function<bool(size_t, prec_t)>& progress =
                algorithms::internal::empty_progress) {
-
+    test_model(mdp);
     return algorithms::rppi(algorithms::SARobustBellman(mdp, move(nature), policy),
                             discount, move(valuefunction), iterations, maxresidual, 1.0,
                             discount * discount, algorithms::MDPSolver::pi, progress);
@@ -398,7 +452,7 @@ rsolve_mppi(const MDP& mdp, prec_t discount, const algorithms::SANature& nature,
             unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
             const std::function<bool(size_t, prec_t)>& progress =
                 algorithms::internal::empty_progress) {
-
+    test_model(mdp);
     return algorithms::rppi(algorithms::SARobustBellman(mdp, move(nature), policy),
                             discount, move(valuefunction), iterations, maxresidual, 1.0,
                             discount * discount, algorithms::MDPSolver::mpi, progress);
@@ -418,6 +472,7 @@ rsolve_s_vi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
             unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
             const std::function<bool(size_t, prec_t)>& progress =
                 algorithms::internal::empty_progress) {
+    test_model(mdp);
     auto rpolicy = policy_det2rand(mdp, policy);
     return algorithms::vi_gs(algorithms::SRobustBellman(mdp, nature, rpolicy), discount,
                              move(valuefunction), iterations, maxresidual, progress);
@@ -433,7 +488,7 @@ rsolve_s_vi_r(const MDP& mdp, prec_t discount, const algorithms::SNature& nature
               unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
               const std::function<bool(size_t, prec_t)>& progress =
                   algorithms::internal::empty_progress) {
-
+    test_model(mdp);
     return algorithms::vi_gs(algorithms::SRobustBellman(mdp, nature, rpolicy), discount,
                              move(valuefunction), iterations, maxresidual, progress);
 }
@@ -455,6 +510,7 @@ rsolve_s_mpi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
              unsigned long iterations_vi = MAXITER, prec_t maxresidual_vi = 0.9,
              const std::function<bool(size_t, prec_t)>& progress =
                  algorithms::internal::empty_progress) {
+    test_model(mdp);
     auto rpolicy = policy_det2rand(mdp, policy);
     return algorithms::mpi_jac(algorithms::SRobustBellman(mdp, nature, rpolicy), discount,
                                valuefunction, iterations_pi, maxresidual_pi,
@@ -481,7 +537,7 @@ rsolve_s_mpi_r(const MDP& mdp, prec_t discount, const algorithms::SNature& natur
                unsigned long iterations_vi = MAXITER, prec_t maxresidual_vi = 0.9,
                const std::function<bool(size_t, prec_t)>& progress =
                    algorithms::internal::empty_progress) {
-
+    test_model(mdp);
     return algorithms::mpi_jac(algorithms::SRobustBellman(mdp, nature, rpolicy), discount,
                                valuefunction, iterations_pi, maxresidual_pi,
                                iterations_vi, maxresidual_vi, progress);
@@ -504,6 +560,7 @@ rsolve_s_pi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
             unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
             const std::function<bool(size_t, prec_t)>& progress =
                 algorithms::internal::empty_progress) {
+    test_model(mdp);
     auto rpolicy = policy_det2rand(mdp, policy);
     return algorithms::pi(algorithms::SRobustBellman(mdp, nature, rpolicy), discount,
                           move(valuefunction), iterations, maxresidual, progress);
@@ -526,6 +583,7 @@ rsolve_s_pi_r(const MDP& mdp, prec_t discount, const algorithms::SNature& nature
               unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
               const std::function<bool(size_t, prec_t)>& progress =
                   algorithms::internal::empty_progress) {
+    test_model(mdp);
     return algorithms::pi(algorithms::SRobustBellman(mdp, nature, rpolicy), discount,
                           move(valuefunction), iterations, maxresidual, progress);
 }
@@ -547,6 +605,7 @@ rsolve_s_ppi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
              unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
              const std::function<bool(size_t, prec_t)>& progress =
                  algorithms::internal::empty_progress) {
+    test_model(mdp);
 
     auto rpolicy = policy_det2rand(mdp, policy);
     return algorithms::rppi(algorithms::SRobustBellman(mdp, move(nature), rpolicy),
@@ -571,6 +630,7 @@ rsolve_s_mppi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature
               unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
               const std::function<bool(size_t, prec_t)>& progress =
                   algorithms::internal::empty_progress) {
+    test_model(mdp);
 
     auto rpolicy = policy_det2rand(mdp, policy);
     return algorithms::rppi(algorithms::SRobustBellman(mdp, move(nature), rpolicy),
@@ -602,6 +662,7 @@ rsolve_s_ppi_r(const MDP& mdp, prec_t discount, const algorithms::SNature& natur
                unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
                const std::function<bool(size_t, prec_t)>& progress =
                    algorithms::internal::empty_progress) {
+    test_model(mdp);
 
     return algorithms::rppi(algorithms::SRobustBellman(mdp, move(nature), rpolicy),
                             discount, move(valuefunction), iterations, maxresidual, 1.0,
@@ -633,6 +694,7 @@ rsolve_s_mppi_r(const MDP& mdp, prec_t discount, const algorithms::SNature& natu
                 unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
                 const std::function<bool(size_t, prec_t)>& progress =
                     algorithms::internal::empty_progress) {
+    test_model(mdp);
 
     return algorithms::rppi(algorithms::SRobustBellman(mdp, move(nature), rpolicy),
                             discount, move(valuefunction), iterations, maxresidual, 1.0,
@@ -653,6 +715,7 @@ inline DetermSolution solve_vi(const MDPO& mdp, prec_t discount,
                                prec_t maxresidual = SOLPREC,
                                const std::function<bool(size_t, prec_t)>& progress =
                                    algorithms::internal::empty_progress) {
+    test_model(mdp);
     auto solution = algorithms::vi_gs(
         algorithms::SARobustOutcomeBellman(mdp, algorithms::nats::average(), policy),
         discount, move(valuefunction), iterations, maxresidual, progress);
@@ -671,7 +734,7 @@ solve_mpi(const MDPO& mdp, prec_t discount, const numvec& valuefunction = numvec
           prec_t maxresidual_vi = 0.9, bool print_progress = false,
           const std::function<bool(size_t, prec_t)>& progress =
               algorithms::internal::empty_progress) {
-
+    test_model(mdp);
     auto solution = algorithms::mpi_jac(
         algorithms::SARobustOutcomeBellman(mdp, algorithms::nats::average(), policy),
         discount, valuefunction, iterations_pi, maxresidual_pi, iterations_vi,
@@ -695,7 +758,7 @@ rsolve_vi(const MDPO& mdp, prec_t discount, const algorithms::SANature& nature,
           unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
           const std::function<bool(size_t, prec_t)>& progress =
               algorithms::internal::empty_progress) {
-
+    test_model(mdp);
     return algorithms::vi_gs(
         algorithms::SARobustOutcomeBellman(mdp, move(nature), policy), discount,
         move(valuefunction), iterations, maxresidual, progress);
@@ -717,7 +780,7 @@ rsolve_pi(const MDPO& mdp, prec_t discount, const algorithms::SANature& nature,
           unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
           const std::function<bool(size_t, prec_t)>& progress =
               algorithms::internal::empty_progress) {
-
+    test_model(mdp);
     return algorithms::pi(algorithms::SARobustOutcomeBellman(mdp, move(nature), policy),
                           discount, move(valuefunction), iterations, maxresidual,
                           progress);
@@ -740,6 +803,7 @@ rsolve_mpi(const MDPO& mdp, prec_t discount, const algorithms::SANature&& nature
            unsigned long iterations_vi = MAXITER, prec_t maxresidual_vi = 0.9,
            const std::function<bool(size_t, prec_t)>& progress =
                algorithms::internal::empty_progress) {
+    test_model(mdp);
     return algorithms::mpi_jac(algorithms::SARobustOutcomeBellman(mdp, nature, policy),
                                discount, valuefunction, iterations_pi, maxresidual_pi,
                                iterations_vi, maxresidual_vi, progress);
@@ -761,6 +825,7 @@ rsolve_ppi(const MDPO& mdp, prec_t discount, const algorithms::SANature& nature,
            unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
            const std::function<bool(size_t, prec_t)>& progress =
                algorithms::internal::empty_progress) {
+    test_model(mdp);
 
     return algorithms::rppi(algorithms::SARobustOutcomeBellman(mdp, move(nature), policy),
                             discount, move(valuefunction), iterations, maxresidual, 1.0,
@@ -783,6 +848,7 @@ rsolve_mppi(const MDPO& mdp, prec_t discount, const algorithms::SANature& nature
             unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
             const std::function<bool(size_t, prec_t)>& progress =
                 algorithms::internal::empty_progress) {
+    test_model(mdp);
 
     return algorithms::rppi(algorithms::SARobustOutcomeBellman(mdp, move(nature), policy),
                             discount, move(valuefunction), iterations, maxresidual, 1.0,

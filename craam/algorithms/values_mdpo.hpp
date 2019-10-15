@@ -59,12 +59,7 @@ inline vec_scal_t value_action(const ActionO& action, const numvec& valuefunctio
     // loop over all outcomes
     numvec outcomevalues(action.size());
     for (size_t i = 0; i < action.size(); i++) {
-        try {
-            outcomevalues[i] = action[i].value(valuefunction, discount);
-        } catch (ModelError& e) {
-            e.set_outcome(i);
-            throw e;
-        }
+        outcomevalues[i] = action[i].value(valuefunction, discount);
     }
 
     return nature(stateid, actionid, action.get_distribution(), outcomevalues);
@@ -91,12 +86,7 @@ inline prec_t value_action(const ActionO& action, numvec const& valuefunction,
     prec_t averagevalue = 0.0;
     const numvec& distribution = action.get_distribution();
     for (size_t i = 0; i < action.get_outcomes().size(); i++) {
-        try {
-            averagevalue += distribution[i] * action[i].value(valuefunction, discount);
-        } catch (ModelError& e) {
-            e.set_outcome(i);
-            throw e;
-        }
+        averagevalue += distribution[i] * action[i].value(valuefunction, discount);
     }
     return averagevalue;
 }
@@ -119,12 +109,8 @@ inline prec_t value_action(const ActionO& action, numvec const& valuefunction,
     prec_t averagevalue = 0.0;
     // TODO: simd?
     for (size_t i = 0; i < action.get_outcomes().size(); i++) {
-        try {
-            averagevalue += distribution[i] * action[i].value(valuefunction, discount);
-        } catch (ModelError& e) {
-            e.set_outcome(i);
-            throw e;
-        }
+
+        averagevalue += distribution[i] * action[i].value(valuefunction, discount);
     }
     return averagevalue;
 }
@@ -159,10 +145,6 @@ inline prec_t value_fix_state(const StateO& state, numvec const& valuefunction,
     prec_t result = 0.0;
     for (size_t actionid = 0; actionid < state.size(); actionid++) {
         const auto& action = state[actionid];
-        // cannot assume that the action is valid
-        if (!state.is_valid(actionid))
-            throw invalid_argument("Cannot take an invalid action");
-
         result += actiondist[actionid] *
                   value_action(action, valuefunction, discount, distribution);
     }

@@ -84,23 +84,19 @@ public:
      */
     pair<prec_t, policy_type> policy_update(long stateid, const numvec& valuefunction,
                                             prec_t discount) const {
-        try {
-            // check whether this state should only be evaluated
-            if (initial_policy.empty() || initial_policy[stateid] < 0) { // optimizing
-                prec_t newvalue;
-                policy_type action;
 
-                tie(action, newvalue) =
-                    value_max_state(mdp[stateid], valuefunction, discount);
-                return make_pair(newvalue, action);
-            } else { // fixed-action, do not copy
-                return {value_fix_state(mdp[stateid], valuefunction, discount,
-                                        initial_policy[stateid]),
-                        initial_policy[stateid]};
-            }
-        } catch (ModelError& e) {
-            e.set_state(stateid);
-            throw e;
+        // check whether this state should only be evaluated
+        if (initial_policy.empty() || initial_policy[stateid] < 0) { // optimizing
+            prec_t newvalue;
+            policy_type action;
+
+            tie(action, newvalue) =
+                value_max_state(mdp[stateid], valuefunction, discount);
+            return make_pair(newvalue, action);
+        } else { // fixed-action, do not copy
+            return {value_fix_state(mdp[stateid], valuefunction, discount,
+                                    initial_policy[stateid]),
+                    initial_policy[stateid]};
         }
     }
 
@@ -110,12 +106,8 @@ public:
      */
     prec_t compute_value(const policy_type& action, long stateid,
                          const numvec& valuefunction, prec_t discount) const {
-        try {
-            return value_fix_state(mdp[stateid], valuefunction, discount, action);
-        } catch (ModelError& e) {
-            e.set_state(stateid);
-            throw e;
-        }
+
+        return value_fix_state(mdp[stateid], valuefunction, discount, action);
     }
 
     /** Returns a reference to the transition probabilities
@@ -189,26 +181,22 @@ public:
      */
     pair<prec_t, policy_type> policy_update(long stateid, const numvec& valuefunction,
                                             prec_t discount) const {
-        try {
-            // check whether this state should only be evaluated
-            if (initial_policy.empty() || initial_policy[stateid].empty()) { // optimizing
 
-                auto output = value_max_state(mdp[stateid], valuefunction, discount);
-                prec_t newvalue = output.first;
-                // create the distribution of the appropriate size
-                policy_type action = numvec(mdp[stateid].size());
-                // assign a deterministic policy
-                action[output.second] = 1.0;
+        // check whether this state should only be evaluated
+        if (initial_policy.empty() || initial_policy[stateid].empty()) { // optimizing
 
-                return make_pair(newvalue, action);
-            } else { // fixed-action, do not copy
-                return {value_fix_state(mdp[stateid], valuefunction, discount,
-                                        initial_policy[stateid]),
-                        initial_policy[stateid]};
-            }
-        } catch (ModelError& e) {
-            e.set_state(stateid);
-            throw e;
+            auto output = value_max_state(mdp[stateid], valuefunction, discount);
+            prec_t newvalue = output.first;
+            // create the distribution of the appropriate size
+            policy_type action = numvec(mdp[stateid].size());
+            // assign a deterministic policy
+            action[output.second] = 1.0;
+
+            return make_pair(newvalue, action);
+        } else { // fixed-action, do not copy
+            return {value_fix_state(mdp[stateid], valuefunction, discount,
+                                    initial_policy[stateid]),
+                    initial_policy[stateid]};
         }
     }
 
@@ -218,12 +206,8 @@ public:
      */
     prec_t compute_value(const policy_type& action, long stateid,
                          const numvec& valuefunction, prec_t discount) const {
-        try {
-            return value_fix_state(mdp[stateid], valuefunction, discount, action);
-        } catch (ModelError& e) {
-            e.set_state(stateid);
-            throw e;
-        }
+
+        return value_fix_state(mdp[stateid], valuefunction, discount, action);
     }
 
     /** Returns a reference to the transition probabilities
@@ -333,31 +317,27 @@ public:
      */
     pair<prec_t, policy_type> policy_update(long stateid, const numvec& valuefunction,
                                             prec_t discount) const {
-        try {
-            prec_t newvalue = std::nan("");
-            policy_type action;
-            numvec transition;
 
-            // check whether this state should only be evaluated or also optimized
-            // optimizing action
-            if (decision_policy.empty() || decision_policy[stateid] < 0) {
-                long actionid;
-                tie(actionid, transition, newvalue) = value_max_state(
-                    mdp[stateid], valuefunction, discount, stateid, nature);
-                action = make_pair(actionid, move(transition));
-            }
-            // fixed-action, do not copy
-            else {
-                const long actionid = decision_policy[stateid];
-                tie(transition, newvalue) = value_fix_state(
-                    mdp[stateid], valuefunction, discount, actionid, stateid, nature);
-                action = make_pair(actionid, move(transition));
-            }
-            return {newvalue, move(action)};
-        } catch (ModelError& e) {
-            e.set_state(stateid);
-            throw e;
+        prec_t newvalue = std::nan("");
+        policy_type action;
+        numvec transition;
+
+        // check whether this state should only be evaluated or also optimized
+        // optimizing action
+        if (decision_policy.empty() || decision_policy[stateid] < 0) {
+            long actionid;
+            tie(actionid, transition, newvalue) =
+                value_max_state(mdp[stateid], valuefunction, discount, stateid, nature);
+            action = make_pair(actionid, move(transition));
         }
+        // fixed-action, do not copy
+        else {
+            const long actionid = decision_policy[stateid];
+            tie(transition, newvalue) = value_fix_state(
+                mdp[stateid], valuefunction, discount, actionid, stateid, nature);
+            action = make_pair(actionid, move(transition));
+        }
+        return {newvalue, move(action)};
     }
 
     /**
@@ -372,13 +352,9 @@ public:
      */
     prec_t compute_value(const policy_type& action, long stateid,
                          const numvec& valuefunction, prec_t discount) const {
-        try {
-            return value_fix_state(mdp[stateid], valuefunction, discount, action.first,
-                                   action.second);
-        } catch (ModelError& e) {
-            e.set_state(stateid);
-            throw e;
-        }
+
+        return value_fix_state(mdp[stateid], valuefunction, discount, action.first,
+                               action.second);
     }
 
     /** Returns a reference to the transition probabilities
@@ -509,30 +485,25 @@ public:
      */
     pair<prec_t, policy_type> policy_update(long stateid, const numvec& valuefunction,
                                             prec_t discount) const {
-        try {
-            prec_t newvalue;
-            numvec action;
-            vector<numvec> transitions;
 
-            const State& state = mdp[stateid];
+        prec_t newvalue;
+        numvec action;
+        vector<numvec> transitions;
 
-            if (state.is_terminal())
-                return make_pair(-1, make_pair(numvec(0), numvecvec(0)));
+        const State& state = mdp[stateid];
 
-            // check whether this state should only be evaluated or also optimized
-            numvec init_policy =
-                decision_policy.empty() ? numvec(0) : decision_policy[stateid];
-            std::tie(action, transitions, newvalue) =
-                nature(stateid, init_policy, compute_probabilities(state),
-                       compute_zvalues(state, valuefunction, discount));
-            assert(!isinf(newvalue));
-            assert(action.size() == state.size());
-            policy_type action_response = make_pair(move(action), move(transitions));
-            return {newvalue, move(action_response)};
-        } catch (ModelError& e) {
-            e.set_state(stateid);
-            throw e;
-        }
+        if (state.is_terminal()) return make_pair(-1, make_pair(numvec(0), numvecvec(0)));
+
+        // check whether this state should only be evaluated or also optimized
+        numvec init_policy =
+            decision_policy.empty() ? numvec(0) : decision_policy[stateid];
+        std::tie(action, transitions, newvalue) =
+            nature(stateid, init_policy, compute_probabilities(state),
+                   compute_zvalues(state, valuefunction, discount));
+        assert(!isinf(newvalue));
+        assert(action.size() == state.size());
+        policy_type action_response = make_pair(move(action), move(transitions));
+        return {newvalue, move(action_response)};
     }
 
     /**
@@ -547,13 +518,9 @@ public:
      */
     prec_t compute_value(const policy_type& action, long stateid,
                          const numvec& valuefunction, prec_t discount) const {
-        try {
-            return value_fix_state(mdp[stateid], valuefunction, discount, action.first,
-                                   action.second);
-        } catch (ModelError& e) {
-            e.set_state(stateid);
-            throw e;
-        }
+
+        return value_fix_state(mdp[stateid], valuefunction, discount, action.first,
+                               action.second);
     }
 
     /** Returns a reference to the transition probabilities

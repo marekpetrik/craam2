@@ -2,9 +2,12 @@
 # need to run pip install 
 suppressMessages(library(ggplot2))
 suppressMessages(library(dplyr))
-library(readr)
-library(reticulate)
-library(splines)
+library(readr)       # write CSV quickly
+library(reticulate)  # run open ai gym
+library(splines)     # approximate dynamics
+library(nabor)       # nearest neighbor (fast) that finds ids of neighbors
+loadNamespace("reshape2") # process nabor output
+loadNamespace("tidyr")    # plot value functions
 
 #source("discretized.R")
 
@@ -13,12 +16,12 @@ library(splines)
 # parameters
 plot.fits <- TRUE
 standardize.features <- TRUE
-discount <- 0.99
+discount <- 0.9999
 
 # synthetic model
-state.count <- 8000           # synthetic states
-syn.sample.count <- 200000    # synthetic samples
-use.low.discrepancy <- FALSE    # whether to use low discrepancy functions to generate synthetic samples
+state.count <- 1000           # synthetic states
+syn.sample.count <- 20000    # synthetic samples
+use.low.discrepancy <- TRUE    # whether to use low discrepancy functions to generate synthetic samples
 
 # prediction model
 spline.count <- 2
@@ -174,7 +177,7 @@ samples.actions <- do.call(
 # construct a data frame with all states that initiate transitions
 samples.first <- as.data.frame(samples.gen)
 colnames(samples.first) <- feature.names
-                               
+                                
 samples.nexts <- as.matrix(
   do.call(rbind,
           lapply(action.names,
@@ -189,6 +192,7 @@ samples.rewards <- apply(samples.actions, 1, predict.reward)
 # the first $n$ to get a random selection. This also makes a lot of sense
 # when using low-discrepancy generated states (the first n will also have low dicrepancy)
 states <- samples.gen[1:state.count,]
+# TODO: needs to change from 1:state.count to 0:(state.count - 1)
 
 # Compute scales for each direction to be used with the nearest sample identification. 
 # WARNING: it is important to use the same scales when the policy is implemented.
@@ -207,61 +211,99 @@ write_csv(as.data.frame(scales), 'scales.csv')
 
 # --------Build MDP from samples ---------------------
 
+cat("Building MDP .... \n")
 # repeat once for each action
 state.ids.from <- as.integer(rep(class::knn1(states %*% scales, 
                                              samples.gen %*% scales, 
-                                             1:state.count), 2)) - 1
+                                             0:(state.count-1) ), 2)) 
 
 state.ids.to <- as.integer(class::knn1(states %*% scales, 
                                        samples.nexts %*% scales, 
-                                       1:state.count)) - 1
+                                       0:(state.count-1) )) 
 
 samples.frame <- data.frame(idstatefrom = state.ids.from,
                             idaction = samples.actions[,5],
                             idstateto = state.ids.to,
                             reward = samples.rewards)
+
+#* add states that are nearby: this is to allow robust transitions to 
+#* states which may not be seen in the sample, but are possible
+fuzzy.neighbors <- 15
+
+# this includes itself just in case
+fuzzy.states <- nabor::knn(as.data.frame(states), 
+                               as.data.frame(states), 
+                               fuzzy.neighbors)$nn.idx - 1
+
+fuzzy.transitions <- reshape2::melt(fuzzy.states, 
+               varnames = c("idstatefrom", "sample"), value.name="idstateto") %>% 
+  select(-sample) %>% mutate(idstatefrom = idstatefrom - 1) 
+
+# TODO: generalize this (this is too specific for 2 actions)
+# also: what should be the reward for these extra transitions? 0 does not
+# seem like something that would be universally right
+fuzzy.transitions <- 
+  rbind(fuzzy.transitions %>% mutate(idaction = 0), 
+        fuzzy.transitions %>% mutate(idaction = 1)) %>%
+  mutate(reward = 0, probability = 0)
+
   
 # -------Solve MDP and save policy -------
 
-
 mdp <- rcraam::mdp_from_samples(samples.frame)
 
-write_csv(mdp, "cartpole_mdp.csv")
-cat ("Solving MDP\n")
-solution <- rcraam::solve_mdp(mdp, discount, list(algorithm="mpi", iterations = 50000))
+# stop if there are any na values in the MDP
+mdp <- bind_rows(mdp, fuzzy.transitions) %>% na.fail
 
-#cat ("Solving RMDP VI")
+write_csv(mdp, "cartpole_mdp.csv")
+cat ("Solving MDP. ... \n")
+solution <- rcraam::solve_mdp(mdp, discount, list(algorithm="mpi", iterations = 100000))
+
+#cat ("Solving RMDP VI ... ")
 #rsolution_vi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.1, list(algorithm="vi",
 #                                                                  iterations = 10000))
-#cat ("Solving RMDP MPPI")
-#rsolution_mppi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.1, list(algorithm="mppi",
-#                                                                  iterations = 10000))
+#cat ("Solving RMDP MPPI ... ")
+rsolution_mppi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.05, list(algorithm="mppi",
+                                                                  iterations = 100000))
 
+# Compare value functions
+vfs <- data.frame(vf=solution$valuefunction, rvf=rsolution_mppi$valuefunction) %>% 
+  arrange(vf+rvf) %>% mutate(x = row_number()) %>% 
+  mutate(vf = vf / max(vf), rvf = rvf / max(rvf)) %>%
+  tidyr::gather("algorithm", "value", vf, rvf)
+ggplot(vfs, aes(x=x, y=value, color=algorithm)) + geom_line() 
 
-qvalues <- rcraam::compute_qvalues(mdp, solution$valuefunction, discount)
+#' Saves the solution so it can be consumed by a python script
+save.solution <- function(mdp, solution){
 
-# Save solution to a data_frame
-states.scaled <- states %*% scales
-pol.states <- solution$policy$idstate
-pol.actions <- solution$policy$idaction
-solution.df <- data.frame(CartPos = states.scaled[pol.states+1,1],
-                          CartVelocity = states.scaled[pol.states+1,2],
-                          PoleAngle = states.scaled[pol.states+1,3],
-                          PoleVelocity = states.scaled[pol.states+1,4],
-                          State = pol.states,
-                          Action = pol.actions,
-                          Value = solution$valuefunction[pol.states+1])
-# add probabilities to the file if the policy is randomized
-if("probability" %in% colnames(solution$policy)){
-  solution.df$Probability <- solution$policy$probability
+  qvalues <- rcraam::compute_qvalues(mdp, solution$valuefunction, discount)
+  
+  # Save solution to a data_frame
+  states.scaled <- states %*% scales
+  pol.states <- solution$policy$idstate
+  pol.actions <- solution$policy$idaction
+  solution.df <- data.frame(CartPos = states.scaled[pol.states+1,1],
+                            CartVelocity = states.scaled[pol.states+1,2],
+                            PoleAngle = states.scaled[pol.states+1,3],
+                            PoleVelocity = states.scaled[pol.states+1,4],
+                            State = pol.states,
+                            Action = pol.actions,
+                            Value = solution$valuefunction[pol.states+1])
+  # add probabilities to the file if the policy is randomized
+  if("probability" %in% colnames(solution$policy)){
+    solution.df$Probability <- solution$policy$probability
+  }
+  
+  # ------------- Save values -----------------------
+  
+  write_csv(samples, "samples.csv")
+  write_csv(solution.df, "policy_nn.csv")
+  write_csv(qvalues, "qvalues.csv")
+  
 }
 
-# ------------- Save values -----------------------
-
-write_csv(samples, "samples.csv")
-write_csv(solution.df, "policy_nn.csv")
-write_csv(qvalues, "qvalues.csv")
-
+save.solution(mdp, solution)
+save.solution(mdp, rsolution_mppi)
 
 # ------ Plot Fits ---------
 

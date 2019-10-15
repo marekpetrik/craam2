@@ -59,9 +59,6 @@ public:
     /** Appends a string representation to the argument */
     string to_string() const { return "1(reg)"; };
 
-    /** Whether the action has some transitions */
-    bool is_valid() const { return size() > 0; }
-
     /** Returns the mean transition probabilities. Ignore rewards. */
     Transition mean_transition() const { return *this; }
 
@@ -72,6 +69,10 @@ public:
         assert(natpolicy.size() == get_indices().size());
         return Transition(get_indices(), natpolicy, numvec(size(), 0.0));
     }
+
+    /// Returns whether there are any transitions associated with this
+    /// action and thus can have awell-defined value
+    bool has_transitions() { return !empty(); };
 
     /** Returns a json representation of the action
         @param actionid Whether to include action id*/

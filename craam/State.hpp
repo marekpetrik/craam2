@@ -95,23 +95,6 @@ public:
     /** Returns an existing action */
     AType& operator[](long actionid) { return get_action(actionid); }
 
-    /// Returns whether the actions is valid
-    bool is_valid(long actionid) const {
-        assert(actionid < long(actions.size()) && actionid >= 0);
-        return actions[actionid].is_valid();
-    };
-
-    /** @returns List of action indices that have no transitions and are
-   *              thus considered to be invalid.
-   */
-    indvec invalid_actions() const {
-        indvec invalid(0);
-        for (size_t a = 0; a < actions.size(); a++) {
-            if (!is_valid(a)) invalid.push_back(a);
-        }
-        return invalid;
-    }
-
     /** Returns the set of all actions */
     const vector<AType>& get_actions() const { return actions; };
 
@@ -183,14 +166,14 @@ public:
       * This function is not thread-safe and could leave the object in a very bad
       * internal state if interrupted
       *
-      * @returns List of original action ids
+      * @returns List of original action ids which were selected from the list
       */
     indvec pack_actions() {
         indvec original;
         vector<AType> newactions;
         for (size_t actionid = 0; actionid < actions.size(); actionid++) {
             AType& action = actions[actionid];
-            if (action.is_valid()) {
+            if (action.has_transitions()) {
                 newactions.push_back(move(action));
                 original.push_back(actionid);
             }

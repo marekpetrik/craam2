@@ -233,9 +233,9 @@ public:
         assert(rewards.size() == probabilities.size());
         assert(probabilities.size() == indices.size());
 
-        if (indices.empty())
-            throw ModelError("No transitions defined for the state action-pair. "
-                             "Cannot compute value.");
+        // No transitions defined, no value
+        if (indices.empty()) return nan("");
+
         prec_t value = 0.0;
 
         // Note: in simple benchmarks, the simd statement seems to speed up the
@@ -267,8 +267,9 @@ public:
      */
     prec_t mean_reward(const numvec& probabilities) const {
         assert(probabilities.size() == size());
-        if (indices.empty())
-            throw range_error("No transitions defined. Cannot compute mean reward.");
+
+        // if there are no transitions cannot solve it
+        if (indices.empty()) return nan("");
 
         return inner_product(probabilities.cbegin(), probabilities.cend(),
                              rewards.cbegin(), 0.0);
@@ -355,6 +356,7 @@ public:
      * @param size Size of the constructed vector
      */
     numvec rewards_vector(size_t size) const {
+        if (indices.empty()) return numvec(size, nan(""));
 
         if (max_index() >= 0 && static_cast<long>(size) <= max_index())
             throw range_error("Size must be greater than the maximal index");

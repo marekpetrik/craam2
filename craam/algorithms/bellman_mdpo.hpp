@@ -93,45 +93,36 @@ public:
      */
     pair<prec_t, policy_type> policy_update(long stateid, const numvec& valuefunction,
                                             prec_t discount) const {
-        try {
-            prec_t newvalue = 0;
-            policy_type action;
-            numvec transition;
 
-            // check whether this state should only be evaluated or also optimized
-            // optimizing action
-            if (decision_policy.empty() || decision_policy[stateid] < 0) {
-                long actionid;
-                tie(actionid, transition, newvalue) = value_max_state(
-                    mdpo[stateid], valuefunction, discount, stateid, nature);
-                action = make_pair(actionid, move(transition));
-            }
-            // fixed-action, do not copy
-            else {
-                prec_t newvalue;
-                const long actionid = decision_policy[stateid];
-                tie(transition, newvalue) = value_fix_state(
-                    mdpo[stateid], valuefunction, discount, actionid, stateid, nature);
-                action = make_pair(actionid, move(transition));
-            }
-            return make_pair(newvalue, move(action));
-        } catch (ModelError& e) {
-            e.set_state(stateid);
-            throw e;
+        prec_t newvalue = 0;
+        policy_type action;
+        numvec transition;
+
+        // check whether this state should only be evaluated or also optimized
+        // optimizing action
+        if (decision_policy.empty() || decision_policy[stateid] < 0) {
+            long actionid;
+            tie(actionid, transition, newvalue) =
+                value_max_state(mdpo[stateid], valuefunction, discount, stateid, nature);
+            action = make_pair(actionid, move(transition));
         }
+        // fixed-action, do not copy
+        else {
+            prec_t newvalue;
+            const long actionid = decision_policy[stateid];
+            tie(transition, newvalue) = value_fix_state(
+                mdpo[stateid], valuefunction, discount, actionid, stateid, nature);
+            action = make_pair(actionid, move(transition));
+        }
+        return make_pair(newvalue, move(action));
     }
 
     /** Computes the Bellman update for a given policy.
             The function is called for the particular state. */
     prec_t compute_value(const policy_type& action_pol, long stateid,
                          const numvec& valuefunction, prec_t discount) const {
-        try {
-            return value_fix_state(mdpo[stateid], valuefunction, discount,
-                                   action_pol.first, action_pol.second);
-        } catch (ModelError& e) {
-            e.set_state(stateid);
-            throw e;
-        }
+        return value_fix_state(mdpo[stateid], valuefunction, discount, action_pol.first,
+                               action_pol.second);
     }
 
     /** Returns a reference to the transition probabilities

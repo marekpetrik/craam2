@@ -29,11 +29,11 @@
 #include "craam/MDP.hpp"
 #include "craam/Solution.hpp"
 
+#include <chrono>
 #include <gurobi/gurobi_c++.h>
 #include <memory>
 
 namespace craam { namespace algorithms {
-
 
 /**
  * @brief Solves the MDP using the primal formulation (using value functions)
@@ -81,6 +81,7 @@ inline DetermSolution solve_lp_primal(const GRBEnv& env, const MDP& mdp,
         const State& s = mdp[si];
         constraints[si].resize(s.size());
         for (size_t ai = 0; ai < s.size(); ++ai) {
+
             GRBLinExpr constraint;
 
             // v[s] - discount * sum_{s'} p[s'] v[s'] >= r[s,a]
@@ -105,7 +106,7 @@ inline DetermSolution solve_lp_primal(const GRBEnv& env, const MDP& mdp,
     int status = model.get(GRB_IntAttr_Status);
     if ((status == GRB_INF_OR_UNBD) || (status == GRB_INFEASIBLE) ||
         (status == GRB_UNBOUNDED)) {
-        throw invalid_argument("Failed to solve the LP.");
+        throw runtime_error("Failed to solve the LP.");
     }
 
     // retrieve policy and action values

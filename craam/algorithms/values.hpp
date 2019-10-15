@@ -55,27 +55,15 @@ inline pair<long, prec_t> value_max_state(const SAState<AType>& state,
     for (size_t i = 0; i < state.size(); i++) {
         auto const& action = state[i];
 
-        if (!state.is_valid(i))
-            throw invalid_argument("cannot have an invalid state and action (state and "
-                                   "action with no transitions).");
+        auto value = value_action(action, valuefunction, discount);
 
-        try {
-            auto value = value_action(action, valuefunction, discount);
-
-            if (value >= maxvalue) {
-                maxvalue = value;
-                result = i;
-            }
-        } catch (ModelError& e) {
-            e.set_action(i);
-            throw e;
+        if (value >= maxvalue) {
+            maxvalue = value;
+            result = i;
         }
     }
 
-    // if the result has not been changed, that means that all actions are invalid
-    if (result == -1) throw ModelError("All actions are invalid.");
-
-    return make_pair(result, maxvalue);
+    return {result, maxvalue};
 }
 
 /**
@@ -97,18 +85,8 @@ inline prec_t value_fix_state(const SAState<AType>& state, numvec const& valuefu
             "invalid actionid: " + std::to_string(actionid) +
             " for action count: " + std::to_string(state.get_actions().size()));
 
-    try {
-        const auto& action = state[actionid];
-
-        // cannot assume invalid state.get_actions()
-        if (!state.is_valid(actionid))
-            throw invalid_argument("Cannot take an invalid action");
-
-        return value_action(action, valuefunction, discount);
-    } catch (ModelError& e) {
-        e.set_action(actionid);
-        throw(e);
-    }
+    const auto& action = state[actionid];
+    return value_action(action, valuefunction, discount);
 }
 
 /**
@@ -138,12 +116,7 @@ inline prec_t value_fix_state(const SAState<AType>& state, numvec const& valuefu
     //    std::to_string(state.get_actions().size()) );
 
     const auto& action = state[actionid];
-    try {
-        return value_action(action, valuefunction, discount, distribution);
-    } catch (ModelError& e) {
-        e.set_action(actionid);
-        throw(e);
-    }
+    return value_action(action, valuefunction, discount, distribution);
 }
 
 /**
@@ -173,18 +146,11 @@ inline prec_t value_fix_state(const SAState<AType>& state, numvec const& valuefu
     for (size_t actionid = 0; actionid < state.size(); actionid++) {
         const auto& action = state[actionid];
         // cannot assume that the action is valid
-        if (!state.is_valid(actionid))
-            throw invalid_argument("Cannot take an invalid action");
 
         // skip actions with 0 probability
         if (actiondist[actionid] <= EPSILON) continue;
-        try {
-            result += actiondist[actionid] * value_action(action, valuefunction, discount,
-                                                          distributions[actionid]);
-        } catch (ModelError& e) {
-            e.set_action(actionid);
-            throw(e);
-        }
+        result += actiondist[actionid] *
+                  value_action(action, valuefunction, discount, distributions[actionid]);
     }
     return result;
 }
@@ -215,20 +181,14 @@ inline vec_scal_t value_fix_state(const SType& state, numvec const& valuefunctio
     assert(actionid >= 0 && actionid < long(state.size()));
 
     if (actionid < 0 || actionid >= long(state.size()))
-        throw range_error(
+        throw runtime_error(
             "invalid actionid: " + std::to_string(actionid) +
             " for action count: " + std::to_string(state.get_actions().size()));
 
     const auto& action = state[actionid];
     // cannot assume that the action is valid
-    if (!state.is_valid(actionid))
-        throw invalid_argument("Cannot take an invalid action");
-    try {
-        return value_action(action, valuefunction, discount, stateid, actionid, nature);
-    } catch (ModelError& e) {
-        e.set_action(actionid);
-        throw(e);
-    }
+
+    return value_action(action, valuefunction, discount, stateid, actionid, nature);
 }
 
 /**
@@ -254,9 +214,7 @@ inline ind_vec_scal_t value_max_state(const SType& state, const numvec& valuefun
                                       const SANature& nature) {
     // can finish immediately when the state is terminal
     if (state.is_terminal()) return make_tuple(-1, numvec(), 0);
-
     // make sure that the number of natures is the same as the number of actions
-
     prec_t maxvalue = -numeric_limits<prec_t>::infinity();
 
     long result = -1;
@@ -265,26 +223,16 @@ inline ind_vec_scal_t value_max_state(const SType& state, const numvec& valuefun
     for (size_t i = 0; i < state.size(); i++) {
         const auto& action = state[i];
 
-        if (!state.is_valid(i)) throw invalid_argument("Cannot have an invalid action.");
-
-        try {
-            auto value =
-                value_action(action, valuefunction, discount, stateid, long(i), nature);
-            if (value.second > maxvalue) {
-                maxvalue = value.second;
-                result = long(i);
-                result_outcome = move(value.first);
-            }
-        } catch (ModelError& e) {
-            e.set_action(i);
-            throw e;
+        auto value =
+            value_action(action, valuefunction, discount, stateid, long(i), nature);
+        if (value.second > maxvalue) {
+            maxvalue = value.second;
+            result = long(i);
+            result_outcome = move(value.first);
         }
     }
 
-    // if the result has not been changed, that means that all actions are invalid
-    if (result == -1) throw ModelError("all actions are invalid.", stateid);
-
-    return make_tuple(result, result_outcome, maxvalue);
+    return {result, result_outcome, maxvalue};
 }
 
 }} // namespace craam::algorithms

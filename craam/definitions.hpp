@@ -80,7 +80,7 @@ constexpr prec_t THRESHOLD = 1e-6;
 /// An exception class that indicates that the
 /// provided model was misspecified
 class ModelError : public std::exception {
-protected:
+public:
     std::string message;
     long idstate;
     long idaction;
@@ -89,11 +89,10 @@ protected:
 
     /// updates the full message if anything changes
     void update_fullmsg() {
-        fullmessage = fullmessage =
-            "State: " + std::to_string(idstate) +
-            ", Action: " + std::to_string(idaction) +
-            (idoutcome >= 0 ? ", Outcome: " + std::to_string(idoutcome) : "") +
-            ", Message: '" + this->message + "'.";
+        fullmessage = "State: " + std::to_string(idstate) +
+                      ", Action: " + std::to_string(idaction) +
+                      (idoutcome >= 0 ? ", Outcome: " + std::to_string(idoutcome) : "") +
+                      ", Message: '" + message + "'.";
     }
 
 public:

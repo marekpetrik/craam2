@@ -500,15 +500,15 @@ public:
     }
 
     /**
-  Returns a sample of the reward and a decision state following a state
-
-  If the transition probabilities do not sum to 1, then them remainder
-  is considered as a probability of transitioning to a terminal state
-  (one with an index that is too large; see ModelSimulator::end_condition)
-
-  \param state Current state
-  \param action Current action
-  */
+     * Returns a sample of the reward and a decision state following a state
+     *
+     * If the transition probabilities do not sum to 1, then them remainder
+     *   is considered as a probability of transitioning to a terminal state
+     *   (one with an index that is too large; see ModelSimulator::end_condition)
+     *
+     * @param state Current state
+     * @param action Current action
+     */
     pair<double, State> transition(State state, Action action) {
 
         assert(state >= 0 && size_t(state) < mdp->size());
@@ -516,10 +516,6 @@ public:
 
         assert(action >= 0 && size_t(action) < mdpstate.size());
         const auto& mdpaction = mdpstate[action];
-
-        if (!mdpstate.is_valid(action))
-            throw invalid_argument("Cannot transition using an invalid action");
-
         const auto& tran = mdpaction;
 
         const numvec& probs = tran.get_probabilities();
@@ -564,12 +560,15 @@ public:
     /// State dependent action list
     size_t action_count(State state) const { return (*mdp)[state].size(); };
 
+    /**
+     * Returns actions that have some transitions associated with them
+     */
     vector<Action> get_valid_actions(State state) const {
         vector<Action> valid_actions;
         const auto& mdpstate = (*mdp)[state];
-        for (Action a = 0l; a < (long)mdpstate.size(); a++) {
-            if (mdpstate.is_valid(a)) { valid_actions.push_back(a); }
-        }
+        for (Action a = 0l; a < Action(mdpstate.size()); ++a)
+            if (!mdpstate[a].empty()) { valid_actions.push_back(a); }
+
         return valid_actions;
     }
 

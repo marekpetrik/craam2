@@ -93,8 +93,15 @@ public:
     /** Whether the provided outcomeid is correct */
     bool is_nature_correct(numvec oid) const { return (oid.size() == outcomes.size()); }
 
-    /** Whether the action has some outcomes */
-    bool is_valid() const { return outcomes.size() > 0; };
+    /** Whether the action has some outcomes and that each one has a transition.
+    The function has a non-trivial cost. */
+    bool has_transitions() const {
+        if (outcomes.empty()) return false;
+        for (const auto& t : outcomes) {
+            if (t.empty()) return false;
+        }
+        return true;
+    };
 
     /** Appends a string representation to the argument */
     string to_string() const { return std::to_string(get_outcomes().size()); }

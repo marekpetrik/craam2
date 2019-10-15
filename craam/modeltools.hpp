@@ -386,11 +386,11 @@ inline void to_csv(const MDPO& rmdp, ostream& output, bool header = true) {
 }
 
 /**
-Saves the transition probabilities and rewards to a CSV file. See to_csv for
-a detailed description.
-
-@param filename Name of the file
-@param header Whether to create a header of the file too
+ * Saves the transition probabilities and rewards to a CSV file. See to_csv for
+ * a detailed description.
+ *
+ * @param filename Name of the file
+ * @param header Whether to create a header of the file too
  */
 inline void to_csv_file(const MDPO& mdp, const string& filename, bool header = true) {
     ofstream ofs(filename, ofstream::out);

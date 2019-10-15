@@ -211,6 +211,7 @@ Rcpp::List pack_actions(Rcpp::DataFrame mdp) {
 // [[Rcpp::export]]
 Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount,
                      Rcpp::Nullable<Rcpp::List> options_n = R_NilValue) {
+
     Rcpp::List result;
     Rcpp::List options =
         options_n.isNotNull() ? Rcpp::List(options_n.get()) : Rcpp::List();
@@ -454,15 +455,22 @@ algorithms::SANature parse_nature_sa(const MDPO& mdpo, const string& nature,
  * The algorithms: pi, mpi may cycle infinitely without converging to a solution,
  * when solving a robust MDP.
  * The algorithms ppi and mppi are guaranteed to converge to an optimal solution.
+ *
+ * Important: Robust transition probabilities are allowed only to idstateto states that
+ * are provided in the mdp definition. This is true even if the transition probability
+ * to those states is 0.
+ *
  */
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String nature,
                          SEXP nature_par,
                          Rcpp::Nullable<Rcpp::List> options_n = R_NilValue) {
+
     Rcpp::List result;
     Rcpp::List options =
         options_n.isNotNull() ? Rcpp::List(options_n.get()) : Rcpp::List();
 
+    // make robust transitions to states with 0 probability possible
     MDP m = mdp_from_dataframe(mdp, true);
 
     if (options.containsElementNamed("pack_actions") &&
@@ -570,11 +578,13 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
  * The algorithms: pi, mpi may cycle infinitely without converging to a solution,
  * when solving a robust MDP.
  * The algorithm ppi is guaranteed to converge to an optimal solution.
+ *
  */
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String nature,
                           SEXP nature_par,
                           Rcpp::Nullable<Rcpp::List> options_n = R_NilValue) {
+
     Rcpp::List result;
     Rcpp::List options =
         options_n.isNotNull() ? Rcpp::List(options_n.get()) : Rcpp::List();
@@ -727,12 +737,16 @@ algorithms::SNature parse_nature_s(const MDP& mdp, const string& nature,
 
 /**
  * Solves a robust MDP version of the problem with s-rectangular ambiguity
+ *
+ * Important: Robust transition probabilities are allowed only to idstateto states that
+ * are provided in the mdp definition. This is true even if the transition probability
+ * to those states is 0.
+ *
  */
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String nature,
                         SEXP nature_par,
                         Rcpp::Nullable<Rcpp::List> options_n = R_NilValue) {
-
     Rcpp::List result;
     Rcpp::List options =
         options_n.isNotNull() ? Rcpp::List(options_n.get()) : Rcpp::List();

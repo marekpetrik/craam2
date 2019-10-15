@@ -94,6 +94,8 @@ inline numvec compute_zvalues(const Action& action, const numvec& valuefunction,
     const numvec& rewards = action.get_rewards();
     const indvec& nonzero_indices = action.get_indices();
 
+    if (nonzero_indices.empty()) return numvec(rewards.size(), std::nan(""));
+
     numvec zvalues(rewards.size()); // values for individual states - used by nature.
 
 #pragma omp simd
@@ -157,7 +159,6 @@ inline vector<numvec> compute_zvalues(const State& state, const numvec& valuefun
     result.reserve(state.size());
 
     for (const auto& action : state.get_actions()) {
-        if (!action.is_valid()) throw invalid_argument("an action is invalid");
         result.push_back(compute_zvalues(action, valuefunction, discount));
     }
     return result;
@@ -185,12 +186,7 @@ inline prec_t value_fix_state(const State& state, numvec const& valuefunction,
     for (size_t actionid = 0; actionid < state.size(); actionid++) {
         const auto& action = state[actionid];
 
-        // cannot take an invalid action
-        if (!state.is_valid(actionid) && actiondist[actionid] > 0)
-            throw invalid_argument("Cannot take an invalid action");
-
         assert(actiondist[actionid] >= 0);
-
         result += actiondist[actionid] * value_action(action, valuefunction, discount);
     }
     return result;
@@ -221,13 +217,8 @@ inline vector<numvec> compute_qfunction(const MDP& mdp, const numvec& valuefunct
         //for (const Action& a : s) {
         for (size_t ia = 0; ia < s.size(); ++ia) {
             const Action& a = s[ia];
-            try {
-                qa.push_back(value_action(a, valuefunction, discount));
-            } catch (ModelError& e) {
-                e.set_action(ia);
-                e.set_state(is);
-                throw(e);
-            }
+
+            qa.push_back(value_action(a, valuefunction, discount));
         }
         qfunction.push_back(move(qa));
     }
