@@ -273,6 +273,7 @@ template <class Model> void test_simple_vi(const Model& rmdp) {
     // value function)
     auto re2 = solve_mpi(rmdp, 0.9, initial, indvec(0), 20, 0, 0);
 
+    BOOST_CHECK(re2.status != 2);
     numvec val_rob2{7.5726, 8.56265679, 9.66265679};
     CHECK_CLOSE_COLLECTION(val_rob2, re2.valuefunction, 1e-3);
     BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re2.policy.begin(),
@@ -285,6 +286,7 @@ template <class Model> void test_simple_vi(const Model& rmdp) {
 
     // robust
     auto re3 = rsolve_vi(rmdp, 0.9, nats::robust_l1u(0.0), initial);
+    BOOST_CHECK(re3.status == 0);
     CHECK_CLOSE_COLLECTION(val_rob3, re3.valuefunction, 1e-2);
     auto re3_pol = unzip(re3.policy).first;
     BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re3_pol.begin(),
@@ -292,12 +294,14 @@ template <class Model> void test_simple_vi(const Model& rmdp) {
 
     auto re4 = rsolve_mpi(rmdp, 0.9, nats::robust_l1u(0.0), initial, indvec(0), 1000, 0.0,
                           1000, 0.0);
+    BOOST_CHECK(re4.status == 0);
     CHECK_CLOSE_COLLECTION(val_rob3, re4.valuefunction, 1e-2);
     auto re4_pol = unzip(re4.policy).first;
     BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re4_pol.begin(),
                                   re4_pol.end());
 
     re4 = rsolve_ppi(rmdp, 0.9, nats::robust_l1u(0.0), initial, indvec(0));
+    BOOST_CHECK(re4.status == 0);
     CHECK_CLOSE_COLLECTION(val_rob3, re4.valuefunction, 1e-2);
     re4_pol = unzip(re4.policy).first;
     BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re4_pol.begin(),
@@ -305,18 +309,21 @@ template <class Model> void test_simple_vi(const Model& rmdp) {
 
     // optimistic
     auto re5 = rsolve_vi(rmdp, 0.9, nats::optimistic_l1u(0.0), initial);
+    BOOST_CHECK(re5.status == 0);
     CHECK_CLOSE_COLLECTION(val_rob3, re5.valuefunction, 1e-2);
     auto re5_pol = unzip(re5.policy).first;
     BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re5_pol.begin(),
                                   re5_pol.end());
 
     auto re6 = rsolve_mpi(rmdp, 0.9, nats::optimistic_l1u(0.0), initial);
+    BOOST_CHECK(re6.status == 0);
     CHECK_CLOSE_COLLECTION(val_rob3, re6.valuefunction, 1e-2);
     auto re6_pol = unzip(re6.policy).first;
     BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re6_pol.begin(),
                                   re6_pol.end());
 
     re6 = rsolve_ppi(rmdp, 0.9, nats::optimistic_l1u(0.0), initial);
+    BOOST_CHECK(re6.status == 0);
     CHECK_CLOSE_COLLECTION(val_rob3, re6.valuefunction, 1e-2);
     re6_pol = unzip(re6.policy).first;
     BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re6_pol.begin(),
@@ -324,11 +331,13 @@ template <class Model> void test_simple_vi(const Model& rmdp) {
 
     // plain
     auto re7 = solve_vi(rmdp, 0.9, initial);
+    BOOST_CHECK(re7.status == 0);
     CHECK_CLOSE_COLLECTION(val_rob3, re7.valuefunction, 1e-2);
     BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re7.policy.begin(),
                                   re7.policy.end());
 
     auto re8 = solve_mpi(rmdp, 0.9, initial);
+    BOOST_CHECK(re8.status == 0);
     CHECK_CLOSE_COLLECTION(val_rob3, re8.valuefunction, 1e-2);
     auto re8_pol = re8.policy;
     BOOST_CHECK_EQUAL_COLLECTIONS(pol_rob.begin(), pol_rob.end(), re8_pol.begin(),
@@ -336,6 +345,7 @@ template <class Model> void test_simple_vi(const Model& rmdp) {
 
     // fixed evaluation
     auto re9 = solve_mpi(rmdp, 0.9, initial, indvec(0), 10000, 0.0, 0);
+    BOOST_CHECK(re9.status == 0);
     CHECK_CLOSE_COLLECTION(val_rob3, re9.valuefunction, 1e-2);
 
     // check the computed returns
@@ -378,13 +388,16 @@ BOOST_AUTO_TEST_CASE(simple_zero_robust) {
     double discount = 0.99;
 
     auto solution1 = solve_pi(fullmdp, discount);
+    BOOST_CHECK(solution1.status == 0);
     auto solution2 = rsolve_pi(fullmdp, discount, algorithms::nats::robust_l1u(0.0));
+    BOOST_CHECK(solution2.status == 0);
 
     BOOST_CHECK_EQUAL_COLLECTIONS(
         solution1.valuefunction.cbegin(), solution1.valuefunction.cend(),
         solution2.valuefunction.cbegin(), solution2.valuefunction.cend());
 
     auto solution4 = rsolve_ppi(fullmdp, discount, algorithms::nats::robust_l1u(0.0));
+    BOOST_CHECK(solution4.status == 0);
     BOOST_CHECK_EQUAL_COLLECTIONS(
         solution1.valuefunction.cbegin(), solution1.valuefunction.cend(),
         solution4.valuefunction.cbegin(), solution4.valuefunction.cend());
@@ -393,12 +406,14 @@ BOOST_AUTO_TEST_CASE(simple_zero_robust) {
     //                              solution4.policy.cbegin(), solution4.policy.cend());
 
     auto solution3 = rsolve_s_pi(fullmdp, discount, algorithms::nats::robust_s_l1u(0.0));
+    BOOST_CHECK(solution3.status == 0);
 
     BOOST_CHECK_EQUAL_COLLECTIONS(
         solution1.valuefunction.cbegin(), solution1.valuefunction.cend(),
         solution3.valuefunction.cbegin(), solution3.valuefunction.cend());
 
     auto solution5 = rsolve_s_ppi(fullmdp, discount, algorithms::nats::robust_s_l1u(0.0));
+    BOOST_CHECK(solution5.status == 0);
 
     BOOST_CHECK_EQUAL_COLLECTIONS(
         solution1.valuefunction.cbegin(), solution1.valuefunction.cend(),
@@ -417,16 +432,21 @@ BOOST_AUTO_TEST_CASE(simple_robust_algorithms) {
     double discount = 0.99;
 
     auto solution1 = rsolve_vi(fullmdp, discount, algorithms::nats::robust_l1u(0.5));
+    BOOST_CHECK(solution1.status == 0);
     auto solution2 = rsolve_ppi(fullmdp, discount, algorithms::nats::robust_l1u(0.5));
+    BOOST_CHECK(solution2.status == 0);
     CHECK_CLOSE_COLLECTION(solution1.valuefunction, solution2.valuefunction, 1.0);
 
     auto solution3 = rsolve_s_vi(fullmdp, discount, algorithms::nats::robust_s_l1u(0.5));
+    BOOST_CHECK(solution3.status == 0);
     auto solution4 = rsolve_s_mpi(fullmdp, discount, algorithms::nats::robust_s_l1u(0.5),
                                   numvec(0), indvec(0), MAXITER, SOLPREC, 1, 0.9);
+    BOOST_CHECK(solution4.status == 0);
 
     CHECK_CLOSE_COLLECTION(solution3.valuefunction, solution4.valuefunction, 1.0);
 
     auto solution5 = rsolve_s_ppi(fullmdp, discount, algorithms::nats::robust_s_l1u(0.5));
+    BOOST_CHECK(solution5.status == 0);
     CHECK_CLOSE_COLLECTION(solution3.valuefunction, solution5.valuefunction, 1.0);
 }
 
@@ -444,17 +464,22 @@ BOOST_AUTO_TEST_CASE(simple_robust_algorithms_ind) {
         algorithms::nats::robust_l1(numvecvec{{0.1, 0.1}, {0.1, 0.1}, {0.1, 0.1}});
 
     auto solution1 = rsolve_vi(fullmdp, discount, nature_sa);
+    BOOST_CHECK(solution1.status == 0);
     auto solution2 = rsolve_ppi(fullmdp, discount, nature_sa);
+    BOOST_CHECK(solution2.status == 0);
     CHECK_CLOSE_COLLECTION(solution1.valuefunction, solution2.valuefunction, 1.0);
 
     auto nature_s = algorithms::nats::robust_s_l1(numvec{0.1, 0.1, 0.1});
     auto solution3 = rsolve_s_vi(fullmdp, discount, nature_s);
+    BOOST_CHECK(solution3.status == 0);
     auto solution4 = rsolve_s_mpi(fullmdp, discount, nature_s, numvec(0), indvec(0),
                                   MAXITER, SOLPREC, 1, 0.9);
+    BOOST_CHECK(solution4.status == 0);
 
     CHECK_CLOSE_COLLECTION(solution3.valuefunction, solution4.valuefunction, 1.0);
 
     auto solution5 = rsolve_s_ppi(fullmdp, discount, nature_s);
+    BOOST_CHECK(solution5.status == 0);
     CHECK_CLOSE_COLLECTION(solution3.valuefunction, solution5.valuefunction, 1.0);
 }
 
@@ -616,6 +641,7 @@ BOOST_AUTO_TEST_CASE(simple_mdp_save_load_mdp) {
     numvec initial{0, 0, 0};
 
     auto re = rsolve_vi(rmdp2, 0.9, nats::robust_l1u(0.0), initial, indvec(0), 20l, 0);
+    BOOST_CHECK(re.status != 2);
 
     numvec val_rob{7.68072, 8.67072, 9.77072};
     indvec pol_rob{1, 1, 1};
@@ -639,6 +665,7 @@ BOOST_AUTO_TEST_CASE(simple_mdp_save_load_rmdpd) {
     numvec initial{0, 0, 0};
 
     auto re = rsolve_vi(rmdp2, 0.9, nats::robust_l1u(0.0), initial, indvec(0), 20l, 0);
+    BOOST_CHECK(re.status != 2);
 
     numvec val_rob{7.68072, 8.67072, 9.77072};
     indvec pol_rob{1, 1, 1};
@@ -680,34 +707,42 @@ template <class Model> void test_value_function(const Model& rmdp) {
     // gauss-seidel
     auto result1 =
         rsolve_vi(rmdp, 0.9, nats::robust_unbounded(), initial, indvec(0), 1000, 0);
+    BOOST_CHECK(result1.status == 0);
     BOOST_CHECK_CLOSE(result1.valuefunction[0], 10.0, 1e-3);
 
     auto result2 =
         rsolve_vi(rmdp, 0.9, nats::optimistic_unbounded(), initial, indvec(0), 1000, 0);
+    BOOST_CHECK(result2.status == 0);
     BOOST_CHECK_CLOSE(result2.valuefunction[0], 20.0, 1e-3);
 
     auto result3 = solve_vi(rmdp, 0.9, initial, indvec(), 1000, 0);
+    BOOST_CHECK(result3.status == 0);
     BOOST_CHECK_CLOSE(result3.valuefunction[0], 15, 1e-3);
 
     // mpi (may not converge!)
     result1 =
         rsolve_mpi(rmdp, 0.9, nats::robust_unbounded(), initial, indvec(0), 1000, 0);
+    BOOST_CHECK(result1.status == 0);
     BOOST_CHECK_CLOSE(result1.valuefunction[0], 10.0, 1e-3);
 
     result2 =
         rsolve_mpi(rmdp, 0.9, nats::optimistic_unbounded(), initial, indvec(0), 1000, 0);
+    BOOST_CHECK(result2.status == 0);
     BOOST_CHECK_CLOSE(result2.valuefunction[0], 20.0, 1e-3);
 
     result3 = solve_mpi(rmdp, 0.9, initial, indvec(0), 1000, 0);
+    BOOST_CHECK(result3.status == 0);
     BOOST_CHECK_CLOSE(result3.valuefunction[0], 15, 1e-3);
 
     // ppi
     result1 =
         rsolve_ppi(rmdp, 0.9, nats::robust_unbounded(), initial, indvec(0), 1000, 0);
+    BOOST_CHECK(result1.status == 0);
     BOOST_CHECK_CLOSE(result1.valuefunction[0], 10.0, 1e-3);
 
     result2 =
         rsolve_ppi(rmdp, 0.9, nats::optimistic_unbounded(), initial, indvec(0), 1000, 0);
+    BOOST_CHECK(result2.status == 0);
     BOOST_CHECK_CLOSE(result2.valuefunction[0], 20.0, 1e-3);
 }
 
@@ -736,28 +771,34 @@ void test_value_function_thr(double threshold, numvec expected) {
     // gauss-seidel
     auto result1 =
         rsolve_vi(rmdp, 0.9, nats::robust_l1u(threshold), initial, indvec(0), 1000, 0);
+    BOOST_CHECK(result1.status == 0);
     BOOST_CHECK_CLOSE(result1.valuefunction[0], expected[0], 1e-3);
 
     auto result2 = rsolve_vi(rmdp, 0.9, nats::optimistic_l1u(threshold), initial,
                              indvec(0), 1000, 0);
+    BOOST_CHECK(result2.status == 0);
     BOOST_CHECK_CLOSE(result2.valuefunction[0], expected[1], 1e-3);
 
     // mpi
     result1 =
         rsolve_mpi(rmdp, 0.9, nats::robust_l1u(threshold), initial, indvec(0), 1000, 0);
+    BOOST_CHECK(result1.status == 0);
     BOOST_CHECK_CLOSE(result1.valuefunction[0], expected[0], 1e-3);
 
     result2 = rsolve_mpi(rmdp, 0.9, nats::optimistic_l1u(threshold), initial, indvec(0),
                          1000, 0);
+    BOOST_CHECK(result2.status == 0);
     BOOST_CHECK_CLOSE(result2.valuefunction[0], expected[1], 1e-3);
 
     // ppi
     result1 =
         rsolve_ppi(rmdp, 0.9, nats::robust_l1u(threshold), initial, indvec(0), 1000, 0);
+    BOOST_CHECK(result1.status == 0);
     BOOST_CHECK_CLOSE(result1.valuefunction[0], expected[0], 1e-3);
 
     result2 = rsolve_ppi(rmdp, 0.9, nats::optimistic_l1u(threshold), initial, indvec(0),
                          1000, 0);
+    BOOST_CHECK(result2.status == 0);
     BOOST_CHECK_CLOSE(result2.valuefunction[0], expected[1], 1e-3);
 }
 
@@ -828,11 +869,12 @@ BOOST_AUTO_TEST_CASE(test_normalization) {
     numvec initial{0, 0};
     auto re =
         rsolve_mpi(rmdp, 0.9, nats::robust_unbounded(), initial, indvec(0), 2000, 0);
-
+    BOOST_CHECK(re.status == 0);
     numvec val{0.545454545455, 0.0};
     CHECK_CLOSE_COLLECTION(val, re.valuefunction, 1e-3);
 
     re = rsolve_ppi(rmdp, 0.9, nats::robust_unbounded(), initial, indvec(0), 2000, 0);
+    BOOST_CHECK(re.status == 0);
     CHECK_CLOSE_COLLECTION(val, re.valuefunction, 1e-3);
 }
 
@@ -844,9 +886,13 @@ void test_randomized_threshold_average(const MDPO& rmdp, const numvec& desired) 
 
     const prec_t gamma = 0.9;
     numvec value(0);
+
     auto sol2 = solve_vi(rmdp, gamma, value, indvec(), 1000, 1e-5);
+    BOOST_CHECK(sol2.status == 0);
     CHECK_CLOSE_COLLECTION(sol2.valuefunction, desired, 0.001);
+
     auto sol3 = solve_mpi(rmdp, gamma, value, indvec(0), 1000, 1e-5);
+    BOOST_CHECK(sol3.status == 0);
     CHECK_CLOSE_COLLECTION(sol3.valuefunction, desired, 0.001);
 }
 
@@ -857,14 +903,17 @@ void test_randomized_threshold_robust(const MDPO& rmdp, double threshold,
     numvec value(0);
     auto sol2 =
         rsolve_vi(rmdp, gamma, nats::robust_l1u(threshold), value, indvec(0), 1000, 1e-5);
+    BOOST_CHECK(sol2.status == 0);
     CHECK_CLOSE_COLLECTION(sol2.valuefunction, desired, 0.001);
 
     auto sol3 = rsolve_mpi(rmdp, gamma, nats::robust_l1u(threshold), value, indvec(0),
                            1000, 1e-5);
+    BOOST_CHECK(sol3.status == 0);
     CHECK_CLOSE_COLLECTION(sol3.valuefunction, desired, 0.001);
 
     auto sol4 = rsolve_ppi(rmdp, gamma, nats::robust_l1u(threshold), value, indvec(0),
                            1000, 1e-5);
+    BOOST_CHECK(sol4.status == 0);
     CHECK_CLOSE_COLLECTION(sol4.valuefunction, desired, 0.001);
 }
 
@@ -875,12 +924,15 @@ void test_randomized_threshold_optimistic(const MDPO& rmdp, double threshold,
     numvec value(0);
     auto sol2 = rsolve_vi(rmdp, gamma, nats::optimistic_l1u(threshold), value, indvec(0),
                           1000, 1e-5);
+    BOOST_CHECK(sol2.status == 0);
     CHECK_CLOSE_COLLECTION(sol2.valuefunction, desired, 0.001);
     auto sol3 = rsolve_mpi(rmdp, gamma, nats::optimistic_l1u(threshold), value, indvec(0),
                            1000, 1e-5);
+    BOOST_CHECK(sol3.status == 0);
     CHECK_CLOSE_COLLECTION(sol3.valuefunction, desired, 0.001);
     auto sol4 = rsolve_ppi(rmdp, gamma, nats::optimistic_l1u(threshold), value, indvec(0),
                            1000, 1e-5);
+    BOOST_CHECK(sol4.status == 0);
     CHECK_CLOSE_COLLECTION(sol4.valuefunction, desired, 0.001);
 }
 
@@ -1169,6 +1221,7 @@ BOOST_AUTO_TEST_CASE(s_rectangular) {
     add_transition(mdp, 0, 3, 2, 1.0, 1.0);
 
     auto sol = rsolve_s_vi(mdp, 1.0, nats::robust_s_l1(numvec{0.1, 0, 0, 0}));
+    BOOST_CHECK(sol.status == 0);
 }
 
 #ifdef GUROBI_USE
@@ -1191,6 +1244,7 @@ BOOST_AUTO_TEST_CASE(s_rectangular_l1_gurobi) {
     add_transition(mdp, 0, 3, 2, 1.0, 1.0);
 
     auto sol = rsolve_s_vi(mdp, 1.0, nats::robust_s_l1_gurobi(numvec{0.1, 0, 0, 0}));
+    BOOST_CHECK(sol.status == 0);
 }
 
 BOOST_AUTO_TEST_CASE(s_rectangular_linf_gurobi) {
@@ -1211,6 +1265,7 @@ BOOST_AUTO_TEST_CASE(s_rectangular_linf_gurobi) {
     add_transition(mdp, 0, 3, 2, 1.0, 1.0);
 
     auto sol = rsolve_s_vi(mdp, 1.0, nats::robust_s_linf_gurobi(numvec{0.1, 0, 0, 0}));
+    BOOST_CHECK(sol.status == 0);
 }
 #endif
 

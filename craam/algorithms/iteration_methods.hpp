@@ -83,7 +83,7 @@ vi_gs(const ResponseType& response, prec_t discount, numvec valuefunction = numv
     using policy_type = typename ResponseType::policy_type;
 
     // just quit if there are no states
-    if (response.state_count() == 0) return Solution<policy_type>(0);
+    if (response.state_count() == 0) return Solution<policy_type>(0, 0);
 
     // time the computation
     auto start = chrono::steady_clock::now();
@@ -162,7 +162,7 @@ mpi_jac(const ResponseType& response, prec_t discount,
         const std::function<bool(size_t, prec_t)>& progress = internal::empty_progress) {
     using policy_type = typename ResponseType::policy_type;
     // just quit if there are no states
-    if (response.state_count() == 0) { return Solution<policy_type>(0); }
+    if (response.state_count() == 0) { return Solution<policy_type>(0, 0); }
 
     // time the computation
     auto start = chrono::steady_clock::now();
@@ -302,7 +302,7 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
 
     using policy_type = typename ResponseType::policy_type;
     // just quit if there are no states
-    if (n == 0) { return Solution<policy_type>(0); }
+    if (n == 0) { return Solution<policy_type>(0, 0); }
     // time the computation
     auto start = chrono::steady_clock::now();
     // intialize the policy
@@ -430,7 +430,7 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
     using dec_policy_type = typename ResponseType::dec_policy_type;
 
     // just quit if there are no states
-    if (response.state_count() == 0) { return Solution<policy_type>(0); }
+    if (response.state_count() == 0) { return Solution<policy_type>(0, 0); }
 
     // make sure that the value function is the right size
     if (valuefunction.empty()) { valuefunction.resize(response.state_count(), 0.0); }

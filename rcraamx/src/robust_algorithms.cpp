@@ -368,11 +368,11 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount,
         result["policy"] = output_policy(sol.policy);
         result["valuefunction"] = move(sol.valuefunction);
         result["status"] = sol.status;
-        if (rsol.status != 0) {
-            if (rsol.status == 1) {
+        if (sol.status != 0) {
+            if (sol.status == 1) {
                 Rcpp::warning(
                     "Ran out of time or iterations. The solution may be suboptimal.");
-            } else if (rsol.status == 2) {
+            } else if (sol.status == 2) {
                 Rcpp::stop("Internal error, could not compute a solution.");
             } else {
                 Rcpp::stop("Unknown error, solution not computed.");

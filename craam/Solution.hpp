@@ -51,14 +51,20 @@ template <class PolicyType> struct Solution {
     /// Status (0 means OK, 1 means timeout, 2 means internal error)
     int status;
 
+    /// Constructs an empty solution
+    ///
+    /// WARNING: The default status of the solution is that it is a result
+    /// of an internal error
     Solution()
         : valuefunction(0), policy(0), residual(-1), iterations(-1), time(std::nan("")),
           status(2) {}
 
     /// Empty solution for a problem with statecount states
-    Solution(size_t statecount)
+    /// @param statecount Number of states in the final solution (0 means empty)
+    /// @param status The status of the solution (0 means that the solution is optimal)
+    Solution(size_t statecount, int status)
         : valuefunction(statecount, 0.0), policy(statecount), residual(-1),
-          iterations(-1), time(nan("")), status(2) {}
+          iterations(-1), time(nan("")), status(status) {}
 
     /// Empty solution for a problem with a given value function and policy
     Solution(numvec valuefunction, vector<PolicyType> policy, prec_t residual = -1,
@@ -79,15 +85,32 @@ template <class PolicyType> struct Solution {
 };
 
 /// A solution with a deterministic policy
+/// The policy is:
+///  1) index for the action
 using DetermSolution = Solution<long>;
 
 /// A solution to an MDP with a stochastic policy
+/// The policy is:
+///  1) distribution over actions
 using RandSolution = Solution<numvec>;
 
 /// Solution to an S,A rectangular robust problem to an MDP
+/// The policy is:
+///  1) index for the action
+///  2) distribution over *reachable* states (with non-zero nominal probability)
 using SARobustSolution = Solution<pair<long, numvec>>;
 
+/// Solution to an S,A rectangular robust problem to an MDPO
+/// The policy is:
+///  1) index for the action
+///  2) distribution over outcomes
+using SARobustOutcomeSolution = Solution<pair<long, numvec>>;
+
 /// Solution to an S-rectangular robust problem to an MDP
-using SRobustSolution = Solution<pair<numvec, vector<numvec>>>;
+/// The policy is:
+///  1) distribution over actions
+///  2) list of distributions for all actions (not only the active ones)
+///         over *reachable* states (with non-zero nominal probability)
+using SRobustSolution = Solution<pair<numvec, numvecvec>>;
 
 } // namespace craam

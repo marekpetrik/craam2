@@ -16,12 +16,12 @@ ur.policy = data.frame(idstate = c(seq(0,5), seq(0,5)),
 
 # generate samples from the swimmer domain
 # TODO: add a seed to the method
-simulation <- simulate_mdp(mdp, 0, ur.policy, episodes = 1, horizon = 1000)
+simulation <- simulate_mdp(mdp, 0, ur.policy, episodes = 1, horizon = 300)
 
 ## ---- Solve Empirical MDP ---------
   
 mdp.empirical <- mdp_from_samples(simulation)
-solve_mdp(mdp.empirical, discount)
+sol <- solve_mdp(mdp.empirical, discount)
 
 ## ----  Bayesian Posterior Sampling ---------
 

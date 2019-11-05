@@ -755,6 +755,10 @@ rsolve_s_mppi_r(const MDP& mdp, prec_t discount, const algorithms::SNature& natu
 // **************************************************************************
 
 /**
+ * This method treats outcomes as another transition with uniform probabilities.
+ * It does not compute the robust solution. The MDPO is thus trated simply
+ * as an MDP.
+ *
  * \ingroup ValueIteration
  */
 inline DetermSolution solve_vi(const MDPO& mdp, prec_t discount,
@@ -769,11 +773,18 @@ inline DetermSolution solve_vi(const MDPO& mdp, prec_t discount,
         algorithms::SARobustOutcomeBellman(mdp, algorithms::nats::average(), policy),
         discount, move(valuefunction), iterations, maxresidual, progress);
 
+    // remove the nature's choice from the solution since there is no
+    // nature's choice
     return DetermSolution(solution.valuefunction, unzip(solution.policy).first,
-                          solution.residual, solution.iterations, solution.time);
+                          solution.residual, solution.iterations, solution.time,
+                          solution.status);
 }
 
 /**
+ * This method treats outcomes as another transition with uniform probabilities.
+ * It does not compute the robust solution. The MDPO is thus trated simply
+ * as an MDP.
+ *
  * @ingroup ModifiedPolicyIteration
  */
 inline DetermSolution
@@ -789,8 +800,11 @@ solve_mpi(const MDPO& mdp, prec_t discount, const numvec& valuefunction = numvec
         discount, valuefunction, iterations_pi, maxresidual_pi, iterations_vi,
         maxresidual_vi, progress);
 
+    // remove the nature's choice from the solution since there is no
+    // nature's choice
     return DetermSolution(solution.valuefunction, unzip(solution.policy).first,
-                          solution.residual, solution.iterations, solution.time);
+                          solution.residual, solution.iterations, solution.time,
+                          solution.status);
 }
 
 // **************************************************************************

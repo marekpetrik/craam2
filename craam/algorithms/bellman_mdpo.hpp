@@ -40,7 +40,8 @@ namespace craam { namespace algorithms {
  * choices of transition probabilities. Each of the available choices is
  * called **outcome**. The transition probabilities of the MDP itself are ignored.
  *
- * The policy consists of an index for the state and distribution for the policy
+ * The policy consists of an index for the state and distribution for the nature over
+ * over the outcomes.
  *
  * The update for a state value recomputes the worst case, which should ensure
  * the convergence of the modified policy policy iteration in robust cases.
