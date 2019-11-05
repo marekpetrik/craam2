@@ -8,30 +8,19 @@ library(reshape2)
 discount <- 0.9
 mdp <- read_csv("riverswim_mdp.csv")
 
-# construct a uniform randomized policy
+# construct a biased policy to prefer going right
+# this is to ensure that the "goal" state is sampled
 ur.policy = data.frame(idstate = c(seq(0,5), seq(0,5)), 
                      idaction = c(rep(0,6), rep(1,6)),
-                     probability = rep(0.5, 12))
+                     probability = c(rep(0.2, 6), rep(0.8, 6)))
 
 # generate samples from the swimmer domain
 # TODO: add a seed to the method
 simulation <- simulate_mdp(mdp, 0, ur.policy, episodes = 1, horizon = 1000)
 
-
 ## ---- Solve Empirical MDP ---------
-
-sas_counts <- simulation %>% 
-  group_by(idstatefrom, idaction, idstateto) %>% 
-  summarize(count_sas = n())
-sa_counts <- simulation %>%
-  group_by(idstatefrom, idaction) %>% 
-  summarize(count_sa = n())
-mdp.empirical <- inner_join(sa_counts, sas_counts) %>%
-  mutate(probability = count_sas / count_sa) %>%
-  select(-count_sa, -count_sas) %>%
-  full_join(mdp %>% select(-probability))
   
-mdp.empirical2 <- mdp_from_samples(simulation)
+mdp.empirical <- mdp_from_samples(simulation)
 solve_mdp(mdp.empirical, discount)
 
 ## ----  Bayesian Posterior Sampling ---------
