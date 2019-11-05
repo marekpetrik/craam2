@@ -14,6 +14,7 @@ ur.policy = data.frame(idstate = c(seq(0,5), seq(0,5)),
                      probability = rep(0.5, 12))
 
 # generate samples from the swimmer domain
+# TODO: add a seed to the method
 simulation <- simulate_mdp(mdp, 0, ur.policy, episodes = 1, horizon = 1000)
 
 
@@ -30,9 +31,10 @@ mdp.empirical <- inner_join(sa_counts, sas_counts) %>%
   select(-count_sa, -count_sas) %>%
   full_join(mdp %>% select(-probability))
   
+mdp.empirical2 <- mdp_from_samples(simulation)
 solve_mdp(mdp.empirical, discount)
 
-## ----  Bayesian Sampling ---------
+## ----  Bayesian Posterior Sampling ---------
 
 # compute sampled state and action counts
 # add a uniform sample of each state and action to work as the dirichlet prior

@@ -81,9 +81,10 @@ inline prec_t value_fix_state(const SAState<AType>& state, numvec const& valuefu
     // this is the terminal state, return 0
     if (state.is_terminal()) return 0;
     if (actionid < 0 || actionid >= (long)state.size())
-        throw range_error(
+        throw ModelError(
             "invalid actionid: " + std::to_string(actionid) +
-            " for action count: " + std::to_string(state.get_actions().size()));
+                " for action count: " + std::to_string(state.get_actions().size()),
+            -1, actionid);
 
     const auto& action = state[actionid];
     return value_action(action, valuefunction, discount);
@@ -110,10 +111,11 @@ inline prec_t value_fix_state(const SAState<AType>& state, numvec const& valuefu
 
     assert(actionid >= 0 && actionid < long(state.size()));
 
-    // if(actionid < 0 || actionid >= long(state.size())) throw
-    // range_error("invalid actionid: "
-    //    + std::to_string(actionid) + " for action count: " +
-    //    std::to_string(state.get_actions().size()) );
+    if (actionid < 0 || actionid >= long(state.size()))
+        throw ModelError(
+            "invalid actionid: " + std::to_string(actionid) +
+                " for action count: " + std::to_string(state.get_actions().size()),
+            -1, actionid);
 
     const auto& action = state[actionid];
     return value_action(action, valuefunction, discount, distribution);
@@ -180,10 +182,12 @@ inline vec_scal_t value_fix_state(const SType& state, numvec const& valuefunctio
 
     assert(actionid >= 0 && actionid < long(state.size()));
 
-    if (actionid < 0 || actionid >= long(state.size()))
-        throw runtime_error(
+    if (actionid < 0 || actionid >= long(state.size())) {
+        throw ModelError(
             "invalid actionid: " + std::to_string(actionid) +
-            " for action count: " + std::to_string(state.get_actions().size()));
+                " for action count: " + std::to_string(state.get_actions().size()),
+            stateid, actionid);
+    }
 
     const auto& action = state[actionid];
     // cannot assume that the action is valid

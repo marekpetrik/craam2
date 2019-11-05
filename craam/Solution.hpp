@@ -53,16 +53,16 @@ template <class PolicyType> struct Solution {
 
     Solution()
         : valuefunction(0), policy(0), residual(-1), iterations(-1), time(std::nan("")),
-          status(0) {}
+          status(2) {}
 
     /// Empty solution for a problem with statecount states
     Solution(size_t statecount)
         : valuefunction(statecount, 0.0), policy(statecount), residual(-1),
-          iterations(-1), time(nan("")), status(0) {}
+          iterations(-1), time(nan("")), status(2) {}
 
     /// Empty solution for a problem with a given value function and policy
     Solution(numvec valuefunction, vector<PolicyType> policy, prec_t residual = -1,
-             long iterations = -1, double time = nan(""), int status = 0)
+             long iterations = -1, double time = nan(""), int status = 2)
         : valuefunction(move(valuefunction)), policy(move(policy)), residual(residual),
           iterations(iterations), time(time), status(status) {}
 

@@ -35,6 +35,17 @@ namespace internal {
 /// An empty progress function, always returns true
 inline bool empty_progress(size_t iteration, prec_t residual) { return true; }
 
+/// Reports the exception that cannot be passed up from an openmp block
+/// @param e The exception caught
+/// @param fname Name of the offending function
+void openmp_exception_handler(const std::exception& e, const std::string& fname) {
+    std::cerr << "********" << std::endl
+              << "Caught an exception in the OPENMP block: " << std::endl
+              << e.what() << std::endl
+              << "in method " << fname << std::endl
+              << "********" << std::endl;
+}
+
 } // namespace internal
 
 /**
@@ -179,14 +190,27 @@ mpi_jac(const ResponseType& response, prec_t discount,
         prec_t residual_vi = numeric_limits<prec_t>::infinity();
 
         // update policies
+        bool openmp_error = false;
 #pragma omp parallel for
         for (auto s = 0l; s < long(response.state_count()); s++) {
-            prec_t newvalue;
-            tie(newvalue, policy[s]) = response.policy_update(s, sourcevalue, discount);
+            try {
+                prec_t newvalue;
+                tie(newvalue, policy[s]) =
+                    response.policy_update(s, sourcevalue, discount);
 
-            residuals[s] = abs(sourcevalue[s] - newvalue);
-            targetvalue[s] = newvalue;
+                residuals[s] = abs(sourcevalue[s] - newvalue);
+                targetvalue[s] = newvalue;
+            } catch (const exception& e) {
+                // only run this once per loop
+                if (!openmp_error) {
+                    internal::openmp_exception_handler(e, "mpi_jac_1");
+                    openmp_error = true;
+                }
+            }
         }
+        // just terminate if there is an error
+        if (openmp_error) return Solution<typename ResponseType::policy_type>();
+
         residual_pi = *max_element(residuals.cbegin(), residuals.cend());
 
         // the residual is sufficiently small
@@ -198,13 +222,26 @@ mpi_jac(const ResponseType& response, prec_t discount,
 
             swap(targetvalue, sourcevalue);
 
+            openmp_error = false;
 #pragma omp parallel for
             for (auto s = 0l; s < long(response.state_count()); s++) {
-                prec_t newvalue =
-                    response.compute_value(policy[s], s, sourcevalue, discount);
-                residuals[s] = abs(sourcevalue[s] - newvalue);
-                targetvalue[s] = newvalue;
+                try {
+                    prec_t newvalue =
+                        response.compute_value(policy[s], s, sourcevalue, discount);
+                    residuals[s] = abs(sourcevalue[s] - newvalue);
+                    targetvalue[s] = newvalue;
+                } catch (const exception& e) {
+                    // only run this once per loop
+                    if (!openmp_error) {
+                        internal::openmp_exception_handler(e, "mpi_jac_1");
+                        openmp_error = true;
+                    }
+                }
             }
+            // just terminate if there is an error
+            if (openmp_error) return Solution<typename ResponseType::policy_type>();
+
+            // update the residual value
             residual_vi = *max_element(residuals.begin(), residuals.end());
             ++iter_total;
         }
@@ -283,10 +320,20 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
 
     // NOTE: could be sped up by keeping I - gamma * P instead of transition probabilities
 
+    bool openmp_error = false;
     // first udate the policy
 #pragma omp parallel for
     for (size_t s = 0; s < n; ++s) {
-        tie(std::ignore, policy[s]) = response.policy_update(s, valuefunction, discount);
+        try {
+            tie(std::ignore, policy[s]) =
+                response.policy_update(s, valuefunction, discount);
+        } catch (const exception& e) {
+            // only run this once per loop
+            if (!openmp_error) {
+                internal::openmp_exception_handler(e, "mpi_jac_1");
+                openmp_error = true;
+            }
+        }
     }
 
     // **discounted** matrix of transition probabilities
@@ -307,12 +354,25 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
         // std::cout << policy << std::endl;
         // update policy
         swap(policy, policy_old);
+        openmp_error = false;
 #pragma omp parallel for
         for (size_t s = 0; s < n; ++s) {
-            prec_t newvalue;
-            tie(newvalue, policy[s]) = response.policy_update(s, valuefunction, discount);
-            residuals[s] = abs(valuefunction[s] - newvalue);
+            try {
+                prec_t newvalue;
+                tie(newvalue, policy[s]) =
+                    response.policy_update(s, valuefunction, discount);
+                residuals[s] = abs(valuefunction[s] - newvalue);
+            } catch (const exception& e) {
+                // only run this once per loop
+                if (!openmp_error) {
+                    internal::openmp_exception_handler(e, "pi_2");
+                    openmp_error = true;
+                }
+            }
         }
+        // just terminate if there is an error
+        if (openmp_error) return Solution<typename ResponseType::policy_type>();
+
         // TODO: change this to a span seminorm (in all algorithms)
         residual_pi = *max_element(residuals.cbegin(), residuals.cend());
         //std::cout << residual_pi << std::endl;
@@ -333,7 +393,7 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
     int status = residual_pi <= maxresidual_pi ? 0 : 1;
     return Solution<policy_type>(move(valuefunction), move(policy), residual_pi, i,
                                  duration.count(), status);
-}
+} // namespace algorithms
 
 /// Determines which solver to use internally
 enum class MDPSolver { pi, mpi };
@@ -388,18 +448,31 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
 
     // initial bellman residual = to check for the stopping criterion
     numvec residuals(response.state_count());
+    bool openmp_error = false;
+
 #pragma omp parallel for
     for (auto s = 0l; s < long(response.state_count()); s++) {
-        // the new value is only used to compute the residual
-        // otherwise this only about the policy
-        prec_t newvalue;
-        tie(newvalue, output_policy[s]) =
-            response.policy_update(s, valuefunction, discount);
-        // update the policy of the decision maker (to be used in the evaluation)
-        // assume that the policy type is a tuple: [dec policy, nat policy]
-        dec_policy[s] = output_policy[s].first;
-        residuals[s] = abs(valuefunction[s] - newvalue);
+        try {
+            // the new value is only used to compute the residual
+            // otherwise this only about the policy
+            prec_t newvalue;
+            tie(newvalue, output_policy[s]) =
+                response.policy_update(s, valuefunction, discount);
+            // update the policy of the decision maker (to be used in the evaluation)
+            // assume that the policy type is a tuple: [dec policy, nat policy]
+            dec_policy[s] = output_policy[s].first;
+            residuals[s] = abs(valuefunction[s] - newvalue);
+        } catch (const exception& e) {
+            // only run this once per loop
+            if (!openmp_error) {
+                internal::openmp_exception_handler(e, "rppi_1");
+                openmp_error = true;
+            }
+        }
     }
+    // just terminate if there is an error
+    if (openmp_error) return Solution<typename ResponseType::policy_type>();
+
     // TODO: change to span seminorm (in all methods and all locations)
     prec_t residual_pi = *max_element(residuals.cbegin(), residuals.cend());
 
@@ -441,16 +514,28 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
         response.set_decision_policy();
 #pragma omp parallel for
         for (auto s = 0l; s < long(response.state_count()); s++) {
-            // the new value is only used to compute the residual
-            // otherwise this only about the policy
-            prec_t newvalue;
-            tie(newvalue, output_policy[s]) =
-                response.policy_update(s, valuefunction, discount);
-            // update the policy of the decision maker (to be used in the evaluation)
-            // assume that the policy type is a tuple: [dec policy, nat policy]
-            dec_policy[s] = output_policy[s].first;
-            residuals[s] = abs(valuefunction[s] - newvalue);
+            try {
+                // the new value is only used to compute the residual
+                // otherwise this only about the policy
+                prec_t newvalue;
+                tie(newvalue, output_policy[s]) =
+                    response.policy_update(s, valuefunction, discount);
+                // update the policy of the decision maker (to be used in the evaluation)
+                // assume that the policy type is a tuple: [dec policy, nat policy]
+                dec_policy[s] = output_policy[s].first;
+                residuals[s] = abs(valuefunction[s] - newvalue);
+            } catch (const exception& e) {
+                // only run this once per loop
+                if (!openmp_error) {
+                    internal::openmp_exception_handler(e, "rppi_2");
+                    openmp_error = true;
+                }
+            }
         }
+
+        // just terminate if there is an error
+        if (openmp_error) return Solution<typename ResponseType::policy_type>();
+
         // TODO: change to span seminorm (in all methods and all locations)
         residual_pi = *max_element(residuals.cbegin(), residuals.cend());
 
@@ -469,5 +554,4 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
     return Solution<policy_type>(move(valuefunction), move(output_policy), residual_pi,
                                  iterations, duration.count(), status);
 }
-
 }} // namespace craam::algorithms

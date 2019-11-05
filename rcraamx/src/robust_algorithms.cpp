@@ -351,9 +351,16 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount,
         result["policy_rand"] = output_policy(rsol.policy);
         result["valuefunction"] = move(rsol.valuefunction);
         result["status"] = rsol.status;
-        if (rsol.status != 0)
-            Rcpp::warning(
-                "Ran out of time or iterations. The solution may be suboptimal.");
+        if (rsol.status != 0) {
+            if (rsol.status == 1) {
+                Rcpp::warning(
+                    "Ran out of time or iterations. The solution may be suboptimal.");
+            } else if (rsol.status == 2) {
+                Rcpp::stop("Internal error, could not compute a solution.");
+            } else {
+                Rcpp::stop("Unknown error, solution not computed.");
+            }
+        }
     } else {
         result["iters"] = sol.iterations;
         result["residual"] = sol.residual;
@@ -361,9 +368,16 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount,
         result["policy"] = output_policy(sol.policy);
         result["valuefunction"] = move(sol.valuefunction);
         result["status"] = sol.status;
-        if (sol.status != 0)
-            Rcpp::warning(
-                "Ran out of time or iterations. The solution may be suboptimal.");
+        if (rsol.status != 0) {
+            if (rsol.status == 1) {
+                Rcpp::warning(
+                    "Ran out of time or iterations. The solution may be suboptimal.");
+            } else if (rsol.status == 2) {
+                Rcpp::stop("Internal error, could not compute a solution.");
+            } else {
+                Rcpp::stop("Unknown error, solution not computed.");
+            }
+        }
     }
     return result;
 }
@@ -566,8 +580,16 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
     result["nature"] = move(nat_pol);
     result["valuefunction"] = move(sol.valuefunction);
     result["status"] = sol.status;
-    if (sol.status != 0)
-        Rcpp::warning("Ran out of time or iterations. The solution may be suboptimal.");
+    if (sol.status != 0) {
+        if (sol.status == 1) {
+            Rcpp::warning(
+                "Ran out of time or iterations. The solution may be suboptimal.");
+        } else if (sol.status == 2) {
+            Rcpp::stop("Internal error, could not compute a solution.");
+        } else {
+            Rcpp::stop("Unknown error, solution not computed.");
+        }
+    }
 
     return result;
 }
@@ -686,8 +708,16 @@ Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String na
     result["nature"] = move(nat_pol);
     result["valuefunction"] = move(sol.valuefunction);
     result["status"] = sol.status;
-    if (sol.status != 0)
-        Rcpp::warning("Ran out of time or iterations. The solution may be suboptimal.");
+    if (sol.status != 0) {
+        if (sol.status == 1) {
+            Rcpp::warning(
+                "Ran out of time or iterations. The solution may be suboptimal.");
+        } else if (sol.status == 2) {
+            Rcpp::stop("Internal error, could not compute a solution.");
+        } else {
+            Rcpp::stop("Unknown error, solution not computed.");
+        }
+    }
 
     return result;
 }
@@ -836,8 +866,16 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     result["nature"] = move(nat_pol);
     result["valuefunction"] = move(sol.valuefunction);
     result["status"] = sol.status;
-    if (sol.status != 0)
-        Rcpp::warning("Ran out of time or iterations. The solution may be suboptimal.");
+    if (sol.status != 0) {
+        if (sol.status == 1) {
+            Rcpp::warning(
+                "Ran out of time or iterations. The solution may be suboptimal.");
+        } else if (sol.status == 2) {
+            Rcpp::stop("Internal error, could not compute a solution.");
+        } else {
+            Rcpp::stop("Unknown error, solution not computed.");
+        }
+    }
 
     return result;
 }

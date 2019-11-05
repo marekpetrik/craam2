@@ -25,7 +25,7 @@ syn.sample.count <- 20000    # synthetic samples
 use.low.discrepancy <- FALSE    # whether to use low discrepancy functions to generate synthetic samples
 
 # prediction model
-spline.count <- 2
+spline.count <- 1
 
 # mirror samples (whether double samples by creating a mirror image)
 sample.episodes <- 40

@@ -146,7 +146,7 @@ void test_model(const MDPO& mdp) {
         const auto& state = mdp[idstate];
         for (long idaction = 0; idaction < long(state.size()); ++idaction) {
             const auto& action = state[idaction];
-            for (long idoutcome = 0; idoutcome < action.size(); ++idoutcome) {
+            for (long idoutcome = 0; idoutcome < long(action.size()); ++idoutcome) {
                 const auto& outcome = action[idoutcome];
                 if (outcome.empty())
                     throw ModelError("No transitions defined for the state and action. "
