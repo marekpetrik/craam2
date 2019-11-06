@@ -217,6 +217,11 @@ Rcpp::List pack_actions(Rcpp::DataFrame mdp) {
 //' This method supports only deterministic policies. See solve_mdp_rand for a
 //' method that supports randomized policies.
 //'
+//' @param mdp A dataframe representation of the MDP. Each row
+//'            represents a single transition from one state to another
+//'            after taking an action a. The columns are:
+//'            idstatefrom, idaction, idstateto, probability, reward
+//' @param discount Discount factor in [0,1]
 //' @param algorithm One of "mpi", "vi", "vi_j", "pi". Also supports "lp"
 //'           when Gurobi is properly installed
 //' @param policy_fixed States for which the  policy should be fixed. This
@@ -329,6 +334,11 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
 //' The method can be provided with a randomized policy for some states
 //' and the output policy is randomized.
 //'
+//' @param mdp A dataframe representation of the MDP. Each row
+//'            represents a single transition from one state to another
+//'            after taking an action a. The columns are:
+//'            idstatefrom, idaction, idstateto, probability, reward
+//' @param discount Discount factor in [0,1]
 //' @param algorithm One of "mpi", "vi", "vi_j", "pi"
 //' @param policy_fixed States for which the  policy should be fixed. This
 //'         should be a dataframe with columns idstate, idaction, probability.
@@ -420,22 +430,41 @@ Rcpp::List solve_mdp_rand(Rcpp::DataFrame mdp, double discount,
     return result;
 }
 
-/**
- * Computes the function for the MDP for the given value function and discount factor
- */
+//' Computes the function for the MDP for the given value function and discount factor
+//' @param mdp A dataframe representation of the MDP. Each row
+//'            represents a single transition from one state to another
+//'            after taking an action a. The columns are:
+//'            idstatefrom, idaction, idstateto, probability, reward
+//' @param discount Discount factor in [0,1]
+//' @param valuefunction A dataframe representation of the value function. Each row
+//'             represents a state. The columns must be idstate, value
+//'
+//' @return Dataframe with idstate, idaction, qvalue columns
 // [[Rcpp::export]]
-Rcpp::DataFrame compute_qvalues(Rcpp::DataFrame mdp, Rcpp::NumericVector valuefunction,
-                                double discount) {
+Rcpp::DataFrame compute_qvalues(Rcpp::DataFrame mdp, double discount,
+                                Rcpp::DataFrame valuefunction) {
 
     MDP m = mdp_from_dataframe(mdp);
-    if (m.size() != size_t(valuefunction.size())) {
-        Rcpp::stop("value function must have the same size as the MDP.");
+    Rcpp::IntegerVector states = valuefunction["idstate"];
+    auto minmax_els = std::minmax_element(states.cbegin(), states.cend());
+
+    if (m.size() != (*minmax_els.second + 1)) {
+        Rcpp::stop("The maximum idstate in valuefunction must be the same as the maximum "
+                   "MDP state id.");
+        return Rcpp::DataFrame();
     }
+
+    if ((*minmax_els.first) != 0) {
+        Rcpp::stop("The minimum idstate in valuefunction must be 0.");
+        return Rcpp::DataFrame();
+    }
+
     vector<numvec> qvalue = craam::algorithms::compute_qfunction(
-        m, Rcpp::as<numvec>(valuefunction), discount);
+        m, Rcpp::as<numvec>(valuefunction["value"]), discount);
 
     return output_sa_values(qvalue, "qvalue");
 }
+
 /**
  * Parses the name and the parameter of the provided nature
  */
@@ -445,14 +474,14 @@ algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
         return algorithms::nats::robust_l1u(Rcpp::as<double>(nature_par));
     } else if (nature == "l1") {
         numvecvec values =
-            parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0);
+            parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0, "budget");
         return algorithms::nats::robust_l1(values);
     } else if (nature == "l1w") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
-        auto budgets =
-            parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["budgets"]), 0.0);
-        auto weights =
-            parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]), 1.0);
+        auto budgets = parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["budgets"]),
+                                       0.0, "budget");
+        auto weights = parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]),
+                                        1.0, "weight");
         return algorithms::nats::robust_l1w(budgets, weights);
     } else if (nature == "evaru") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
@@ -466,14 +495,14 @@ algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
 #ifdef GUROBI_USE
     else if (nature == "l1_g") {
         vector<numvec> values =
-            parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0);
+            parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0, "budget");
         return algorithms::nats::robust_l1w_gurobi(values);
     } else if (nature == "l1w_g") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
-        auto budgets =
-            parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["budgets"]), 0.0);
-        auto weights =
-            parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]), 1.0);
+        auto budgets = parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["budgets"]),
+                                       0.0, "budget");
+        auto weights = parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]),
+                                        1.0, "weight");
         return algorithms::nats::robust_l1w_gurobi(budgets, weights);
     }
 #endif // end gurobi
@@ -513,7 +542,15 @@ algorithms::SANature parse_nature_sa(const MDPO& mdpo, const string& nature,
 //' are provided in the mdp dataframe, even when the transition
 //' probability to those states is 0.
 //'
-//' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "pi". MPI may
+//' @param mdp A dataframe representation of the MDP. Each row
+//'            represents a single transition from one state to another
+//'            after taking an action a. The columns are:
+//'            idstatefrom, idaction, idstateto, probability, reward
+//' @param discount Discount factor in [0,1]
+//' @param nature Algorithm used to select the robust outcome. See details for options.
+//' @param nature_par Parameters for the nature. Varies depending on the nature.
+//'                   See details for options.
+//' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "pi". MPI and PI may
 //'           may not converge
 //' @param policy_fixed States for which the  policy should be fixed. This
 //'          should be a dataframe with columns idstate and idaction. The policy
@@ -531,6 +568,23 @@ algorithms::SANature parse_nature_sa(const MDPO& mdpo, const string& nature,
 //' @param show_progress Whether to show a progress bar during the computation
 //'
 //' @return A list with value function policy and other values
+//'
+//' @details
+//'
+//' The options for nature and the corresponding nature_par are:
+//'    \begin{itemize}
+//'         \item "l1u" an l1 ambiguity set with the same budget for all s,a.
+//'                nature_par is a float number representing the budget
+//'         \item "l1" an ambiguity set with different budgets for each s,a.
+//'                nature_par is dataframe with idstate, idaction, budget
+//'
+//'         \item "l1w" an l1-weighted ambiguity set with different weights
+//'                      and budgets for each state and action
+//'         \item "evaru" a convex combination of expectation and V@R over
+//'                 transition probabilites. Uniform over states
+//'         \item "evaru" a convex combination of expectation and AV@R over
+//'                 transition probabilites. Uniform over states
+//'    \end{itemize}
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String nature,
                          SEXP nature_par, Rcpp::String algorithm = "mppi",
@@ -756,30 +810,30 @@ algorithms::SNature parse_nature_s(const MDP& mdp, const string& nature,
     }
     if (nature == "l1") {
         numvec values = parse_s_values<prec_t>(
-            mdp.size(), Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0);
+            mdp.size(), Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0, "budget");
         return algorithms::nats::robust_s_l1(values);
     }
     if (nature == "l1w") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
-        auto budgets =
-            parse_s_values(mdp.size(), Rcpp::as<Rcpp::DataFrame>(par["budgets"]), 0.0);
-        auto weights =
-            parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]), 1.0);
+        auto budgets = parse_s_values(
+            mdp.size(), Rcpp::as<Rcpp::DataFrame>(par["budgets"]), 0.0, "budget");
+        auto weights = parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]),
+                                        1.0, "weight");
         return algorithms::nats::robust_s_l1w(budgets, weights);
     }
     // ----- gurobi only -----
 #ifdef GUROBI_USE
     if (nature == "l1_g") {
-        numvec values =
-            parse_s_values(mdp.size(), Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0);
+        numvec values = parse_s_values(mdp.size(), Rcpp::as<Rcpp::DataFrame>(nature_par),
+                                       0.0, "budget");
         return algorithms::nats::robust_s_l1_gurobi(values);
     }
     if (nature == "l1w_g") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
-        auto budgets =
-            parse_s_values(mdp.size(), Rcpp::as<Rcpp::DataFrame>(par["budgets"]), 0.0);
-        auto weights =
-            parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]), 1.0);
+        auto budgets = parse_s_values(
+            mdp.size(), Rcpp::as<Rcpp::DataFrame>(par["budgets"]), 0.0, "budget");
+        auto weights = parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]),
+                                        1.0, "weight");
         return algorithms::nats::robust_s_l1w_gurobi(budgets, weights);
     }
 #endif

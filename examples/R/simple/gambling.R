@@ -70,7 +70,7 @@ solve.gambling <- function(max_capital, p_win, discount){
     
     # ----------- Solve and Compute Optimal Policy ------
     
-    sol <- solve_mdp(mdp.frame, discount, list(precision = 0.00001))
+    sol <- solve_mdp(mdp.frame, discount, maxresidual = 0.00001)
     qv <- compute_qvalues(mdp.frame, sol$valuefunction, discount)
     v <- data.frame(idstate=seq(0,length(sol$valuefunction)-1),value=sol$valuefunction)
     

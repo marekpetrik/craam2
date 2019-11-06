@@ -272,13 +272,15 @@ inline craam::numvecvec parse_sa_values(const craam::MDP& mdp,
  * @param frame Dataframe with 3 comlumns, idstatefrom, idaction, idstateto, value.
  *              Here, idstate(from,to) and idaction determine which value should be set
  *              Only the last value is used if multiple rows are present.
- * @param def_value The default value for when frame does not specify anything for the state action pair
+ * @param def_value The default value for when frame does not specify anything for
+ *              the state action pair
+ * @param val_name Name of the value column
  *
- * @returns A vector over states, action, with an inner vector of actions
+ * @return A vector over states, action, with an inner vector of actions
  */
-inline std::vector<craam::numvecvec> parse_sas_values(const craam::MDP& mdp,
-                                                      const Rcpp::DataFrame& frame,
-                                                      double def_value = 0) {
+inline std::vector<craam::numvecvec>
+parse_sas_values(const craam::MDP& mdp, const Rcpp::DataFrame& frame,
+                 double def_value = 0, const std::string val_name = "value") {
 
     std::vector<craam::numvecvec> result(mdp.size());
     for (long i = 0; i < mdp.size(); i++) {
@@ -291,7 +293,7 @@ inline std::vector<craam::numvecvec> parse_sas_values(const craam::MDP& mdp,
 
     Rcpp::IntegerVector idstatesfrom = frame["idstatefrom"],
                         idactions = frame["idaction"], idstatesto = frame["idstateto"];
-    Rcpp::NumericVector values = frame["value"];
+    Rcpp::NumericVector values = frame[val_name];
 
     for (long i = 0; i < idstatesfrom.size(); i++) {
         long idstatefrom = idstatesfrom[i], idstateto = idstatesto[i],
