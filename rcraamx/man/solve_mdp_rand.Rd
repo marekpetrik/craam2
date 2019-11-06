@@ -9,6 +9,13 @@ solve_mdp_rand(mdp, discount, algorithm = "mpi", policy_fixed = NULL,
   output_tran = FALSE, show_progress = TRUE)
 }
 \arguments{
+\item{mdp}{A dataframe representation of the MDP. Each row
+represents a single transition from one state to another
+after taking an action a. The columns are:
+idstatefrom, idaction, idstateto, probability, reward}
+
+\item{discount}{Discount factor in [0,1]}
+
 \item{algorithm}{One of "mpi", "vi", "vi_j", "pi"}
 
 \item{policy_fixed}{States for which the  policy should be fixed. This

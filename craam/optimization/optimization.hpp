@@ -1035,6 +1035,9 @@ std::pair<numvec, prec_t> inline var(const numvec& z, const numvec& pbar, prec_t
  *
  * beta * var_pbar [z] + (1-beta) * E_pbar[z]
  *
+ * See also var for the details on how the variance is computed. alpha = 0 is the
+ * worst case.
+ *
  */
 std::pair<numvec, prec_t> inline var_exp(const numvec& z, const numvec& pbar,
                                          prec_t alpha, prec_t beta) {
@@ -1062,6 +1065,9 @@ std::pair<numvec, prec_t> inline var_exp(const numvec& z, const numvec& pbar,
  * Computes a convex combination of avar and expectation:
  *
  * beta * avar_pbar [z] + (1-beta) * E_pbar[z]
+ *
+ * See also avar for the details on how the variance is computed. alpha = 0 is the
+ * worst case.
  *
  */
 std::pair<numvec, prec_t> inline avar_exp(const numvec& z, const numvec& pbar,

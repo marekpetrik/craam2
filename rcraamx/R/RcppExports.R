@@ -14,6 +14,11 @@ pack_actions <- function(mdp) {
 #' This method supports only deterministic policies. See solve_mdp_rand for a
 #' method that supports randomized policies.
 #'
+#' @param mdp A dataframe representation of the MDP. Each row
+#'            represents a single transition from one state to another
+#'            after taking an action a. The columns are:
+#'            idstatefrom, idaction, idstateto, probability, reward
+#' @param discount Discount factor in [0,1]
 #' @param algorithm One of "mpi", "vi", "vi_j", "pi". Also supports "lp"
 #'           when Gurobi is properly installed
 #' @param policy_fixed States for which the  policy should be fixed. This
@@ -40,6 +45,11 @@ solve_mdp <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, max
 #' The method can be provided with a randomized policy for some states
 #' and the output policy is randomized.
 #'
+#' @param mdp A dataframe representation of the MDP. Each row
+#'            represents a single transition from one state to another
+#'            after taking an action a. The columns are:
+#'            idstatefrom, idaction, idstateto, probability, reward
+#' @param discount Discount factor in [0,1]
 #' @param algorithm One of "mpi", "vi", "vi_j", "pi"
 #' @param policy_fixed States for which the  policy should be fixed. This
 #'         should be a dataframe with columns idstate, idaction, probability.
@@ -57,8 +67,19 @@ solve_mdp_rand <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL
     .Call(`_rcraam_solve_mdp_rand`, mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, output_tran, show_progress)
 }
 
-compute_qvalues <- function(mdp, valuefunction, discount) {
-    .Call(`_rcraam_compute_qvalues`, mdp, valuefunction, discount)
+#' Computes the function for the MDP for the given value function and discount factor
+#'
+#' @param mdp A dataframe representation of the MDP. Each row
+#'            represents a single transition from one state to another
+#'            after taking an action a. The columns are:
+#'            idstatefrom, idaction, idstateto, probability, reward
+#' @param discount Discount factor in [0,1]
+#' @param valuefunction A dataframe representation of the value function. Each row
+#'             represents a state. The columns must be idstate, value
+#'
+#' @return Dataframe with idstate, idaction, qvalue columns
+compute_qvalues <- function(mdp, discount, valuefunction) {
+    .Call(`_rcraam_compute_qvalues`, mdp, discount, valuefunction)
 }
 
 #' Solves a robust Markov decision process with state-action rectangular
@@ -73,7 +94,15 @@ compute_qvalues <- function(mdp, valuefunction, discount) {
 #' are provided in the mdp dataframe, even when the transition
 #' probability to those states is 0.
 #'
-#' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "pi". MPI may
+#' @param mdp A dataframe representation of the MDP. Each row
+#'            represents a single transition from one state to another
+#'            after taking an action a. The columns are:
+#'            idstatefrom, idaction, idstateto, probability, reward
+#' @param discount Discount factor in [0,1]
+#' @param nature Algorithm used to select the robust outcome. See details for options.
+#' @param nature_par Parameters for the nature. Varies depending on the nature.
+#'                   See details for options.
+#' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "pi". MPI and PI may
 #'           may not converge
 #' @param policy_fixed States for which the  policy should be fixed. This
 #'          should be a dataframe with columns idstate and idaction. The policy
@@ -91,6 +120,38 @@ compute_qvalues <- function(mdp, valuefunction, discount) {
 #' @param show_progress Whether to show a progress bar during the computation
 #'
 #' @return A list with value function policy and other values
+#'
+#' @details
+#'
+#' The options for nature and the corresponding nature_par are:
+#'    \begin{itemize}
+#'         \item "l1u" an l1 ambiguity set with the same budget for all s,a.
+#'                nature_par is a float number representing the budget
+#'         \item "l1" an ambiguity set with different budgets for each s,a.
+#'                nature_par is dataframe with idstate, idaction, budget
+#'         \item "l1w" an l1-weighted ambiguity set with different weights
+#'                      and budgets for each state and action
+#'                 nature_par is a list with two elements: budgets, weights.
+#'                 budgets must be a dataframe with columns idstate, idaction, budget
+#'                 and weights must be a dataframe with columns:
+#'                 idstatefrom, idaction, idstateto, weight (for the l1 weighted norms)
+#'         \item "evaru" a convex combination of expectation and V@R over
+#'                 transition probabilites. Uniform over all states and actions
+#'                 nature_par is a list with parameters (alpha, beta). The worst-case
+#'                 response is computed as:
+#'                 beta * var [z] + (1-beta) * E[z], where
+#'                 var is inf{x \in R : P[X <= x] >= alpha}, with alpha = 0 being the
+#'                 worst-case.
+#'         \item "evaru" a convex combination of expectation and AV@R over
+#'                 transition probabilites. Uniform over states
+#'                 nature_par is a list with parameters (alpha, beta). The worst-case
+#'                 response is computed as:
+#'                 beta * var [z] + (1-beta) * E[z], where
+#'                 var is AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )
+#'                 where I is the indicator function and
+#'                 x_a = inf{x \in R : P[X <= x] >= alpha} being the
+#'                 worst-case.
+#'    \end{itemize}
 rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
     .Call(`_rcraam_rsolve_mdp_sa`, mdp, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress)
 }
@@ -122,6 +183,28 @@ rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi",
 #' @param show_progress Whether to show a progress bar during the computation
 #'
 #' @return A list with value function policy and other values
+#'
+#' @details
+#'
+#' The options for nature and the corresponding nature_par are:
+#'    \begin{itemize}
+#'         \item "evaru" a convex combination of expectation and V@R over
+#'                 transition probabilites. Uniform over all states and actions
+#'                 nature_par is a list with parameters (alpha, beta). The worst-case
+#'                 response is computed as:
+#'                 beta * var [z] + (1-beta) * E[z], where
+#'                 var is inf{x \in R : P[X <= x] >= alpha}, with alpha = 0 being the
+#'                 worst-case.
+#'         \item "evaru" a convex combination of expectation and AV@R over
+#'                 transition probabilites. Uniform over states
+#'                 nature_par is a list with parameters (alpha, beta). The worst-case
+#'                 response is computed as:
+#'                 beta * var [z] + (1-beta) * E[z], where
+#'                 var is AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )
+#'                 where I is the indicator function and
+#'                 x_a = inf{x \in R : P[X <= x] >= alpha} being the
+#'                 worst-case.
+#'    \end{itemize}
 rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
     .Call(`_rcraam_rsolve_mdpo_sa`, mdpo, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress)
 }
@@ -156,6 +239,21 @@ rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi
 #' @param show_progress Whether to show a progress bar during the computation
 #'
 #' @return A list with value function policy and other values
+#' @details
+#'
+#' The options for nature and the corresponding nature_par are:
+#'    \begin{itemize}
+#'         \item "l1u" an l1 ambiguity set with the same budget for all s.
+#'                nature_par is a float number representing the budget
+#'         \item "l1" an ambiguity set with different budgets for each s.
+#'                nature_par is dataframe with idstate, budget
+#'         \item "l1w" an l1-weighted ambiguity set with different weights
+#'                      and budgets for each state and action
+#'                 nature_par is a list with two elements: budgets, weights.
+#'                 budgets must be a dataframe with columns idstate, budget
+#'                 and weights must be a dataframe with columns:
+#'                 idstatefrom, idaction, idstateto, weight (for the l1 weighted norms)
+#'    \end{itemize}
 rsolve_mdp_s <- function(mdp, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
     .Call(`_rcraam_rsolve_mdp_s`, mdp, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress)
 }

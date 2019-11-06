@@ -44,3 +44,24 @@ NOTE: The algorithms  mpi and pi may cycle infinitely without converging to a so
 when solving a robust MDP.
 The algorithms ppi and mppi are guaranteed to converge to an optimal solution.
 }
+\details{
+The options for nature and the corresponding nature_par are:
+   \begin{itemize}
+        \item "evaru" a convex combination of expectation and V@R over
+                transition probabilites. Uniform over all states and actions
+                nature_par is a list with parameters (alpha, beta). The worst-case
+                response is computed as:
+                beta * var [z] + (1-beta) * E[z], where
+                var is inf{x \in R : P[X <= x] >= alpha}, with alpha = 0 being the
+                worst-case.
+        \item "evaru" a convex combination of expectation and AV@R over
+                transition probabilites. Uniform over states
+                nature_par is a list with parameters (alpha, beta). The worst-case
+                response is computed as:
+                beta * var [z] + (1-beta) * E[z], where
+                var is AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )
+                where I is the indicator function and
+                x_a = inf{x \in R : P[X <= x] >= alpha} being the
+                worst-case.
+   \end{itemize}
+}

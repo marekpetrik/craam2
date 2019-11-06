@@ -431,6 +431,7 @@ Rcpp::List solve_mdp_rand(Rcpp::DataFrame mdp, double discount,
 }
 
 //' Computes the function for the MDP for the given value function and discount factor
+//'
 //' @param mdp A dataframe representation of the MDP. Each row
 //'            represents a single transition from one state to another
 //'            after taking an action a. The columns are:
@@ -577,13 +578,28 @@ algorithms::SANature parse_nature_sa(const MDPO& mdpo, const string& nature,
 //'                nature_par is a float number representing the budget
 //'         \item "l1" an ambiguity set with different budgets for each s,a.
 //'                nature_par is dataframe with idstate, idaction, budget
-//'
 //'         \item "l1w" an l1-weighted ambiguity set with different weights
 //'                      and budgets for each state and action
+//'                 nature_par is a list with two elements: budgets, weights.
+//'                 budgets must be a dataframe with columns idstate, idaction, budget
+//'                 and weights must be a dataframe with columns:
+//'                 idstatefrom, idaction, idstateto, weight (for the l1 weighted norms)
 //'         \item "evaru" a convex combination of expectation and V@R over
-//'                 transition probabilites. Uniform over states
+//'                 transition probabilites. Uniform over all states and actions
+//'                 nature_par is a list with parameters (alpha, beta). The worst-case
+//'                 response is computed as:
+//'                 beta * var [z] + (1-beta) * E[z], where
+//'                 var is inf{x \in R : P[X <= x] >= alpha}, with alpha = 0 being the
+//'                 worst-case.
 //'         \item "evaru" a convex combination of expectation and AV@R over
 //'                 transition probabilites. Uniform over states
+//'                 nature_par is a list with parameters (alpha, beta). The worst-case
+//'                 response is computed as:
+//'                 beta * var [z] + (1-beta) * E[z], where
+//'                 var is AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )
+//'                 where I is the indicator function and
+//'                 x_a = inf{x \in R : P[X <= x] >= alpha} being the
+//'                 worst-case.
 //'    \end{itemize}
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String nature,
@@ -705,6 +721,28 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
 //' @param show_progress Whether to show a progress bar during the computation
 //'
 //' @return A list with value function policy and other values
+//'
+//' @details
+//'
+//' The options for nature and the corresponding nature_par are:
+//'    \begin{itemize}
+//'         \item "evaru" a convex combination of expectation and V@R over
+//'                 transition probabilites. Uniform over all states and actions
+//'                 nature_par is a list with parameters (alpha, beta). The worst-case
+//'                 response is computed as:
+//'                 beta * var [z] + (1-beta) * E[z], where
+//'                 var is inf{x \in R : P[X <= x] >= alpha}, with alpha = 0 being the
+//'                 worst-case.
+//'         \item "evaru" a convex combination of expectation and AV@R over
+//'                 transition probabilites. Uniform over states
+//'                 nature_par is a list with parameters (alpha, beta). The worst-case
+//'                 response is computed as:
+//'                 beta * var [z] + (1-beta) * E[z], where
+//'                 var is AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )
+//'                 where I is the indicator function and
+//'                 x_a = inf{x \in R : P[X <= x] >= alpha} being the
+//'                 worst-case.
+//'    \end{itemize}
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String nature,
                           SEXP nature_par, Rcpp::String algorithm = "mppi",
@@ -873,6 +911,21 @@ algorithms::SNature parse_nature_s(const MDP& mdp, const string& nature,
 //' @param show_progress Whether to show a progress bar during the computation
 //'
 //' @return A list with value function policy and other values
+//' @details
+//'
+//' The options for nature and the corresponding nature_par are:
+//'    \begin{itemize}
+//'         \item "l1u" an l1 ambiguity set with the same budget for all s.
+//'                nature_par is a float number representing the budget
+//'         \item "l1" an ambiguity set with different budgets for each s.
+//'                nature_par is dataframe with idstate, budget
+//'         \item "l1w" an l1-weighted ambiguity set with different weights
+//'                      and budgets for each state and action
+//'                 nature_par is a list with two elements: budgets, weights.
+//'                 budgets must be a dataframe with columns idstate, budget
+//'                 and weights must be a dataframe with columns:
+//'                 idstatefrom, idaction, idstateto, weight (for the l1 weighted norms)
+//'    \end{itemize}
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String nature,
                         SEXP nature_par, Rcpp::String algorithm = "mppi",

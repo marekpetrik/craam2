@@ -70,15 +70,15 @@ BEGIN_RCPP
 END_RCPP
 }
 // compute_qvalues
-Rcpp::DataFrame compute_qvalues(Rcpp::DataFrame mdp, Rcpp::NumericVector valuefunction, double discount);
-RcppExport SEXP _rcraam_compute_qvalues(SEXP mdpSEXP, SEXP valuefunctionSEXP, SEXP discountSEXP) {
+Rcpp::DataFrame compute_qvalues(Rcpp::DataFrame mdp, double discount, Rcpp::DataFrame valuefunction);
+RcppExport SEXP _rcraam_compute_qvalues(SEXP mdpSEXP, SEXP discountSEXP, SEXP valuefunctionSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type mdp(mdpSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type valuefunction(valuefunctionSEXP);
     Rcpp::traits::input_parameter< double >::type discount(discountSEXP);
-    rcpp_result_gen = Rcpp::wrap(compute_qvalues(mdp, valuefunction, discount));
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type valuefunction(valuefunctionSEXP);
+    rcpp_result_gen = Rcpp::wrap(compute_qvalues(mdp, discount, valuefunction));
     return rcpp_result_gen;
 END_RCPP
 }

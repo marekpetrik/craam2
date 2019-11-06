@@ -48,4 +48,20 @@ The algorithms ppi and mppi are guaranteed to converge to an optimal solution.
 Important: Worst-case transitions are allowed only to idstateto states that
 are provided in the mdp dataframe, even when the transition
 probability to those states is 0.
+
+
+
+The options for nature and the corresponding nature_par are:
+   \begin{itemize}
+        \item "l1u" an l1 ambiguity set with the same budget for all s.
+               nature_par is a float number representing the budget
+        \item "l1" an ambiguity set with different budgets for each s.
+               nature_par is dataframe with idstate, budget
+        \item "l1w" an l1-weighted ambiguity set with different weights
+                     and budgets for each state and action
+                nature_par is a list with two elements: budgets, weights.
+                budgets must be a dataframe with columns idstate, budget
+                and weights must be a dataframe with columns:
+                idstatefrom, idaction, idstateto, weight (for the l1 weighted norms)
+   \end{itemize}
 }

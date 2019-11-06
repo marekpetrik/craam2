@@ -12,7 +12,19 @@ rsolve_mdp_sa(mdp, discount, nature, nature_par, algorithm = "mppi",
   show_progress = TRUE)
 }
 \arguments{
-\item{algorithm}{One of "ppi", "mppi", "mpi", "vi", "vi_j", "pi". MPI may
+\item{mdp}{A dataframe representation of the MDP. Each row
+represents a single transition from one state to another
+after taking an action a. The columns are:
+idstatefrom, idaction, idstateto, probability, reward}
+
+\item{discount}{Discount factor in [0,1]}
+
+\item{nature}{Algorithm used to select the robust outcome. See details for options.}
+
+\item{nature_par}{Parameters for the nature. Varies depending on the nature.
+See details for options.}
+
+\item{algorithm}{One of "ppi", "mppi", "mpi", "vi", "vi_j", "pi". MPI and PI may
 may not converge}
 
 \item{policy_fixed}{States for which the  policy should be fixed. This
@@ -48,4 +60,36 @@ The algorithms ppi and mppi are guaranteed to converge to an optimal solution.
 Important: Worst-case transitions are allowed only to idstateto states that
 are provided in the mdp dataframe, even when the transition
 probability to those states is 0.
+
+
+
+The options for nature and the corresponding nature_par are:
+   \begin{itemize}
+        \item "l1u" an l1 ambiguity set with the same budget for all s,a.
+               nature_par is a float number representing the budget
+        \item "l1" an ambiguity set with different budgets for each s,a.
+               nature_par is dataframe with idstate, idaction, budget
+        \item "l1w" an l1-weighted ambiguity set with different weights
+                     and budgets for each state and action
+                nature_par is a list with two elements: budgets, weights.
+                budgets must be a dataframe with columns idstate, idaction, budget
+                and weights must be a dataframe with columns:
+                idstatefrom, idaction, idstateto, weight (for the l1 weighted norms)
+        \item "evaru" a convex combination of expectation and V@R over
+                transition probabilites. Uniform over all states and actions
+                nature_par is a list with parameters (alpha, beta). The worst-case
+                response is computed as:
+                beta * var [z] + (1-beta) * E[z], where
+                var is inf{x \in R : P[X <= x] >= alpha}, with alpha = 0 being the
+                worst-case.
+        \item "evaru" a convex combination of expectation and AV@R over
+                transition probabilites. Uniform over states
+                nature_par is a list with parameters (alpha, beta). The worst-case
+                response is computed as:
+                beta * var [z] + (1-beta) * E[z], where
+                var is AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )
+                where I is the indicator function and
+                x_a = inf{x \in R : P[X <= x] >= alpha} being the
+                worst-case.
+   \end{itemize}
 }
