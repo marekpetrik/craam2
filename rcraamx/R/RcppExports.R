@@ -9,8 +9,23 @@ pack_actions <- function(mdp) {
     .Call(`_rcraam_pack_actions`, mdp)
 }
 
-solve_mdp <- function(mdp, discount, options_n = NULL, timeout = 300, show_progress = TRUE, maxresidual = 10e-4, iterations = 1000L, pack_actions = FALSE) {
-    .Call(`_rcraam_solve_mdp`, mdp, discount, options_n, timeout, show_progress, maxresidual, iterations, pack_actions)
+#' Note of actions are packed, the policy may be recoverd
+#' from the output parameter action_map
+#'
+#' @param options
+#'          algorithm: "mpi", "vi", "vi_j", "pi"
+#'          pack_actions: bool
+#'          iterations: int
+#'          precision: double
+#'          policy : evaluate the deterministic policy
+#'          policy_rand: evalute the randomized policy
+#'
+solve_mdp <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
+    .Call(`_rcraam_solve_mdp`, mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress)
+}
+
+solve_mdp_rand <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, output_tran = FALSE, show_progress = TRUE) {
+    .Call(`_rcraam_solve_mdp_rand`, mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, output_tran, show_progress)
 }
 
 compute_qvalues <- function(mdp, valuefunction, discount) {

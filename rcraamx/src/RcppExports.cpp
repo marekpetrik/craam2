@@ -31,20 +31,41 @@ BEGIN_RCPP
 END_RCPP
 }
 // solve_mdp
-Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::Nullable<Rcpp::List> options_n, double timeout, bool show_progress, double maxresidual, size_t iterations, bool pack_actions);
-RcppExport SEXP _rcraam_solve_mdp(SEXP mdpSEXP, SEXP discountSEXP, SEXP options_nSEXP, SEXP timeoutSEXP, SEXP show_progressSEXP, SEXP maxresidualSEXP, SEXP iterationsSEXP, SEXP pack_actionsSEXP) {
+Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorithm, Rcpp::Nullable<Rcpp::DataFrame> policy_fixed, double maxresidual, size_t iterations, double timeout, bool pack_actions, bool output_tran, bool show_progress);
+RcppExport SEXP _rcraam_solve_mdp(SEXP mdpSEXP, SEXP discountSEXP, SEXP algorithmSEXP, SEXP policy_fixedSEXP, SEXP maxresidualSEXP, SEXP iterationsSEXP, SEXP timeoutSEXP, SEXP pack_actionsSEXP, SEXP output_tranSEXP, SEXP show_progressSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type mdp(mdpSEXP);
     Rcpp::traits::input_parameter< double >::type discount(discountSEXP);
-    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::List> >::type options_n(options_nSEXP);
-    Rcpp::traits::input_parameter< double >::type timeout(timeoutSEXP);
-    Rcpp::traits::input_parameter< bool >::type show_progress(show_progressSEXP);
+    Rcpp::traits::input_parameter< Rcpp::String >::type algorithm(algorithmSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::DataFrame> >::type policy_fixed(policy_fixedSEXP);
     Rcpp::traits::input_parameter< double >::type maxresidual(maxresidualSEXP);
     Rcpp::traits::input_parameter< size_t >::type iterations(iterationsSEXP);
+    Rcpp::traits::input_parameter< double >::type timeout(timeoutSEXP);
     Rcpp::traits::input_parameter< bool >::type pack_actions(pack_actionsSEXP);
-    rcpp_result_gen = Rcpp::wrap(solve_mdp(mdp, discount, options_n, timeout, show_progress, maxresidual, iterations, pack_actions));
+    Rcpp::traits::input_parameter< bool >::type output_tran(output_tranSEXP);
+    Rcpp::traits::input_parameter< bool >::type show_progress(show_progressSEXP);
+    rcpp_result_gen = Rcpp::wrap(solve_mdp(mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress));
+    return rcpp_result_gen;
+END_RCPP
+}
+// solve_mdp_rand
+Rcpp::List solve_mdp_rand(Rcpp::DataFrame mdp, double discount, Rcpp::String algorithm, Rcpp::Nullable<Rcpp::DataFrame> policy_fixed, double maxresidual, size_t iterations, double timeout, bool output_tran, bool show_progress);
+RcppExport SEXP _rcraam_solve_mdp_rand(SEXP mdpSEXP, SEXP discountSEXP, SEXP algorithmSEXP, SEXP policy_fixedSEXP, SEXP maxresidualSEXP, SEXP iterationsSEXP, SEXP timeoutSEXP, SEXP output_tranSEXP, SEXP show_progressSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type mdp(mdpSEXP);
+    Rcpp::traits::input_parameter< double >::type discount(discountSEXP);
+    Rcpp::traits::input_parameter< Rcpp::String >::type algorithm(algorithmSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::DataFrame> >::type policy_fixed(policy_fixedSEXP);
+    Rcpp::traits::input_parameter< double >::type maxresidual(maxresidualSEXP);
+    Rcpp::traits::input_parameter< size_t >::type iterations(iterationsSEXP);
+    Rcpp::traits::input_parameter< double >::type timeout(timeoutSEXP);
+    Rcpp::traits::input_parameter< bool >::type output_tran(output_tranSEXP);
+    Rcpp::traits::input_parameter< bool >::type show_progress(show_progressSEXP);
+    rcpp_result_gen = Rcpp::wrap(solve_mdp_rand(mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, output_tran, show_progress));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -186,7 +207,8 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_rcraam_worstcase_l1", (DL_FUNC) &_rcraam_worstcase_l1, 3},
     {"_rcraam_pack_actions", (DL_FUNC) &_rcraam_pack_actions, 1},
-    {"_rcraam_solve_mdp", (DL_FUNC) &_rcraam_solve_mdp, 8},
+    {"_rcraam_solve_mdp", (DL_FUNC) &_rcraam_solve_mdp, 10},
+    {"_rcraam_solve_mdp_rand", (DL_FUNC) &_rcraam_solve_mdp_rand, 9},
     {"_rcraam_compute_qvalues", (DL_FUNC) &_rcraam_compute_qvalues, 3},
     {"_rcraam_rsolve_mdp_sa", (DL_FUNC) &_rcraam_rsolve_mdp_sa, 5},
     {"_rcraam_rsolve_mdpo_sa", (DL_FUNC) &_rcraam_rsolve_mdpo_sa, 5},
