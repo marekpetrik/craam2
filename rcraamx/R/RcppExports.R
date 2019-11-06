@@ -9,8 +9,8 @@ pack_actions <- function(mdp) {
     .Call(`_rcraam_pack_actions`, mdp)
 }
 
-solve_mdp <- function(mdp, discount, options_n = NULL) {
-    .Call(`_rcraam_solve_mdp`, mdp, discount, options_n)
+solve_mdp <- function(mdp, discount, options_n = NULL, timeout = 300, show_progress = TRUE, maxresidual = 10e-4, iterations = 1000L, pack_actions = FALSE) {
+    .Call(`_rcraam_solve_mdp`, mdp, discount, options_n, timeout, show_progress, maxresidual, iterations, pack_actions)
 }
 
 compute_qvalues <- function(mdp, valuefunction, discount) {

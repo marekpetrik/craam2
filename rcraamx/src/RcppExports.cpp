@@ -31,15 +31,20 @@ BEGIN_RCPP
 END_RCPP
 }
 // solve_mdp
-Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::Nullable<Rcpp::List> options_n);
-RcppExport SEXP _rcraam_solve_mdp(SEXP mdpSEXP, SEXP discountSEXP, SEXP options_nSEXP) {
+Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::Nullable<Rcpp::List> options_n, double timeout, bool show_progress, double maxresidual, size_t iterations, bool pack_actions);
+RcppExport SEXP _rcraam_solve_mdp(SEXP mdpSEXP, SEXP discountSEXP, SEXP options_nSEXP, SEXP timeoutSEXP, SEXP show_progressSEXP, SEXP maxresidualSEXP, SEXP iterationsSEXP, SEXP pack_actionsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type mdp(mdpSEXP);
     Rcpp::traits::input_parameter< double >::type discount(discountSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::List> >::type options_n(options_nSEXP);
-    rcpp_result_gen = Rcpp::wrap(solve_mdp(mdp, discount, options_n));
+    Rcpp::traits::input_parameter< double >::type timeout(timeoutSEXP);
+    Rcpp::traits::input_parameter< bool >::type show_progress(show_progressSEXP);
+    Rcpp::traits::input_parameter< double >::type maxresidual(maxresidualSEXP);
+    Rcpp::traits::input_parameter< size_t >::type iterations(iterationsSEXP);
+    Rcpp::traits::input_parameter< bool >::type pack_actions(pack_actionsSEXP);
+    rcpp_result_gen = Rcpp::wrap(solve_mdp(mdp, discount, options_n, timeout, show_progress, maxresidual, iterations, pack_actions));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -181,7 +186,7 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_rcraam_worstcase_l1", (DL_FUNC) &_rcraam_worstcase_l1, 3},
     {"_rcraam_pack_actions", (DL_FUNC) &_rcraam_pack_actions, 1},
-    {"_rcraam_solve_mdp", (DL_FUNC) &_rcraam_solve_mdp, 3},
+    {"_rcraam_solve_mdp", (DL_FUNC) &_rcraam_solve_mdp, 8},
     {"_rcraam_compute_qvalues", (DL_FUNC) &_rcraam_compute_qvalues, 3},
     {"_rcraam_rsolve_mdp_sa", (DL_FUNC) &_rcraam_rsolve_mdp_sa, 5},
     {"_rcraam_rsolve_mdpo_sa", (DL_FUNC) &_rcraam_rsolve_mdpo_sa, 5},
