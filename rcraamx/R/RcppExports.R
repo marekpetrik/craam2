@@ -9,21 +9,50 @@ pack_actions <- function(mdp) {
     .Call(`_rcraam_pack_actions`, mdp)
 }
 
-#' Note of actions are packed, the policy may be recoverd
-#' from the output parameter action_map
+#' Solves a plain Markov decision process.
 #'
-#' @param options
-#'          algorithm: "mpi", "vi", "vi_j", "pi"
-#'          pack_actions: bool
-#'          iterations: int
-#'          precision: double
-#'          policy : evaluate the deterministic policy
-#'          policy_rand: evalute the randomized policy
+#' This method supports only deterministic policies. See solve_mdp_rand for a
+#' method that supports randomized policies.
 #'
+#' @param algorithm One of "mpi", "vi", "vi_j", "pi". Also supports "lp"
+#'           when Gurobi is properly installed
+#' @param policy_fixed States for which the  policy should be fixed. This
+#'          should be a dataframe with columns idstate and idaction. The policy
+#'          is optimized only for states that are missing, and the fixed policy
+#'          is used otherwise
+#' @param maxresidual Residual at which to terminate
+#' @param iterations Maximum number of iterations
+#' @param timeout Maximum number of secods for which to run the computation
+#' @param pack_actions Whether to remove actions with no transition probabilities,
+#'          and rename others for the same state to prevent gaps. The policy
+#'          for the original actions can be recovered using ``action_map'' frame
+#'          in the result
+#' @param output_tran Whether to construct and return a matrix of transition
+#'          probabilites and a vector of rewards
+#' @param show_progress Whether to show a progress bar during the computation
+#' @return A list with value function policy and other values
 solve_mdp <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
     .Call(`_rcraam_solve_mdp`, mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress)
 }
 
+#' Solves a plain Markov decision process with randomized policies.
+#'
+#' The method can be provided with a randomized policy for some states
+#' and the output policy is randomized.
+#'
+#' @param algorithm One of "mpi", "vi", "vi_j", "pi"
+#' @param policy_fixed States for which the  policy should be fixed. This
+#'         should be a dataframe with columns idstate, idaction, probability.
+#'          The policy is optimized only for states that are missing, and the
+#'          fixed policy is used otherwise
+#' @param maxresidual Residual at which to terminate
+#' @param iterations Maximum number of iterations
+#' @param timeout Maximum number of secods for which to run the computation
+#' @param output_tran Whether to construct and return a matrix of transition
+#'          probabilites and a vector of rewards
+#' @param show_progress Whether to show a progress bar during the computation
+#'
+#' @return A list with value function policy and other values
 solve_mdp_rand <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, output_tran = FALSE, show_progress = TRUE) {
     .Call(`_rcraam_solve_mdp_rand`, mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, output_tran, show_progress)
 }
@@ -32,16 +61,103 @@ compute_qvalues <- function(mdp, valuefunction, discount) {
     .Call(`_rcraam_compute_qvalues`, mdp, valuefunction, discount)
 }
 
-rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, options_n = NULL) {
-    .Call(`_rcraam_rsolve_mdp_sa`, mdp, discount, nature, nature_par, options_n)
+#' Solves a robust Markov decision process with state-action rectangular
+#' ambiguity sets. The worst-case is computed with the MDP transition
+#' probabilities treated as nominal values.
+#'
+#' NOTE: The algorithms: pi, mpi may cycle infinitely without converging to a solution,
+#' when solving a robust MDP.
+#' The algorithms ppi and mppi are guaranteed to converge to an optimal solution.
+#'
+#' Important: Worst-case transitions are allowed only to idstateto states that
+#' are provided in the mdp dataframe, even when the transition
+#' probability to those states is 0.
+#'
+#' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "pi". MPI may
+#'           may not converge
+#' @param policy_fixed States for which the  policy should be fixed. This
+#'          should be a dataframe with columns idstate and idaction. The policy
+#'          is optimized only for states that are missing, and the fixed policy
+#'          is used otherwise
+#' @param maxresidual Residual at which to terminate
+#' @param iterations Maximum number of iterations
+#' @param timeout Maximum number of secods for which to run the computation
+#' @param pack_actions Whether to remove actions with no transition probabilities,
+#'          and rename others for the same state to prevent gaps. The policy
+#'          for the original actions can be recovered using ``action_map'' frame
+#'          in the result
+#' @param output_tran Whether to construct and return a matrix of transition
+#'          probabilites and a vector of rewards
+#' @param show_progress Whether to show a progress bar during the computation
+#'
+#' @return A list with value function policy and other values
+rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
+    .Call(`_rcraam_rsolve_mdp_sa`, mdp, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress)
 }
 
-rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, options_n = NULL) {
-    .Call(`_rcraam_rsolve_mdpo_sa`, mdpo, discount, nature, nature_par, options_n)
+#' Solves a robust Markov decision process with state-action rectangular
+#' ambiguity sets. The worst-case is computed across the outcomes and not
+#' the actual transition probabilities.
+#'
+#' NOTE: The algorithms  mpi and pi may cycle infinitely without converging to a solution,
+#' when solving a robust MDP.
+#' The algorithms ppi and mppi are guaranteed to converge to an optimal solution.
+#'
+#'
+#' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "pi". MPI may
+#'           may not converge
+#' @param policy_fixed States for which the  policy should be fixed. This
+#'          should be a dataframe with columns idstate and idaction. The policy
+#'          is optimized only for states that are missing, and the fixed policy
+#'          is used otherwise
+#' @param maxresidual Residual at which to terminate
+#' @param iterations Maximum number of iterations
+#' @param timeout Maximum number of secods for which to run the computation
+#' @param pack_actions Whether to remove actions with no transition probabilities,
+#'          and rename others for the same state to prevent gaps. The policy
+#'          for the original actions can be recovered using ``action_map'' frame
+#'          in the result
+#' @param output_tran Whether to construct and return a matrix of transition
+#'          probabilites and a vector of rewards
+#' @param show_progress Whether to show a progress bar during the computation
+#'
+#' @return A list with value function policy and other values
+rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
+    .Call(`_rcraam_rsolve_mdpo_sa`, mdpo, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress)
 }
 
-rsolve_mdp_s <- function(mdp, discount, nature, nature_par, options_n = NULL) {
-    .Call(`_rcraam_rsolve_mdp_s`, mdp, discount, nature, nature_par, options_n)
+#' Solves a robust Markov decision process with state rectangular
+#' ambiguity sets. The worst-case is computed with the MDP transition
+#' probabilities treated as nominal values.
+#'
+#' NOTE: The algorithms: pi, mpi may cycle infinitely without converging to a solution,
+#' when solving a robust MDP.
+#' The algorithms ppi and mppi are guaranteed to converge to an optimal solution.
+#'
+#' Important: Worst-case transitions are allowed only to idstateto states that
+#' are provided in the mdp dataframe, even when the transition
+#' probability to those states is 0.
+#'
+#' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "pi". MPI may
+#'           may not converge
+#' @param policy_fixed States for which the  policy should be fixed. This
+#'          should be a dataframe with columns idstate and idaction. The policy
+#'          is optimized only for states that are missing, and the fixed policy
+#'          is used otherwise
+#' @param maxresidual Residual at which to terminate
+#' @param iterations Maximum number of iterations
+#' @param timeout Maximum number of secods for which to run the computation
+#' @param pack_actions Whether to remove actions with no transition probabilities,
+#'          and rename others for the same state to prevent gaps. The policy
+#'          for the original actions can be recovered using ``action_map'' frame
+#'          in the result
+#' @param output_tran Whether to construct and return a matrix of transition
+#'          probabilites and a vector of rewards
+#' @param show_progress Whether to show a progress bar during the computation
+#'
+#' @return A list with value function policy and other values
+rsolve_mdp_s <- function(mdp, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
+    .Call(`_rcraam_rsolve_mdp_s`, mdp, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress)
 }
 
 set_rcraam_threads <- function(n) {

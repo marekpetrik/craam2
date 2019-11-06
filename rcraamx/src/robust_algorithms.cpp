@@ -212,7 +212,7 @@ Rcpp::List pack_actions(Rcpp::DataFrame mdp) {
     return result;
 }
 
-//' Solves a plain Markov decision process using one of standard algorithms.
+//' Solves a plain Markov decision process.
 //'
 //' This method supports only deterministic policies. See solve_mdp_rand for a
 //' method that supports randomized policies.
@@ -233,7 +233,7 @@ Rcpp::List pack_actions(Rcpp::DataFrame mdp) {
 //' @param output_tran Whether to construct and return a matrix of transition
 //'          probabilites and a vector of rewards
 //' @param show_progress Whether to show a progress bar during the computation
-//' @returns A list with value function policy and other values
+//' @return A list with value function policy and other values
 // [[Rcpp::export]]
 Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorithm = "mpi",
                      Rcpp::Nullable<Rcpp::DataFrame> policy_fixed = R_NilValue,
@@ -324,15 +324,16 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
     return result;
 }
 
-//' Solves a plain Markov decision process using standard methods. The method
-//' can be provided with a randomized policy for some states and the output
-//' policy is randomized.
+//' Solves a plain Markov decision process with randomized policies.
+//'
+//' The method can be provided with a randomized policy for some states
+//' and the output policy is randomized.
 //'
 //' @param algorithm One of "mpi", "vi", "vi_j", "pi"
 //' @param policy_fixed States for which the  policy should be fixed. This
-//'          should be a dataframe with columns idstate, idaction, probability.
-//           The policy is optimized only for states that are missing, and the
-//           fixed policy is used otherwise
+//'         should be a dataframe with columns idstate, idaction, probability.
+//'          The policy is optimized only for states that are missing, and the
+//'          fixed policy is used otherwise
 //' @param maxresidual Residual at which to terminate
 //' @param iterations Maximum number of iterations
 //' @param timeout Maximum number of secods for which to run the computation
@@ -340,7 +341,7 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
 //'          probabilites and a vector of rewards
 //' @param show_progress Whether to show a progress bar during the computation
 //'
-//' @returns A list with value function policy and other values
+//' @return A list with value function policy and other values
 // [[Rcpp::export]]
 Rcpp::List solve_mdp_rand(Rcpp::DataFrame mdp, double discount,
                           Rcpp::String algorithm = "mpi",
@@ -529,7 +530,7 @@ algorithms::SANature parse_nature_sa(const MDPO& mdpo, const string& nature,
 //'          probabilites and a vector of rewards
 //' @param show_progress Whether to show a progress bar during the computation
 //'
-//' @returns A list with value function policy and other values
+//' @return A list with value function policy and other values
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String nature,
                          SEXP nature_par, Rcpp::String algorithm = "mppi",
@@ -649,7 +650,7 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
 //'          probabilites and a vector of rewards
 //' @param show_progress Whether to show a progress bar during the computation
 //'
-//' @returns A list with value function policy and other values
+//' @return A list with value function policy and other values
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String nature,
                           SEXP nature_par, Rcpp::String algorithm = "mppi",
@@ -817,7 +818,7 @@ algorithms::SNature parse_nature_s(const MDP& mdp, const string& nature,
 //'          probabilites and a vector of rewards
 //' @param show_progress Whether to show a progress bar during the computation
 //'
-//' @returns A list with value function policy and other values
+//' @return A list with value function policy and other values
 // [[Rcpp::export]]
 Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String nature,
                         SEXP nature_par, Rcpp::String algorithm = "mppi",

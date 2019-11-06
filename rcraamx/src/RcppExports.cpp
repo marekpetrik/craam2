@@ -83,8 +83,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // rsolve_mdp_sa
-Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String nature, SEXP nature_par, Rcpp::Nullable<Rcpp::List> options_n);
-RcppExport SEXP _rcraam_rsolve_mdp_sa(SEXP mdpSEXP, SEXP discountSEXP, SEXP natureSEXP, SEXP nature_parSEXP, SEXP options_nSEXP) {
+Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String nature, SEXP nature_par, Rcpp::String algorithm, Rcpp::Nullable<Rcpp::DataFrame> policy_fixed, double maxresidual, size_t iterations, double timeout, bool pack_actions, bool output_tran, bool show_progress);
+RcppExport SEXP _rcraam_rsolve_mdp_sa(SEXP mdpSEXP, SEXP discountSEXP, SEXP natureSEXP, SEXP nature_parSEXP, SEXP algorithmSEXP, SEXP policy_fixedSEXP, SEXP maxresidualSEXP, SEXP iterationsSEXP, SEXP timeoutSEXP, SEXP pack_actionsSEXP, SEXP output_tranSEXP, SEXP show_progressSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -92,14 +92,21 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type discount(discountSEXP);
     Rcpp::traits::input_parameter< Rcpp::String >::type nature(natureSEXP);
     Rcpp::traits::input_parameter< SEXP >::type nature_par(nature_parSEXP);
-    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::List> >::type options_n(options_nSEXP);
-    rcpp_result_gen = Rcpp::wrap(rsolve_mdp_sa(mdp, discount, nature, nature_par, options_n));
+    Rcpp::traits::input_parameter< Rcpp::String >::type algorithm(algorithmSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::DataFrame> >::type policy_fixed(policy_fixedSEXP);
+    Rcpp::traits::input_parameter< double >::type maxresidual(maxresidualSEXP);
+    Rcpp::traits::input_parameter< size_t >::type iterations(iterationsSEXP);
+    Rcpp::traits::input_parameter< double >::type timeout(timeoutSEXP);
+    Rcpp::traits::input_parameter< bool >::type pack_actions(pack_actionsSEXP);
+    Rcpp::traits::input_parameter< bool >::type output_tran(output_tranSEXP);
+    Rcpp::traits::input_parameter< bool >::type show_progress(show_progressSEXP);
+    rcpp_result_gen = Rcpp::wrap(rsolve_mdp_sa(mdp, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress));
     return rcpp_result_gen;
 END_RCPP
 }
 // rsolve_mdpo_sa
-Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String nature, SEXP nature_par, Rcpp::Nullable<Rcpp::List> options_n);
-RcppExport SEXP _rcraam_rsolve_mdpo_sa(SEXP mdpoSEXP, SEXP discountSEXP, SEXP natureSEXP, SEXP nature_parSEXP, SEXP options_nSEXP) {
+Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String nature, SEXP nature_par, Rcpp::String algorithm, Rcpp::Nullable<Rcpp::DataFrame> policy_fixed, double maxresidual, size_t iterations, double timeout, bool pack_actions, bool output_tran, bool show_progress);
+RcppExport SEXP _rcraam_rsolve_mdpo_sa(SEXP mdpoSEXP, SEXP discountSEXP, SEXP natureSEXP, SEXP nature_parSEXP, SEXP algorithmSEXP, SEXP policy_fixedSEXP, SEXP maxresidualSEXP, SEXP iterationsSEXP, SEXP timeoutSEXP, SEXP pack_actionsSEXP, SEXP output_tranSEXP, SEXP show_progressSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -107,14 +114,21 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type discount(discountSEXP);
     Rcpp::traits::input_parameter< Rcpp::String >::type nature(natureSEXP);
     Rcpp::traits::input_parameter< SEXP >::type nature_par(nature_parSEXP);
-    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::List> >::type options_n(options_nSEXP);
-    rcpp_result_gen = Rcpp::wrap(rsolve_mdpo_sa(mdpo, discount, nature, nature_par, options_n));
+    Rcpp::traits::input_parameter< Rcpp::String >::type algorithm(algorithmSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::DataFrame> >::type policy_fixed(policy_fixedSEXP);
+    Rcpp::traits::input_parameter< double >::type maxresidual(maxresidualSEXP);
+    Rcpp::traits::input_parameter< size_t >::type iterations(iterationsSEXP);
+    Rcpp::traits::input_parameter< double >::type timeout(timeoutSEXP);
+    Rcpp::traits::input_parameter< bool >::type pack_actions(pack_actionsSEXP);
+    Rcpp::traits::input_parameter< bool >::type output_tran(output_tranSEXP);
+    Rcpp::traits::input_parameter< bool >::type show_progress(show_progressSEXP);
+    rcpp_result_gen = Rcpp::wrap(rsolve_mdpo_sa(mdpo, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress));
     return rcpp_result_gen;
 END_RCPP
 }
 // rsolve_mdp_s
-Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String nature, SEXP nature_par, Rcpp::Nullable<Rcpp::List> options_n);
-RcppExport SEXP _rcraam_rsolve_mdp_s(SEXP mdpSEXP, SEXP discountSEXP, SEXP natureSEXP, SEXP nature_parSEXP, SEXP options_nSEXP) {
+Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String nature, SEXP nature_par, Rcpp::String algorithm, Rcpp::Nullable<Rcpp::DataFrame> policy_fixed, double maxresidual, size_t iterations, double timeout, bool pack_actions, bool output_tran, bool show_progress);
+RcppExport SEXP _rcraam_rsolve_mdp_s(SEXP mdpSEXP, SEXP discountSEXP, SEXP natureSEXP, SEXP nature_parSEXP, SEXP algorithmSEXP, SEXP policy_fixedSEXP, SEXP maxresidualSEXP, SEXP iterationsSEXP, SEXP timeoutSEXP, SEXP pack_actionsSEXP, SEXP output_tranSEXP, SEXP show_progressSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -122,8 +136,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type discount(discountSEXP);
     Rcpp::traits::input_parameter< Rcpp::String >::type nature(natureSEXP);
     Rcpp::traits::input_parameter< SEXP >::type nature_par(nature_parSEXP);
-    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::List> >::type options_n(options_nSEXP);
-    rcpp_result_gen = Rcpp::wrap(rsolve_mdp_s(mdp, discount, nature, nature_par, options_n));
+    Rcpp::traits::input_parameter< Rcpp::String >::type algorithm(algorithmSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::DataFrame> >::type policy_fixed(policy_fixedSEXP);
+    Rcpp::traits::input_parameter< double >::type maxresidual(maxresidualSEXP);
+    Rcpp::traits::input_parameter< size_t >::type iterations(iterationsSEXP);
+    Rcpp::traits::input_parameter< double >::type timeout(timeoutSEXP);
+    Rcpp::traits::input_parameter< bool >::type pack_actions(pack_actionsSEXP);
+    Rcpp::traits::input_parameter< bool >::type output_tran(output_tranSEXP);
+    Rcpp::traits::input_parameter< bool >::type show_progress(show_progressSEXP);
+    rcpp_result_gen = Rcpp::wrap(rsolve_mdp_s(mdp, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -210,9 +231,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_rcraam_solve_mdp", (DL_FUNC) &_rcraam_solve_mdp, 10},
     {"_rcraam_solve_mdp_rand", (DL_FUNC) &_rcraam_solve_mdp_rand, 9},
     {"_rcraam_compute_qvalues", (DL_FUNC) &_rcraam_compute_qvalues, 3},
-    {"_rcraam_rsolve_mdp_sa", (DL_FUNC) &_rcraam_rsolve_mdp_sa, 5},
-    {"_rcraam_rsolve_mdpo_sa", (DL_FUNC) &_rcraam_rsolve_mdpo_sa, 5},
-    {"_rcraam_rsolve_mdp_s", (DL_FUNC) &_rcraam_rsolve_mdp_s, 5},
+    {"_rcraam_rsolve_mdp_sa", (DL_FUNC) &_rcraam_rsolve_mdp_sa, 12},
+    {"_rcraam_rsolve_mdpo_sa", (DL_FUNC) &_rcraam_rsolve_mdpo_sa, 12},
+    {"_rcraam_rsolve_mdp_s", (DL_FUNC) &_rcraam_rsolve_mdp_s, 12},
     {"_rcraam_set_rcraam_threads", (DL_FUNC) &_rcraam_set_rcraam_threads, 1},
     {"_rcraam_mdp_from_samples", (DL_FUNC) &_rcraam_mdp_from_samples, 1},
     {"_rcraam_mdp_example", (DL_FUNC) &_rcraam_mdp_example, 1},
