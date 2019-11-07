@@ -142,7 +142,7 @@ vi_gs(const ResponseType& response, prec_t discount, numvec valuefunction = numv
  * the actions that not provided by the partial policy are included in the
  * optimization. Using a class of a different types enables computing other
  * objectives, such as robust or risk averse ones.
- * @param iterations_pi Maximal number of policy iteration steps
+ * @param iterations_pi Maximal number of policy improvements
  * @param maxresidual_pi Stop the outer policy iteration when the residual drops
  * below this threshold.
  * @param iterations_vi Maximal number of inner loop value iterations
@@ -181,9 +181,11 @@ mpi_jac(const ResponseType& response, prec_t discount,
     static_assert(std::numeric_limits<prec_t>::has_infinity == true);
     prec_t residual_pi = numeric_limits<prec_t>::infinity();
 
-    size_t iter_total = 0; // track the total number of iterations
+    //size_t iter_total = 0; // track the total number of iterations
 
-    for (size_t i = 0; i < iterations_pi; i++) {
+    // to capture the number of policy iterations
+    size_t i;
+    for (i = 0; i < iterations_pi; i++) {
         // this just swaps pointers
         swap(targetvalue, sourcevalue);
 
@@ -214,7 +216,8 @@ mpi_jac(const ResponseType& response, prec_t discount,
         residual_pi = *max_element(residuals.cbegin(), residuals.cend());
 
         // the residual is sufficiently small
-        if (residual_pi <= maxresidual_pi || !progress(iter_total, residual_pi)) break;
+        //if (residual_pi <= maxresidual_pi || !progress(iter_total, residual_pi)) break;
+        if (residual_pi <= maxresidual_pi || !progress(i, residual_pi)) break;
 
         // compute values using value iteration
         for (size_t j = 0;
@@ -243,13 +246,13 @@ mpi_jac(const ResponseType& response, prec_t discount,
 
             // update the residual value
             residual_vi = *max_element(residuals.begin(), residuals.end());
-            ++iter_total;
+            //++iter_total;
         }
     }
     auto finish = chrono::steady_clock::now();
     chrono::duration<double> duration = finish - start;
     int status = residual_pi <= maxresidual_pi ? 0 : 1;
-    return Solution<policy_type>(move(targetvalue), move(policy), residual_pi, iter_total,
+    return Solution<policy_type>(move(targetvalue), move(policy), residual_pi, i,
                                  duration.count(), status);
 }
 
@@ -450,6 +453,7 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
     numvec residuals(response.state_count());
     bool openmp_error = false;
 
+    // initialize the policy its residuals for the given (empty?) value function
 #pragma omp parallel for
     for (auto s = 0l; s < long(response.state_count()); s++) {
         try {

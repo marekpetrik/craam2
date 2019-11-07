@@ -46,7 +46,7 @@ The algorithms ppi and mppi are guaranteed to converge to an optimal solution.
 }
 \details{
 The options for nature and the corresponding nature_par are:
-   \begin{itemize}
+   \itemize{
         \item "evaru" a convex combination of expectation and V@R over
                 transition probabilites. Uniform over all states and actions
                 nature_par is a list with parameters (alpha, beta). The worst-case
@@ -63,5 +63,5 @@ The options for nature and the corresponding nature_par are:
                 where I is the indicator function and
                 x_a = inf{x \in R : P[X <= x] >= alpha} being the
                 worst-case.
-   \end{itemize}
+   }
 }

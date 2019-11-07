@@ -124,7 +124,7 @@ compute_qvalues <- function(mdp, discount, valuefunction) {
 #' @details
 #'
 #' The options for nature and the corresponding nature_par are:
-#'    \begin{itemize}
+#'    \itemize{
 #'         \item "l1u" an l1 ambiguity set with the same budget for all s,a.
 #'                nature_par is a float number representing the budget
 #'         \item "l1" an ambiguity set with different budgets for each s,a.
@@ -151,7 +151,7 @@ compute_qvalues <- function(mdp, discount, valuefunction) {
 #'                 where I is the indicator function and
 #'                 x_a = inf{x \in R : P[X <= x] >= alpha} being the
 #'                 worst-case.
-#'    \end{itemize}
+#'    }
 rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
     .Call(`_rcraam_rsolve_mdp_sa`, mdp, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress)
 }
@@ -187,7 +187,7 @@ rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi",
 #' @details
 #'
 #' The options for nature and the corresponding nature_par are:
-#'    \begin{itemize}
+#'    \itemize{
 #'         \item "evaru" a convex combination of expectation and V@R over
 #'                 transition probabilites. Uniform over all states and actions
 #'                 nature_par is a list with parameters (alpha, beta). The worst-case
@@ -204,7 +204,7 @@ rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi",
 #'                 where I is the indicator function and
 #'                 x_a = inf{x \in R : P[X <= x] >= alpha} being the
 #'                 worst-case.
-#'    \end{itemize}
+#'    }
 rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
     .Call(`_rcraam_rsolve_mdpo_sa`, mdpo, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress)
 }
@@ -242,7 +242,7 @@ rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi
 #' @details
 #'
 #' The options for nature and the corresponding nature_par are:
-#'    \begin{itemize}
+#'    \itemize{
 #'         \item "l1u" an l1 ambiguity set with the same budget for all s.
 #'                nature_par is a float number representing the budget
 #'         \item "l1" an ambiguity set with different budgets for each s.
@@ -253,7 +253,7 @@ rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi
 #'                 budgets must be a dataframe with columns idstate, budget
 #'                 and weights must be a dataframe with columns:
 #'                 idstatefrom, idaction, idstateto, weight (for the l1 weighted norms)
-#'    \end{itemize}
+#'    }
 rsolve_mdp_s <- function(mdp, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
     .Call(`_rcraam_rsolve_mdp_s`, mdp, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress)
 }
@@ -262,6 +262,8 @@ set_rcraam_threads <- function(n) {
     invisible(.Call(`_rcraam_set_rcraam_threads`, n))
 }
 
+#'  Builds an MDP from samples
+#'
 mdp_from_samples <- function(samples_frame) {
     .Call(`_rcraam_mdp_from_samples`, samples_frame)
 }

@@ -272,17 +272,18 @@ if(fuzzy.neighbors >= 1){
 
 write_csv(mdp, "cartpole_mdp.csv")
 cat ("Solving MDP. ... \n")
-  solution <- rcraam::solve_mdp(mdp, discount, list(algorithm="mpi", iterations = 100000))
+solution <- rcraam::solve_mdp(mdp, discount, algorithm="mpi", iterations = 300)
 
 #cat ("Solving RMDP VI ... ")
-#rsolution_vi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.1, list(algorithm="vi",
-#                                                                  iterations = 10000))
-#cat ("Solving RMDP MPPI ... ")
-rsolution_mppi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", robustness, list(algorithm="mppi",
-                                                                  iterations = 100000))
+#rsolution_vi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.1, algorithm="vi",
+#                                                                 iterations = 10000)
+cat ("Solving RMDP MPPI ... ")
+rsolution_mppi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", robustness, algorithm="mppi",
+                                                                  iterations = 1000)
 
 # Compare value functions
-vfs <- data.frame(vf=solution$valuefunction, rvf=rsolution_mppi$valuefunction) %>% 
+vfs <- inner_join(solution$valuefunction %>% rename(vf = value), 
+                  rsolution_mppi$valuefunction %>% rename(rvf = value)) %>% 
   arrange(vf+rvf) %>% mutate(x = row_number()) %>% 
   mutate(vf = vf / max(vf), rvf = rvf / max(rvf)) %>%
   tidyr::gather("algorithm", "value", vf, rvf)
@@ -290,8 +291,7 @@ print(ggplot(vfs, aes(x=x, y=value, color=algorithm)) + geom_line() )
 
 #' Saves the solution so it can be consumed by a python script
 save.solution <- function(mdp, solution){
-
-  qvalues <- rcraam::compute_qvalues(mdp, solution$valuefunction, discount)
+  qvalues <- rcraam::compute_qvalues(mdp, discount, solution$valuefunction)
   
   # Save solution to a data_frame
   states.scaled <- states %*% scales
@@ -303,18 +303,16 @@ save.solution <- function(mdp, solution){
                             PoleVelocity = states.scaled[pol.states+1,4],
                             State = pol.states,
                             Action = pol.actions,
-                            Value = solution$valuefunction[pol.states+1])
+                            Value = solution$valuefunction$value[pol.states+1])
   # add probabilities to the file if the policy is randomized
   if("probability" %in% colnames(solution$policy)){
     solution.df$Probability <- solution$policy$probability
   }
   
   # ------------- Save values -----------------------
-  
   write_csv(samples, "samples.csv")
   write_csv(solution.df, "policy_nn.csv")
   write_csv(qvalues, "qvalues.csv")
-  
 }
 
 save.solution(mdp, solution)

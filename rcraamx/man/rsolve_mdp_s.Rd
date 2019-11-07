@@ -52,7 +52,7 @@ probability to those states is 0.
 
 
 The options for nature and the corresponding nature_par are:
-   \begin{itemize}
+   \itemize{
         \item "l1u" an l1 ambiguity set with the same budget for all s.
                nature_par is a float number representing the budget
         \item "l1" an ambiguity set with different budgets for each s.
@@ -63,5 +63,5 @@ The options for nature and the corresponding nature_par are:
                 budgets must be a dataframe with columns idstate, budget
                 and weights must be a dataframe with columns:
                 idstatefrom, idaction, idstateto, weight (for the l1 weighted norms)
-   \end{itemize}
+   }
 }

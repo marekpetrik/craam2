@@ -64,7 +64,7 @@ probability to those states is 0.
 
 
 The options for nature and the corresponding nature_par are:
-   \begin{itemize}
+   \itemize{
         \item "l1u" an l1 ambiguity set with the same budget for all s,a.
                nature_par is a float number representing the budget
         \item "l1" an ambiguity set with different budgets for each s,a.
@@ -91,5 +91,5 @@ The options for nature and the corresponding nature_par are:
                 where I is the indicator function and
                 x_a = inf{x \in R : P[X <= x] >= alpha} being the
                 worst-case.
-   \end{itemize}
+   }
 }
