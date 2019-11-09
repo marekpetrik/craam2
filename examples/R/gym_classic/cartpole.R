@@ -15,20 +15,20 @@ library(assertthat)
 # ------ Program parameters ------
 
 # parameters
-plot.fits <- TRUE
+plot.fits <- FALSE
 standardize.features <- TRUE
-discount <- 0.999
+discount <- 0.9999
 
 # synthetic model
-state.count <- 5000           # synthetic states
-syn.sample.count <- 20000    # synthetic samples
-use.low.discrepancy <- FALSE    # whether to use low discrepancy functions to generate synthetic samples
+state.count <- 3000           # synthetic states
+syn.sample.count <- 10000      # synthetic samples
+use.low.discrepancy <- FALSE   # whether to use low discrepancy functions to generate synthetic samples
 
 # prediction model
-spline.count <- 1
+spline.count <- 3
 
 # mirror samples (whether double samples by creating a mirror image)
-sample.episodes <- 40
+sample.episodes <- 100
 mirror.samples <- TRUE
 
 # features
@@ -37,10 +37,13 @@ action.names <- c(0,1)
 limits.lower <- c(-2.4, -3, -0.25, -3.1)
 limits.upper <- c(2.4, 3, 0.25, 3.1)
 
-#* add states that are nearby: this is to allow robust transitions to 
+#* add states that are nearby to state being transitioned into: 
+#* this is to allow robust transitions to 
 #* states which may not be seen in the sample, but are possible
-fuzzy.neighbors <- 200
+#* the transition probabilities to those states will be 0
+fuzzy.neighbors <- 20
 robustness <- 0.05
+fuzzy.radius <- 0.2
 
 # ------ Generate samples ------
 
@@ -67,6 +70,7 @@ for k in range(",sample.episodes,"):
 env.close()
 ")
 
+cat("Simulating random policy cart-pole ...\n")
 res <- py_run_string(code_generate_samples)
 samples <- as.data.frame(t(sapply(res$samples, unlist)))
 colnames(samples) <- c("Step", feature.names,"Action","Reward")
@@ -98,7 +102,6 @@ if(mirror.samples){
   samples_step <- rbind(samples_step, samples_mirror)  
   rm(samples_mirror)
 }
-
 
 # ------ Fit a linear model -------
 fit_data <- function(samples_step){
@@ -201,8 +204,9 @@ states <- samples.gen[1:state.count,]
 # Compute scales for each direction to be used with the nearest sample identification. 
 # WARNING: it is important to use the same scales when the policy is implemented.
 if(standardize.features){
-  scales <- apply(samples, 2, function(x){max(x) - min(x)}) # compute the span of the feature
-  scales <- diag(1/scales[c('CartPos', 'CartVelocity','PoleAngle','PoleVelocity')])  
+  # Important: assumes that samples are zero-centered
+  scales <- limits.upper -limits.lower #apply(samples, 2, function(x){max(x) - min(x)}) # compute the span of the feature
+  scales <- diag(1/scales) # diag(1/scales[c('CartPos', 'CartVelocity','PoleAngle','PoleVelocity')])  
 }else{
   scales <- diag(c(1,1,1,1))  
 }
@@ -240,25 +244,29 @@ samples.frame <- data.frame(idstatefrom = state.ids.from,
 # --------Construct fuzzy neighbors ---------------------
 
 # this assumes that there is some unsampled probablity that the
-# transition is to a neighboring state
-if(fuzzy.neighbors >= 1){
-
-  # this includes itself just in case
-  fuzzy.states <- nabor::knn(as.data.frame(states), 
-                             as.data.frame(states), 
-                             fuzzy.neighbors)$nn.idx - 1
+# transition is to a state that is near a sampled state
+if(fuzzy.neighbors > 1){
+  fuzzy.states.to <- nabor::knn(as.data.frame(states %*% scales), 
+                                as.data.frame(samples.nexts %*% scales), 
+                                fuzzy.neighbors,
+                                radius = fuzzy.radius)$nn.idx[,2:fuzzy.neighbors] - 1
   
-  fuzzy.transitions <- reshape2::melt(fuzzy.states, 
-                                      varnames = c("idstatefrom", "sample"), value.name="idstateto") %>% 
-    select(-sample) %>% mutate(idstatefrom = idstatefrom - 1) 
-  
-  # TODO: generalize this (this is too specific for 2 actions)
-  # also: what should be the reward for these extra transitions? 0 does not
-  # seem like something that would be universally right
+  # idtransition represents the index of the transition in samples.frame
+  # if the radius is too small then there will be some idstateto < 0
   fuzzy.transitions <- 
-    rbind(fuzzy.transitions %>% mutate(idaction = 0), 
-          fuzzy.transitions %>% mutate(idaction = 1)) %>%
-    mutate(reward = 0, probability = 0)
+    reshape2::melt(fuzzy.states.to, varnames = c("idtransition", "sample"), 
+                   value.name="idstateto") %>%
+    filter(idstateto >= 0)
+    
+  # right join to address the possibility that there are no
+  # fuzzy transitions for some states
+  fuzzy.transitions <- 
+    right_join(samples.frame %>% mutate(idtransition = row_number()) %>%
+                                select(-idstateto),
+              fuzzy.transitions,
+              by = "idtransition") %>% na.fail() %>%
+    select(-sample, -idtransition) %>%
+    mutate(probability = 0)
 }
 
 # -------Solve MDP and save policy -------
@@ -267,25 +275,33 @@ mdp <- rcraam::mdp_from_samples(samples.frame)
 
 # stop if there are any na values in the MDP
 if(fuzzy.neighbors >= 1){
-  mdp <- bind_rows(mdp, fuzzy.transitions) %>% na.fail
+  mdp <- bind_rows(mdp, fuzzy.transitions) %>% na.fail()
 }
 
 write_csv(mdp, "cartpole_mdp.csv")
-cat ("Solving MDP. ... \n")
-solution <- rcraam::solve_mdp(mdp, discount, algorithm="mpi", iterations = 300)
+cat ("Solving MDP ... \n")
+solution <- rcraam::solve_mdp(mdp, discount, algorithm="mpi", iterations = 1000, 
+                              maxresidual = 0.01)
 
-#cat ("Solving RMDP VI ... ")
+# solution with a low discount factor
+cat ("Solving MDP (low discount) ... \n")
+solution_ldisc <- rcraam::solve_mdp(mdp, 0.9, algorithm="mpi", iterations = 1000, 
+                                    maxresidual = 0.01)
+
+#cat ("Solving RMDP VI ... \n")
 #rsolution_vi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", 0.1, algorithm="vi",
 #                                                                 iterations = 10000)
-cat ("Solving RMDP MPPI ... ")
+cat ("Solving RMDP MPPI ... \n")
 rsolution_mppi <- rcraam::rsolve_mdp_sa(mdp, discount, "l1u", robustness, algorithm="mppi",
-                                                                  iterations = 1000)
+                                                                  iterations = 5000,
+                                                                  maxresidual = 0.01)
 
-# Compare value functions
+  # Compare value functions
 vfs <- inner_join(solution$valuefunction %>% rename(vf = value), 
-                  rsolution_mppi$valuefunction %>% rename(rvf = value)) %>% 
-  arrange(vf+rvf) %>% mutate(x = row_number()) %>% 
-  mutate(vf = vf / max(vf), rvf = rvf / max(rvf)) %>%
+                  rsolution_mppi$valuefunction %>% rename(rvf = value),
+                  by = 'idstate') %>% 
+  arrange(vf / max(vf) + rvf/max(rvf)) %>% mutate(x = row_number()) %>% 
+  mutate(vf = vf /max(vf), rvf = rvf/max(rvf)) %>%
   tidyr::gather("algorithm", "value", vf, rvf)
 print(ggplot(vfs, aes(x=x, y=value, color=algorithm)) + geom_line() )
 
@@ -315,6 +331,7 @@ save.solution <- function(mdp, solution){
   write_csv(qvalues, "qvalues.csv")
 }
 
+save.solution(mdp, solution_ldisc)
 save.solution(mdp, solution)
 save.solution(mdp, rsolution_mppi)
 

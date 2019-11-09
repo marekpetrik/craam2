@@ -110,6 +110,25 @@ public:
     }
 };
 
+/// Report the status of the solution, and stops if the solution is incorrect
+/// @param solution Could be any of the (deterministic or randomized) solutions from craam
+/// @tparam S solution class, must support status, iterations, and time
+template <class S> void report_solution_status(const S& solution) {
+    if (solution.status != 0) {
+        if (solution.status == 1) {
+            Rcpp::warning("Ran out of time or iterations. The solution may be "
+                          "suboptimal. Residual " +
+                          to_string(solution.residual) +
+                          ", Time: " + to_string(solution.time) +
+                          ", Iterations: " + to_string(solution.iterations));
+        } else if (solution.status == 2) {
+            Rcpp::stop("Internal error, could not compute a solution.");
+        } else {
+            Rcpp::stop("Unknown error, solution not computed.");
+        }
+    }
+}
+
 /** Computes the maximum distribution subject to L1 constraints */
 // [[Rcpp::export]]
 Rcpp::List worstcase_l1(Rcpp::NumericVector z, Rcpp::NumericVector q, double t) {
@@ -315,16 +334,7 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
     result["policy"] = output_policy(sol.policy);
     result["valuefunction"] = output_value_fun(move(sol.valuefunction));
     result["status"] = sol.status;
-    if (sol.status != 0) {
-        if (sol.status == 1) {
-            Rcpp::warning(
-                "Ran out of time or iterations. The solution may be suboptimal.");
-        } else if (sol.status == 2) {
-            Rcpp::stop("Internal error, could not compute a solution.");
-        } else {
-            Rcpp::stop("Unknown error, solution not computed.");
-        }
-    }
+    report_solution_status(sol);
     return result;
 }
 
@@ -414,16 +424,7 @@ Rcpp::List solve_mdp_rand(Rcpp::DataFrame mdp, double discount,
     result["policy_rand"] = output_policy(rsol.policy);
     result["valuefunction"] = output_value_fun(move(rsol.valuefunction));
     result["status"] = rsol.status;
-    if (rsol.status != 0) {
-        if (rsol.status == 1) {
-            Rcpp::warning(
-                "Ran out of time or iterations. The solution may be suboptimal.");
-        } else if (rsol.status == 2) {
-            Rcpp::stop("Internal error, could not compute a solution.");
-        } else {
-            Rcpp::stop("Unknown error, solution not computed.");
-        }
-    }
+    report_solution_status(rsol);
 
     return result;
 }
@@ -678,21 +679,14 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
     result["nature"] = move(nat_pol);
     result["valuefunction"] = output_value_fun(move(sol.valuefunction));
     result["status"] = sol.status;
-    if (sol.status != 0) {
-        if (sol.status == 1) {
-            Rcpp::warning(
-                "Ran out of time or iterations. The solution may be suboptimal.");
-        } else if (sol.status == 2) {
-            Rcpp::stop("Internal error, could not compute a solution.");
-        } else {
-            Rcpp::stop("Unknown error, solution not computed.");
-        }
-    }
+    report_solution_status(sol);
     return result;
 }
 
 //' Solves a robust Markov decision process with state-action rectangular
-//' ambiguity sets. The worst-case is computed across the outcomes and not
+//' ambiguity sets.
+//'
+//' The worst-case is computed across the outcomes and not
 //' the actual transition probabilities.
 //'
 //' NOTE: The algorithms  mpi and pi may cycle infinitely without converging to a solution,
@@ -735,7 +729,7 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
 //'                 nature_par is a list with parameters (alpha, beta). The worst-case
 //'                 response is computed as:
 //'                 beta * var [z] + (1-beta) * E[z], where
-//'                 var is AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )
+//'                 var is \eqn{AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )}
 //'                 where I is the indicator function and
 //'                 \eqn{x_a = \inf{x \in R : P[X <= x] >= \alpha}} being the
 //'                 worst-case.
@@ -820,16 +814,7 @@ Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String na
     result["nature"] = move(nat_pol);
     result["valuefunction"] = output_value_fun(move(sol.valuefunction));
     result["status"] = sol.status;
-    if (sol.status != 0) {
-        if (sol.status == 1) {
-            Rcpp::warning(
-                "Ran out of time or iterations. The solution may be suboptimal.");
-        } else if (sol.status == 2) {
-            Rcpp::stop("Internal error, could not compute a solution.");
-        } else {
-            Rcpp::stop("Unknown error, solution not computed.");
-        }
-    }
+    report_solution_status(sol);
 
     return result;
 }
@@ -992,16 +977,7 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     result["nature"] = move(nat_pol);
     result["valuefunction"] = output_value_fun(move(sol.valuefunction));
     result["status"] = sol.status;
-    if (sol.status != 0) {
-        if (sol.status == 1) {
-            Rcpp::warning(
-                "Ran out of time or iterations. The solution may be suboptimal.");
-        } else if (sol.status == 2) {
-            Rcpp::stop("Internal error, could not compute a solution.");
-        } else {
-            Rcpp::stop("Unknown error, solution not computed.");
-        }
-    }
+    report_solution_status(sol);
 
     return result;
 }

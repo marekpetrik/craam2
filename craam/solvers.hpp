@@ -141,20 +141,22 @@ void check_model(const MDP& mdp) {
             auto nfin_index = std::find_if_not(rewards.cbegin(), rewards.cend(),
                                                [](prec_t x) { return std::isfinite(x); });
             if (nfin_index != rewards.cend()) {
-                throw ModelError("Invalid reward to state: " +
-                                     std::to_string(action.get_indices()[std::distance(
-                                         rewards.cbegin(), nfin_index)]),
-                                 idstate, idaction);
+                throw ModelError(
+                    "Reward for the transition to the following state is not finite: " +
+                        std::to_string(action.get_indices()[std::distance(
+                            rewards.cbegin(), nfin_index)]),
+                    idstate, idaction);
             }
 
             const auto& probabilities = action.get_probabilities();
             nfin_index = std::find_if_not(probabilities.cbegin(), probabilities.cend(),
                                           [](prec_t x) { return std::isfinite(x); });
             if (nfin_index != probabilities.cend()) {
-                throw ModelError("Invalid transition probability to state: " +
-                                     std::to_string(action.get_indices()[std::distance(
-                                         probabilities.cbegin(), nfin_index)]),
-                                 idstate, idaction);
+                throw ModelError(
+                    "Transition probability to the following state is not finite: " +
+                        std::to_string(action.get_indices()[std::distance(
+                            probabilities.cbegin(), nfin_index)]),
+                    idstate, idaction);
             }
         }
     }
@@ -184,7 +186,8 @@ void check_model(const MDPO& mdp) {
 
                 if (nfin_index != rewards.cend()) {
                     throw ModelError(
-                        "Invalid reward to state: " +
+                        "Reward for the transition to the following state is not "
+                        "finite: " +
                             std::to_string(outcome.get_indices()[std::distance(
                                 rewards.cbegin(), nfin_index)]),
                         idstate, idaction, idoutcome);
@@ -196,7 +199,7 @@ void check_model(const MDPO& mdp) {
                                      [](prec_t x) { return std::isfinite(x); });
                 if (nfin_index != probabilities.cend()) {
                     throw ModelError(
-                        "Invalid transition probability to state: " +
+                        "Transition probability to the following state is not finite: " +
                             std::to_string(outcome.get_indices()[std::distance(
                                 probabilities.cbegin(), nfin_index)]),
                         idstate, idaction, idoutcome);

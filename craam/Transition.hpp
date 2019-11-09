@@ -173,8 +173,11 @@ public:
                 auto p_old = probabilities[findex];
                 probabilities[findex] += probability;
                 auto r_old = rewards[findex];
+                // make sure that this works also when the probability is 0
                 auto new_reward =
-                    (p_old * r_old + probability * reward) / (probabilities[findex]);
+                    probabilities[findex] > EPSILON
+                        ? (p_old * r_old + probability * reward) / (probabilities[findex])
+                        : reward;
                 rewards[findex] = new_reward;
                 // the transition is not there, the element needs to be inserted
             } else {
