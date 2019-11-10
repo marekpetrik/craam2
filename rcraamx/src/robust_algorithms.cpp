@@ -659,6 +659,7 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
     result["residual"] = sol.residual;
     result["time"] = sol.time;
 
+    // split natures policy away
 #if __cplusplus >= 201703L
     auto [dec_pol, nat_pol] = unzip(sol.policy);
 #else
@@ -676,7 +677,7 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
     }
 
     result["policy"] = output_policy(dec_pol);
-    result["nature"] = move(nat_pol);
+    result["nature"] = sanature_todataframe(m, dec_pol, nat_pol);
     result["valuefunction"] = output_value_fun(move(sol.valuefunction));
     result["status"] = sol.status;
     report_solution_status(sol);
@@ -974,7 +975,7 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     }
 
     result["policy_rand"] = output_policy(dec_pol);
-    result["nature"] = move(nat_pol);
+    result["nature"] = sasnature_todataframe(m, nat_pol);
     result["valuefunction"] = output_value_fun(move(sol.valuefunction));
     result["status"] = sol.status;
     report_solution_status(sol);

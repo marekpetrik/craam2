@@ -336,3 +336,100 @@ parse_sas_values(const craam::MDP& mdp, const Rcpp::DataFrame& frame,
     }
     return result;
 }
+
+/**
+ * Turns the definition of the sas nature output to a dataframe
+ * @param mdp The definition of the mdp, needed to parse which transitions are possible
+ *              from a given state and action
+ * @param policy Policy to determine which actions are active
+ * @param nature A vector over: state-from, action, state-to
+ * @return
+ */
+inline Rcpp::DataFrame sanature_todataframe(const craam::MDP& mdp,
+                                            const craam::indvec& policy,
+                                            const craam::numvecvec& nature) {
+
+    if (nature.size() != mdp.size())
+        throw std::runtime_error("invalid number of states.");
+
+    // construct output vectors
+    craam::indvec out_statefrom, out_action, out_stateto;
+    craam::numvec out_prob;
+
+    // iterate over states
+    for (size_t idstate = 0; idstate < mdp.size(); ++idstate) {
+        const auto& state = mdp[idstate];
+
+        long idaction = policy[idstate];
+
+        // skip all actions in terminal states
+        if (idaction < 0) continue;
+
+        if (idaction >= state.size()) throw std::runtime_error("invalid policy");
+
+        const auto& action = state[idaction];
+
+        // check if the output states match
+        if (action.size() != nature[idstate].size())
+            throw std::runtime_error("invalid number of to-states");
+
+        // iterate over all state tos
+        for (size_t idstateto = 0; idstateto < action.size(); ++idstateto) {
+            out_statefrom.push_back(idstate);
+            out_action.push_back(idaction);
+            out_stateto.push_back(idstateto);
+            out_prob.push_back(nature[idstate][idstateto]);
+        }
+    }
+
+    return Rcpp::DataFrame::create(
+        Rcpp::_["idstatefrom"] = out_statefrom, Rcpp::_["idaction"] = out_action,
+        Rcpp::_["idstateto"] = out_stateto, Rcpp::_["probability"] = out_prob);
+}
+
+/**
+ * Turns the definition of the sas nature output to a dataframe
+ * @param mdp The definition of the mdp, needed to parse which transitions are possible
+ *              from a given state and action
+ * @param nature A vector over: state-from, action, state-to
+ * @return
+ */
+inline Rcpp::DataFrame
+sasnature_todataframe(const craam::MDP& mdp,
+                      const std::vector<craam::numvecvec>& nature) {
+
+    if (nature.size() != mdp.size())
+        throw std::runtime_error("invalid number of states.");
+
+    // construct output vectors
+    craam::indvec out_statefrom, out_action, out_stateto;
+    craam::numvec out_prob;
+
+    // iterate over states
+    for (size_t idstate = 0; idstate < mdp.size(); ++idstate) {
+        const auto& state = mdp[idstate];
+
+        if (state.size() != nature[idstate].size())
+            throw std::runtime_error("invalid number of actions.");
+
+        for (size_t idaction = 0; idaction < state.size(); ++idaction) {
+            const auto& action = state[idaction];
+
+            // check if the output states match
+            if (action.size() != nature[idstate][idaction].size())
+                throw std::runtime_error("invalid number of to-states");
+
+            // iterate over all state tos
+            for (size_t idstateto = 0; idstateto < action.size(); ++idstateto) {
+                out_statefrom.push_back(idstate);
+                out_action.push_back(idaction);
+                out_stateto.push_back(idstateto);
+                out_prob.push_back(nature[idstate][idaction][idstateto]);
+            }
+        }
+    }
+
+    return Rcpp::DataFrame::create(
+        Rcpp::_["idstatefrom"] = out_statefrom, Rcpp::_["idaction"] = out_action,
+        Rcpp::_["idstateto"] = out_stateto, Rcpp::_["probability"] = out_prob);
+}

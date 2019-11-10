@@ -285,9 +285,9 @@ public:
  */
 class SARobustBellman {
 public:
-    /// the policy of the decision maker
+    /// the policy of the decision maker: action index
     using dec_policy_type = long;
-    /// the policy of nature
+    /// the policy of nature: distribution probability for the active action
     using nat_policy_type = numvec;
     /// action of the decision maker AND distribution of nature
     using policy_type = pair<typename SARobustBellman::dec_policy_type,

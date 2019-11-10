@@ -41,10 +41,12 @@ sa_counts <- simulation %>% select(idstatefrom, idaction) %>%
 state.count <- max(sa_counts$idstatefrom) + 1
 sa.count <- nrow(sa_counts)                   # number of valid state-action pairs
 budgets <- sa_counts %>% 
-  mutate(budget = pmin(2,sqrt(1/count * log(sa.count * 2^state.count / confidence))) ) %>%
+  mutate(budget = pmin(2,sqrt(1/count * log(sa.count * 2^state.count / confidence)))) %>%
   rename(idstate = idstatefrom) %>% select(-count)
 
-rsolve_mdp_sa(mdp.empirical, discount, "l1", budgets)
+#mdp.empirical %>% 
+
+sol.freq <- rsolve_mdp_sa(mdp.empirical, discount, "l1", budgets)
 
 ## ----  Uninformative Bayesian Posterior Sampling ---------
 
