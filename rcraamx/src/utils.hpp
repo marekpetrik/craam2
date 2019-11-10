@@ -391,6 +391,56 @@ inline Rcpp::DataFrame sanature_todataframe(const craam::MDP& mdp,
  * Turns the definition of the sas nature output to a dataframe
  * @param mdp The definition of the mdp, needed to parse which transitions are possible
  *              from a given state and action
+ * @param policy Policy to determine which actions are active
+ * @param nature A vector over: state-from, action, outcome
+ * @return
+ */
+inline Rcpp::DataFrame sanature_out_todataframe(const craam::MDPO& mdpo,
+                                                const craam::indvec& policy,
+                                                const craam::numvecvec& nature) {
+
+    if (nature.size() != mdpo.size())
+        throw std::runtime_error("invalid number of states.");
+
+    // construct output vectors
+    craam::indvec out_statefrom, out_action, out_outcome;
+    craam::numvec out_prob;
+
+    // iterate over states
+    for (size_t idstate = 0; idstate < mdpo.size(); ++idstate) {
+        const auto& state = mdpo[idstate];
+
+        long idaction = policy[idstate];
+
+        // skip all actions in terminal states
+        if (idaction < 0) continue;
+
+        if (idaction >= state.size()) throw std::runtime_error("invalid policy");
+
+        const auto& action = state[idaction];
+
+        // check if the output states match
+        if (action.size() != nature[idstate].size())
+            throw std::runtime_error("invalid number of to-states");
+
+        // iterate over all state tos
+        for (size_t idoutcome = 0; idoutcome < action.size(); ++idoutcome) {
+            out_statefrom.push_back(idstate);
+            out_action.push_back(idaction);
+            out_outcome.push_back(idoutcome);
+            out_prob.push_back(nature[idstate][idoutcome]);
+        }
+    }
+
+    return Rcpp::DataFrame::create(
+        Rcpp::_["idstatefrom"] = out_statefrom, Rcpp::_["idaction"] = out_action,
+        Rcpp::_["idoutcome"] = out_outcome, Rcpp::_["probability"] = out_prob);
+}
+
+/**
+ * Turns the definition of the sas nature output to a dataframe
+ * @param mdp The definition of the mdp, needed to parse which transitions are possible
+ *              from a given state and action
  * @param nature A vector over: state-from, action, state-to
  * @return
  */

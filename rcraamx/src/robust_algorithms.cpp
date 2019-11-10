@@ -765,8 +765,10 @@ Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String na
 
     ComputeProgress progress(iterations, maxresidual, show_progress, timeout);
 
-    // the default method is to use ppa
-    if (algorithm == "ppi") {
+    if (algorithm == "mppi") {
+        sol = rsolve_mppi(m, discount, std::move(natparsed), numvec(0), policy,
+                          iterations, maxresidual, progress);
+    } else if (algorithm == "ppi") {
         sol = rsolve_ppi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
                          maxresidual, progress);
     } else if (algorithm == "mpi") {
@@ -812,7 +814,7 @@ Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String na
     }
 
     result["policy"] = output_policy(dec_pol);
-    result["nature"] = move(nat_pol);
+    result["nature"] = sanature_out_todataframe(m, dec_pol, nat_pol);
     result["valuefunction"] = output_value_fun(move(sol.valuefunction));
     result["status"] = sol.status;
     report_solution_status(sol);

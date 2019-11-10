@@ -97,15 +97,15 @@ sample_mdp_bayes <- function(posteriors, mdp, outcome = NULL){
   return(mdp.sampled)  
 }
 
-mdp.bayesian <- sample_mdp_bayes(posteriors, mdp %>% select(-probability))
+mdp.bayesian <- sample_mdp_bayes(posteriors, mdp.truth %>% select(-probability))
 
 solve_mdp(mdp.bayesian, discount)
 
 ## ---- Robust Bayesian Model -------
 
 mdpo.bayes <- do.call(rbind, lapply(seq(0,20), 
-                                    function(ido){sample_mdp_bayes(posteriors, mdp, ido)}))
+                                    function(ido){sample_mdp_bayes(posteriors, mdp.truth, ido)}))
 
-rsolve_mdpo_sa(mdpo.bayes, discount, "eavaru", 
-               list(alpha = 0.1, beta = 0.5), algorithm = "vi")
+sol.bay <- rsolve_mdpo_sa(mdpo.bayes, discount, "eavaru", 
+               list(alpha = 0.5, beta = 1.0), algorithm = "mppi")
 
