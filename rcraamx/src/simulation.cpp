@@ -163,18 +163,22 @@ Rcpp::DataFrame samples_to_dtf(const craam::msen::DiscreteSamples& samples) {
                                    Rcpp::Named("episode") = samples.get_runs());
 }
 
-/**
- * Simulates an mdp for the given number of steps.
- * @param mdp Definition of the MDP
- * @param initial_state The index of the initial state
- * @param policy Assumes a randomized policy as the input
- * @param horizon How many steps to execute for each episode
- * @param episodes Number of episodes to run
- * @return A dataframe with the states, actions, and rewards received
- */
+//'
+//' Simulates an MDP
+//'
+//' @param mdp Definition of the MDP
+//' @param initial_state The index of the initial state
+//' @param policy Assumes a randomized policy as the input
+//' @param horizon How many steps to execute for each episode
+//' @param episodes Number of episodes to run
+//' @param seed Random number generator seed (a number)
+//'
+//' @return A dataframe with the states, actions, and rewards received
+//'
 // [[Rcpp::export]]
 Rcpp::DataFrame simulate_mdp(Rcpp::DataFrame mdp, int initial_state,
-                             Rcpp::DataFrame policy, int horizon, int episodes) {
+                             Rcpp::DataFrame policy, int horizon, int episodes,
+                             Rcpp::Nullable<long> seed = R_NilValue) {
 
     craam::MDP m = mdp_from_dataframe(mdp);
     craam::numvecvec rpolicy_par = parse_sa_values(m, policy, 0.0, "probability");
@@ -184,13 +188,19 @@ Rcpp::DataFrame simulate_mdp(Rcpp::DataFrame mdp, int initial_state,
     // initial transition probability
     craam::Transition init;
     init.add_sample(initial_state, 1.0, 0.0);
-    auto sim_model =
-        craam::msen::ModelSimulator(std::make_shared<const craam::MDP>(m), init);
 
-    craam::msen::RandomizedPolicy<craam::msen::ModelSimulator> rpolicy(sim_model,
-                                                                       rpolicy_par);
+    // construct the simulator with the given random seed
+    std::random_device::result_type cseed =
+        seed.isSet() ? Rcpp::as<long>(seed.get()) : std::random_device{}();
+
+    auto sim_model =
+        craam::msen::ModelSimulator(std::make_shared<const craam::MDP>(m), init, cseed);
+
+    craam::msen::RandomizedPolicy<craam::msen::ModelSimulator> rpolicy(
+        sim_model, rpolicy_par, cseed);
 
     craam::msen::DiscreteSamples samples;
+
     craam::msen::simulate(sim_model, samples, rpolicy, horizon, episodes);
 
     return samples_to_dtf(samples);

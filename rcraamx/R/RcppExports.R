@@ -157,7 +157,9 @@ rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi",
 }
 
 #' Solves a robust Markov decision process with state-action rectangular
-#' ambiguity sets. The worst-case is computed across the outcomes and not
+#' ambiguity sets.
+#'
+#' The worst-case is computed across the outcomes and not
 #' the actual transition probabilities.
 #'
 #' NOTE: The algorithms  mpi and pi may cycle infinitely without converging to a solution,
@@ -193,16 +195,16 @@ rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi",
 #'                 nature_par is a list with parameters (alpha, beta). The worst-case
 #'                 response is computed as:
 #'                 beta * var [z] + (1-beta) * E[z], where
-#'                 var is inf{x \in R : P[X <= x] >= alpha}, with alpha = 0 being the
+#'                 var is \eqn{VaR(z,\alpha) = \inf{x \in R : P[X <= x] >= \alpha}}, with \eqn{\alpha = 0} being the
 #'                 worst-case.
 #'         \item "evaru" a convex combination of expectation and AV@R over
 #'                 transition probabilites. Uniform over states
 #'                 nature_par is a list with parameters (alpha, beta). The worst-case
 #'                 response is computed as:
 #'                 beta * var [z] + (1-beta) * E[z], where
-#'                 var is AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )
+#'                 var is \eqn{AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )}
 #'                 where I is the indicator function and
-#'                 x_a = inf{x \in R : P[X <= x] >= alpha} being the
+#'                 \eqn{x_a = \inf{x \in R : P[X <= x] >= \alpha}} being the
 #'                 worst-case.
 #'    }
 rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
@@ -280,7 +282,19 @@ mdp_population <- function(capacity, initial, growth_rates_exp, growth_rates_std
     .Call(`_rcraam_mdp_population`, capacity, initial, growth_rates_exp, growth_rates_std, rewards, external_mean, external_std, s_growth_model)
 }
 
-simulate_mdp <- function(mdp, initial_state, policy, horizon, episodes) {
-    .Call(`_rcraam_simulate_mdp`, mdp, initial_state, policy, horizon, episodes)
+#'
+#' Simulates an MDP
+#'
+#' @param mdp Definition of the MDP
+#' @param initial_state The index of the initial state
+#' @param policy Assumes a randomized policy as the input
+#' @param horizon How many steps to execute for each episode
+#' @param episodes Number of episodes to run
+#' @param seed Random number generator seed (a number)
+#'
+#' @return A dataframe with the states, actions, and rewards received
+#'
+simulate_mdp <- function(mdp, initial_state, policy, horizon, episodes, seed = NULL) {
+    .Call(`_rcraam_simulate_mdp`, mdp, initial_state, policy, horizon, episodes, seed)
 }
 

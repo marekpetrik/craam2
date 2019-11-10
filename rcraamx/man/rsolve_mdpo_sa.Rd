@@ -3,8 +3,7 @@
 \name{rsolve_mdpo_sa}
 \alias{rsolve_mdpo_sa}
 \title{Solves a robust Markov decision process with state-action rectangular
-ambiguity sets. The worst-case is computed across the outcomes and not
-the actual transition probabilities.}
+ambiguity sets.}
 \usage{
 rsolve_mdpo_sa(mdpo, discount, nature, nature_par, algorithm = "mppi",
   policy_fixed = NULL, maxresidual = 0.001, iterations = 10000L,
@@ -40,11 +39,16 @@ probabilites and a vector of rewards}
 A list with value function policy and other values
 }
 \description{
+The worst-case is computed across the outcomes and not
+the actual transition probabilities.
+}
+\details{
 NOTE: The algorithms  mpi and pi may cycle infinitely without converging to a solution,
 when solving a robust MDP.
 The algorithms ppi and mppi are guaranteed to converge to an optimal solution.
-}
-\details{
+
+
+
 The options for nature and the corresponding nature_par are:
    \itemize{
         \item "evaru" a convex combination of expectation and V@R over
@@ -52,16 +56,16 @@ The options for nature and the corresponding nature_par are:
                 nature_par is a list with parameters (alpha, beta). The worst-case
                 response is computed as:
                 beta * var [z] + (1-beta) * E[z], where
-                var is inf{x \in R : P[X <= x] >= alpha}, with alpha = 0 being the
+                var is \eqn{VaR(z,\alpha) = \inf{x \in R : P[X <= x] >= \alpha}}, with \eqn{\alpha = 0} being the
                 worst-case.
         \item "evaru" a convex combination of expectation and AV@R over
                 transition probabilites. Uniform over states
                 nature_par is a list with parameters (alpha, beta). The worst-case
                 response is computed as:
                 beta * var [z] + (1-beta) * E[z], where
-                var is AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )
+                var is \eqn{AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )}
                 where I is the indicator function and
-                x_a = inf{x \in R : P[X <= x] >= alpha} being the
+                \eqn{x_a = \inf{x \in R : P[X <= x] >= \alpha}} being the
                 worst-case.
    }
 }
