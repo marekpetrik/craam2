@@ -5,6 +5,7 @@ library(gtools)
 library(reshape2)
 loadNamespace("tidyr")
 loadNamespace("reshape2")
+loadNamespace("stringr")
 
 ## ----- Parameters --------
 
@@ -96,7 +97,10 @@ mdpo_bayes <- function(simulation, rewards.df, outcomes){
 mdp.bayesian <- mdpo_bayes(simulation, rewards.truth, bayes.samples)
 
 #' Evaluate the policy with respect to all possible 
-#' Bayesian outcome. Returns the return values.
+#' Bayesian outcomes. 
+#' 
+#' Returns the return values.
+#' 
 #' @param mdp.bayesion MDPO with outcomes
 #' @param policy Deterministic policy to be evaluated
 bayes.returns <- function(mdp.bayesian, policy, maxcount = 100){
@@ -110,14 +114,17 @@ bayes.returns <- function(mdp.bayesian, policy, maxcount = 100){
          })
 }
 
-#' Prints the result of the computation along its guarantees, solution quality and 
+#' Prints experiment result statistics.
+#' 
+#' It also prints its guarantees, solution quality and 
 #' posterior expectation of how well it is likely to work
 #' 
 #' @param name Name of the algorithm that produced the results
 #' @param mdp.bayesian MDP with outcomes representing bayesian samples
 #' @param solution Output from the algorithm's solution
 report_solution <- function(name, mdp.bayesian, solution){
-  cat("****", name, solution$valuefunction$value %*% init.dist, "****\n")
+  cat("**", stringr::str_pad(name, 15, 'right'), 
+      solution$valuefunction$value %*% init.dist, "****\n")
   cat("    Policy", solution$policy$idaction,"\n")
   
   cat("    Return predicted:", solution$valuefunction$value %*% init.dist)
@@ -184,8 +191,7 @@ model.freq <- rmdp.frequentist(simulation, rewards.truth)
 sol.freq <- rsolve_mdp_sa(model.freq$mdp.nominal, discount, "l1", model.freq$budgets, 
                           show_progress = FALSE)
 
-report_solution("Hoeffding CR", mdp.bayesian, sol.freq)
-
+report_solution("Hoeff CR", mdp.bayesian, sol.freq)
 
 ## ---- Bayesian Confidence Region -----
 
@@ -284,6 +290,7 @@ sol.norbu <- rsolve_mdpo_sa(mdp.bayesian, discount, "eavaru",
                list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
 report_solution("NORBU: ", mdp.bayesian, sol.norbu)
 
+# to see why this is wrong, try running it with a confidence 0.1 or something small
 sol.norbu.w <- rsolve_mdpo_sa(mdp.bayesian, discount, "evaru", 
                             list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
 report_solution("NORBU(wrong): ", mdp.bayesian, sol.norbu.w)
