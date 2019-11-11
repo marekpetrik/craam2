@@ -8,18 +8,20 @@ loadNamespace("reshape2")
 
 ## ----- Parameters --------
 
+description <- "riverswim2_mdp.csv"
+
 init.dist <- rep(1/6,6)
 discount <- 0.9
-confidence <- 0.8
+confidence <- 0.9
 bayes.samples <- 500
 
-samples <- 200
-sample.seed <- 2019
+samples <- 10000
+sample.seed <- 1984
 episodes <- 1
 
 ## ----- Initialization ------
 
-mdp.truth <- read_csv("riverswim2_mdp.csv", 
+mdp.truth <- read_csv(description, 
                       col_types = cols(idstatefrom = 'i',
                                        idaction = 'i',
                                        idstateto = 'i',
@@ -45,16 +47,7 @@ cat("True optimal return", vf.true %*% init.dist, "policy:", sol.true$policy$ida
 simulation <- simulate_mdp(mdp.truth, 0, ur.policy, episodes = episodes, 
                            horizon = samples, seed = sample.seed)
 
-## ---- Solve Empirical MDP ---------
-  
-mdp.empirical <- mdp_from_samples(simulation)
-sol.empirical <- solve_mdp(mdp.empirical, discount, show_progress = FALSE)
-vf.empirical <- sol.empirical$valuefunction$value
-cat("Empirical solution estimate: ", vf.empirical %*% init.dist, "policy:", sol.empirical$policy$idaction,"\n")
-
-
 ## ----  Uninformative Bayesian Posterior Sampling ---------
-
 
 #' Generate a sample MDP from dirichlet distribution
 #' @param simulation Simulation results
@@ -102,9 +95,53 @@ mdpo_bayes <- function(simulation, rewards.df, outcomes){
 
 mdp.bayesian <- mdpo_bayes(simulation, rewards.truth, bayes.samples)
 
-#sol.bayesexp <- rsolve_mdpo_sa(mdp.bayesian, discount, "exp", NULL, show_progress = FALSE)
-#cat("Expected Bayesian Solution: ", sol.bayesexp$valuefunction$value %*% init.dist, "policy:", sol.bayes.exp$policy$idaction, "\n")
+#' Evaluate the policy with respect to all possible 
+#' Bayesian outcome. Returns the return values.
+#' @param mdp.bayesion MDPO with outcomes
+#' @param policy Deterministic policy to be evaluated
+bayes.returns <- function(mdp.bayesian, policy, maxcount = 100){
+  sapply(unique(mdp.bayesian$idoutcome[1:maxcount]),
+         function(outcome){
+           sol <- mdp.bayesian %>% filter(idoutcome == outcome) %>% 
+             solve_mdp(discount, policy_fixed = policy, 
+                       show_progress = FALSE, 
+                       algorithm = "pi")          
+           sol$valuefunction$value %*% init.dist
+         })
+}
 
+#' Prints the result of the computation along its guarantees, solution quality and 
+#' posterior expectation of how well it is likely to work
+#' 
+#' @param name Name of the algorithm that produced the results
+#' @param mdp.bayesian MDP with outcomes representing bayesian samples
+#' @param solution Output from the algorithm's solution
+report_solution <- function(name, mdp.bayesian, solution){
+  cat("****", name, solution$valuefunction$value %*% init.dist, "****\n")
+  cat("    Policy", solution$policy$idaction,"\n")
+  
+  cat("    Return predicted:", solution$valuefunction$value %*% init.dist)
+  sol.tr <- solve_mdp(mdp.truth, discount, 
+                      policy_fixed = solution$policy,
+                      show_progress = FALSE)
+  cat(", true:", sol.tr$valuefunction$value %*% init.dist, "\n")
+  posterior.returns <- bayes.returns(mdp.bayesian, solution$policy)
+  cat("    Posterior mean:", mean(posterior.returns), ", v@r:", 
+      quantile(posterior.returns, 1-confidence), ", av@r:", 
+      mean(posterior.returns[posterior.returns < 
+                          quantile(posterior.returns, 1-confidence)]), "\n")
+}
+
+## ---- Solve Empirical MDP ---------
+
+mdp.empirical <- mdp_from_samples(simulation)
+sol.empirical <- solve_mdp(mdp.empirical, discount, show_progress = FALSE)
+report_solution("Empirical", mdp.bayesian, sol.empirical)
+
+## ----- Solve Bayesian MDP ---------
+
+sol.bayesexp <- rsolve_mdpo_sa(mdp.bayesian, discount, "exp", NULL, show_progress = FALSE)
+report_solution("Bayesian", mdp.bayesian, sol.bayesexp)
 
 ## ----- Frequentist Confidence Interval ------
 
@@ -147,21 +184,17 @@ model.freq <- rmdp.frequentist(simulation, rewards.truth)
 sol.freq <- rsolve_mdp_sa(model.freq$mdp.nominal, discount, "l1", model.freq$budgets, 
                           show_progress = FALSE)
 
-cat("Hoeffding Confidence Region: ", sol.freq$valuefunction$value %*% init.dist, "policy:", sol.freq$policy$idaction, "\n")
+report_solution("Hoeffding CR", mdp.bayesian, sol.freq)
 
 
 ## ---- Bayesian Confidence Region -----
 
-rmdp.bayesian <- function(mdp.bayesian, global = FALSE){
+rmdp.bayesian <- function(mdp.bayesian){
 # adjust the confidence level
-  if(global){
-    # provides a bound only on the return, not the value function
-    confidence.rect <- 1-confidence
-  }else{
-    # provides a bound on the value function and the return
-    confidence.rect <- (1-confidence)/sa.count    
-  }
 
+  # provides a bound on the value function and the return
+  sa.count <- nrow( unique(mdp.bayesian %>% select(idstatefrom, idaction)))
+  confidence.rect <- (1-confidence)/sa.count    
 
   # construct the mean bayesian model
   mdp.mean.bayes <- mdp.bayesian %>% group_by(idstatefrom, idaction, idstateto) %>%
@@ -185,28 +218,73 @@ rmdp.bayesian <- function(mdp.bayesian, global = FALSE){
               budgets = budgets))
 }
 
-model.bayes.loc <- rmdp.bayesian(mdp.bayesian, FALSE) 
+model.bayes.loc <- rmdp.bayesian(mdp.bayesian) 
 sol.bcr <- rsolve_mdp_sa(model.bayes.loc$mdp.mean, discount, "l1", 
                          model.bayes.loc$budgets, show_progress = FALSE)
-cat("Local BCR: ", sol.bcr$valuefunction$value %*% init.dist, "policy:", sol.bcr$policy$idaction, "\n")
+report_solution("Local BCR: ", mdp.bayesian, sol.bcr)
 
-model.bayes.glo <- rmdp.bayesian(mdp.bayesian, TRUE) 
+## ---- Global Bayesian Confidence Region -----
+
+#' Uses a single global solution and relies on rectangularization. 
+#' It picks the confidence fraction of outcomes ordered
+#' by the mean budget size across all states
+rmdp.bayesian.global <- function(mdp.bayesian){
+  # construct the mean bayesian model
+  mdp.mean.bayes <- mdp.bayesian %>% group_by(idstatefrom, idaction, idstateto) %>%
+    summarize(probability = mean(probability), reward = mean(reward))
+  mean.probs <- mdp.mean.bayes %>% rename(probability_mean=probability) %>%
+    select(-reward)
+  
+  # compute L1 distances for each outcome averaged/maxed over states
+  distances <- 
+    inner_join(mean.probs, 
+               mdp.bayesian, 
+               by = c('idstatefrom', 'idaction', 'idstateto')) %>%
+    mutate(diff = abs(probability - probability_mean)) %>%
+    group_by(idstatefrom, idaction, idoutcome) %>%
+    summarize(l1 = sum(diff)) 
+  
+  outcome.mean.dist <- distances %>%
+    group_by(idoutcome) %>%
+    summarize(l1 = max(l1)) %>%
+    arrange(l1)
+
+  # the set of all outcomes that need to be covered by the ambiguity set
+  cover.set <- outcome.mean.dist$idoutcome[1:ceiling(nrow(outcome.mean.dist) * confidence)]
+  
+  budgets <- inner_join(distances, 
+                        data.frame(idoutcome = cover.set),
+                        by = "idoutcome") %>% 
+    group_by(idstatefrom, idaction) %>% 
+    summarize(budget = max(l1)) %>%
+    rename(idstate = idstatefrom)
+
+  
+  return(list(mdp.mean = mdp.mean.bayes,
+              budgets = budgets))
+}
+
+
+model.bayes.glo <- rmdp.bayesian.global(mdp.bayesian) 
 sol.gbcr <- rsolve_mdp_sa(model.bayes.glo$mdp.mean, discount, "l1", 
-                         model.bayes.glo$budgets, show_progress = FALSE)
-cat("Global BCR: ", sol.gbcr$valuefunction$value %*% init.dist, "policy:", sol.gbcr$policy$idaction, "\n")
+                          model.bayes.glo$budgets, show_progress = FALSE)
+report_solution("Global BCR", mdp.bayesian, sol.gbcr)
 
 ## ---- RSVF-like (simplified) -------
 
-confidence.rect <- (1-confidence)/sa.count
 sa.count <- nrow( unique(rewards.truth %>% select(idstatefrom, idaction)))
+confidence.rect <- (1-confidence)/sa.count
 sol.rsvf <- rsolve_mdpo_sa(mdp.bayesian, discount, "evaru", 
                             list(alpha = confidence.rect, beta = 1.0), show_progress = FALSE)
-cat("RSVF: ", sol.rsvf$valuefunction$value %*% init.dist, "policy:", sol.rsvf$policy$idaction, "\n")
+report_solution("RSVF", mdp.bayesian, sol.rsvf)
 
 ## ---- NORBU ----------
 
-# not divided by the confidence
 sol.norbu <- rsolve_mdpo_sa(mdp.bayesian, discount, "eavaru", 
                list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
-cat("NORBU: ", sol.norbu$valuefunction$value %*% init.dist, "policy:", sol.norbu$policy$idaction, "\n")
+report_solution("NORBU: ", mdp.bayesian, sol.norbu)
+
+sol.norbu.w <- rsolve_mdpo_sa(mdp.bayesian, discount, "evaru", 
+                            list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
+report_solution("NORBU(wrong): ", mdp.bayesian, sol.norbu.w)
 
