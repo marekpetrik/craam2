@@ -154,13 +154,12 @@ Rcpp::DataFrame mdp_population(int capacity, int initial,
  * Converts samples from a simulation to a dataframe
  */
 Rcpp::DataFrame samples_to_dtf(const craam::msen::DiscreteSamples& samples) {
-
-    return Rcpp::DataFrame::create(Rcpp::Named("idstatefrom") = samples.get_states_from(),
-                                   Rcpp::Named("idaction") = samples.get_actions(),
-                                   Rcpp::Named("idstateto") = samples.get_states_to(),
-                                   Rcpp::Named("reward") = samples.get_rewards(),
-                                   Rcpp::Named("step") = samples.get_steps(),
-                                   Rcpp::Named("episode") = samples.get_runs());
+    return Rcpp::DataFrame::create(
+        Rcpp::_["idstatefrom"] = as_intvec(samples.get_states_from()),
+        Rcpp::_["idaction"] = as_intvec(samples.get_actions()),
+        Rcpp::_["idstateto"] = as_intvec(samples.get_states_to()),
+        Rcpp::_["reward"] = samples.get_rewards(), Rcpp::_["step"] = samples.get_steps(),
+        Rcpp::_["episode"] = samples.get_runs());
 }
 
 //'

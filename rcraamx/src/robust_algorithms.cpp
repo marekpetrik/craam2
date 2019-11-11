@@ -155,12 +155,10 @@ Rcpp::List worstcase_l1(Rcpp::NumericVector z, Rcpp::NumericVector q, double t) 
  * @return Dataframe with idstate, idaction columns (idstate is the index)
  */
 Rcpp::DataFrame output_policy(const indvec& policy) {
-    indvec states(policy.size());
+    Rcpp::IntegerVector states(policy.size());
     std::iota(states.begin(), states.end(), 0);
-    auto states_v = Rcpp::IntegerVector(states.cbegin(), states.cend());
-    auto policy_v = Rcpp::IntegerVector(policy.cbegin(), policy.cend());
-    auto result = Rcpp::DataFrame::create(Rcpp::Named("idstate") = states_v,
-                                          Rcpp::Named("idaction") = policy_v);
+    auto result = Rcpp::DataFrame::create(Rcpp::Named("idstate") = states,
+                                          Rcpp::Named("idaction") = as_intvec(policy));
     return result;
 }
 
@@ -210,11 +208,11 @@ Rcpp::DataFrame output_policy(const numvecvec& policy) {
  * @return
  */
 Rcpp::DataFrame output_value_fun(numvec value) {
-    indvec idstates(value.size());
+    Rcpp::IntegerVector idstates(value.size());
     std::iota(idstates.begin(), idstates.end(), 0);
 
-    return Rcpp::DataFrame::create(Rcpp::_["idstate"] = move(idstates),
-                                   Rcpp::_["value"] = move(value));
+    return Rcpp::DataFrame::create(Rcpp::_["idstate"] = idstates,
+                                   Rcpp::_["value"] = value);
 }
 
 /**
