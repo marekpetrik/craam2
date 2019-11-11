@@ -121,6 +121,24 @@ public:
 };
 
 /**
+ * Response that just computes the expectation
+ */
+class robust_exp {
+
+public:
+    robust_exp() {}
+
+    /// Implements SANature interface
+    pair<numvec, prec_t> operator()(long, long, const numvec& nominalprob,
+                                    const numvec& zfunction) const {
+        auto mean_value = std::inner_product(zfunction.cbegin(), zfunction.cend(),
+                                             nominalprob.cbegin(), 0.0);
+
+        return {nominalprob, mean_value};
+    }
+};
+
+/**
  * Response that is a convex combination of expectation and value at risk:
  *
  *  beta * var_alpha[X] + (1-beta) * E[x]

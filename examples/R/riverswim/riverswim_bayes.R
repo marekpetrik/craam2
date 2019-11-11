@@ -3,18 +3,30 @@ library(dplyr)
 library(readr)
 library(gtools)
 library(reshape2)
-requireNamespace("tidyr")
+loadNamespace("tidyr")
+loadNamespace("reshape2")
+
+## ----- Parameters --------
 
 init.dist <- rep(1/6,6)
 discount <- 0.9
-mdp.truth <- read_csv("riverswim_mdp.csv", 
+confidence <- 0.8
+bayes.samples <- 500
+
+samples <- 200
+sample.seed <- 2019
+episodes <- 1
+
+## ----- Initialization ------
+
+mdp.truth <- read_csv("riverswim2_mdp.csv", 
                       col_types = cols(idstatefrom = 'i',
                                        idaction = 'i',
                                        idstateto = 'i',
                                        probability = 'd',
                                        reward = 'd'))
 rewards.truth <- mdp.truth %>% select(-probability)
-confidence <- 0.8
+
 
 # construct a biased policy to prefer going right
 # this is to ensure that the "goal" state is sampled
@@ -25,19 +37,74 @@ ur.policy = data.frame(idstate = c(seq(0,5), seq(0,5)),
 # compute the true value function
 sol.true <- solve_mdp(mdp.truth, discount, show_progress = FALSE)
 vf.true <- sol.true$valuefunction$value
-cat("True optimal return", vf.true %*% init.dist, "\n")
+cat("True optimal return", vf.true %*% init.dist, "policy:", sol.true$policy$idaction, "\n")
 
 ## ----- Generate Samples --------------
 
 # generate samples from the swimmer domain
-simulation <- simulate_mdp(mdp.truth, 0, ur.policy, episodes = 1, horizon = 300, seed = 2019)
+simulation <- simulate_mdp(mdp.truth, 0, ur.policy, episodes = episodes, 
+                           horizon = samples, seed = sample.seed)
 
 ## ---- Solve Empirical MDP ---------
   
 mdp.empirical <- mdp_from_samples(simulation)
 sol.empirical <- solve_mdp(mdp.empirical, discount, show_progress = FALSE)
 vf.empirical <- sol.empirical$valuefunction$value
-cat("Empirical solution estimate: ", vf.empirical %*% init.dist, "\n")
+cat("Empirical solution estimate: ", vf.empirical %*% init.dist, "policy:", sol.empirical$policy$idaction,"\n")
+
+
+## ----  Uninformative Bayesian Posterior Sampling ---------
+
+
+#' Generate a sample MDP from dirichlet distribution
+#' @param simulation Simulation results
+#' @param rewards.df Rewards for each idstatefrom, idaction, idstateto
+#' @param outcomes Number of outcomes to generate
+mdpo_bayes <- function(simulation, rewards.df, outcomes){
+  priors <- rewards.df %>% select(-reward) %>% unique() 
+  
+  # compute sampled state and action counts
+  # add a uniform sample of each state and action to work as the dirichlet prior
+  sas_post_counts <- simulation %>% 
+    select(idstatefrom, idaction, idstateto) %>%
+    rbind(priors) %>%
+    group_by(idstatefrom, idaction, idstateto) %>% 
+    summarize(count = n()) 
+  
+  # construct dirichlet posteriors
+  posteriors <- sas_post_counts %>% 
+    group_by(idstatefrom, idaction) %>% 
+    arrange(idstateto) %>% 
+    summarize(posterior = list(count), idstatesto = list(idstateto)) 
+  
+  # draw a dirichlet sample
+  trans.prob <- 
+    mapply(function(idstatefrom, idaction, posterior, idstatesto){
+      samples <- do.call(function(x) {rdirichlet(outcomes,x)}, list(posterior) )
+      # make sure that the dimensions are named correctly
+      dimnames(samples) <- list(seq(0, outcomes-1), idstatesto)
+      reshape2::melt(samples, varnames=c('idoutcome', 'idstateto'), 
+                     value.name = "probability" ) %>%
+        mutate(idstatefrom = idstatefrom, idaction = idaction)
+    },
+    posteriors$idstatefrom,
+    posteriors$idaction,
+    posteriors$posterior,
+    posteriors$idstatesto,
+    SIMPLIFY = FALSE)
+  
+  mdpo <- bind_rows(trans.prob) %>% 
+    full_join(rewards.df, 
+              by = c('idstatefrom', 'idaction','idstateto')) %>%
+    na.fail()
+  return(mdpo)
+}
+
+mdp.bayesian <- mdpo_bayes(simulation, rewards.truth, bayes.samples)
+
+#sol.bayesexp <- rsolve_mdpo_sa(mdp.bayesian, discount, "exp", NULL, show_progress = FALSE)
+#cat("Expected Bayesian Solution: ", sol.bayesexp$valuefunction$value %*% init.dist, "policy:", sol.bayes.exp$policy$idaction, "\n")
+
 
 ## ----- Frequentist Confidence Interval ------
 
@@ -80,69 +147,66 @@ model.freq <- rmdp.frequentist(simulation, rewards.truth)
 sol.freq <- rsolve_mdp_sa(model.freq$mdp.nominal, discount, "l1", model.freq$budgets, 
                           show_progress = FALSE)
 
-cat("Hoeffding Confidence Region: ", sol.freq$valuefunction$value %*% init.dist, "\n")
-
-## ----  Uninformative Bayesian Posterior Sampling ---------
+cat("Hoeffding Confidence Region: ", sol.freq$valuefunction$value %*% init.dist, "policy:", sol.freq$policy$idaction, "\n")
 
 
-#' Generate a sample MDP from dirichlet distribution
-#' @param posteriors Posterior distributions for each state and action
-#' @param rewards.df Rewards for each idstatefrom, idaction, idstateto
-#' @param outcomes Number of outcomes to generate
-sample_mdp_bayes <- function(posteriors, rewards.df, outcomes){
+## ---- Bayesian Confidence Region -----
 
-  priors <- rewards.df %>% select(-reward) %>% unique() 
-  
-  # compute sampled state and action counts
-  # add a uniform sample of each state and action to work as the dirichlet prior
-  sas_post_counts <- simulation %>% 
-    select(idstatefrom, idaction, idstateto) %>%
-    rbind(priors) %>%
-    group_by(idstatefrom, idaction, idstateto) %>% 
-    summarize(count = n()) 
-  
-  # construct dirichlet posteriors
-  posteriors <- sas_post_counts %>% 
-    group_by(idstatefrom, idaction) %>% 
-    arrange(idstateto) %>% 
-    summarize(posterior = list(count), idstatesto = list(idstateto)) 
-  
-    # draw a dirichlet sample
-  trans.prob <- sapply(posteriors$dist, 
-                       function(z){do.call(function(x) {rdirichlet(1,x)}, 
-                                           list(z) )})
-  dimnames(trans.prob) <- list(idstateto = NULL, idtransition = NULL)
-  
-  trans.frame <- melt(trans.prob, value.name = "probability") %>%
-    mutate(idstateto = idstateto - 1)
-  # join probabilities back with samples
-  # and join it with the original mdp to get rewards
-  mdp.sampled <- inner_join(trans.frame, posteriors %>% select(-dist),
-                            by = 'idtransition') %>%
-    select(-idtransition) %>%
-    full_join(rewards.df %>% select(idstatefrom, idaction, idstateto, reward), 
-              by = c('idstatefrom', 'idaction', 'idstateto')) %>%
-    select(idstatefrom, idaction, idstateto, probability, reward)
-  # the full join above is needed to include rewards for states that
-  # were not sampled
-  mdp.sampled$reward[is.na(mdp.sampled$reward)] <- 0
-  
-  if(!is.null(outcome)){
-    mdp.sampled$idoutcome <- outcome
+rmdp.bayesian <- function(mdp.bayesian, global = FALSE){
+# adjust the confidence level
+  if(global){
+    # provides a bound only on the return, not the value function
+    confidence.rect <- 1-confidence
+  }else{
+    # provides a bound on the value function and the return
+    confidence.rect <- (1-confidence)/sa.count    
   }
+
+
+  # construct the mean bayesian model
+  mdp.mean.bayes <- mdp.bayesian %>% group_by(idstatefrom, idaction, idstateto) %>%
+    summarize(probability = mean(probability), reward = mean(reward))
+  mean.probs <- mdp.mean.bayes %>% rename(probability_mean=probability) %>%
+                  select(-reward)
   
-  return(mdp.sampled)  
+  # compute L1 distances
+  budgets <- 
+    inner_join(mean.probs, 
+               mdp.bayesian, 
+               by = c('idstatefrom', 'idaction', 'idstateto')) %>%
+      mutate(diff = abs(probability - probability_mean)) %>%
+      group_by(idstatefrom, idaction, idoutcome) %>%
+      summarize(l1 = sum(diff)) %>%
+      group_by(idstatefrom, idaction) %>%
+      summarize(budget = quantile(l1, 1-confidence.rect)) %>%
+      rename(idstate = idstatefrom)
+  
+  return(list(mdp.mean = mdp.mean.bayes,
+              budgets = budgets))
 }
 
-mdp.bayesian <- sample_mdp_bayes(posteriors, mdp.truth %>% select(-probability))
+model.bayes.loc <- rmdp.bayesian(mdp.bayesian, FALSE) 
+sol.bcr <- rsolve_mdp_sa(model.bayes.loc$mdp.mean, discount, "l1", 
+                         model.bayes.loc$budgets, show_progress = FALSE)
+cat("Local BCR: ", sol.bcr$valuefunction$value %*% init.dist, "policy:", sol.bcr$policy$idaction, "\n")
 
-solve_mdp(mdp.bayesian, discount)
+model.bayes.glo <- rmdp.bayesian(mdp.bayesian, TRUE) 
+sol.gbcr <- rsolve_mdp_sa(model.bayes.glo$mdp.mean, discount, "l1", 
+                         model.bayes.glo$budgets, show_progress = FALSE)
+cat("Global BCR: ", sol.gbcr$valuefunction$value %*% init.dist, "policy:", sol.gbcr$policy$idaction, "\n")
 
-## ---- Robust Bayesian Model -------
+## ---- RSVF-like (simplified) -------
 
-mdpo.bayes <- do.call(rbind, lapply(seq(0,20), 
-                                    function(ido){sample_mdp_bayes(posteriors, mdp.truth, ido)}))
+confidence.rect <- (1-confidence)/sa.count
+sa.count <- nrow( unique(rewards.truth %>% select(idstatefrom, idaction)))
+sol.rsvf <- rsolve_mdpo_sa(mdp.bayesian, discount, "evaru", 
+                            list(alpha = confidence.rect, beta = 1.0), show_progress = FALSE)
+cat("RSVF: ", sol.rsvf$valuefunction$value %*% init.dist, "policy:", sol.rsvf$policy$idaction, "\n")
 
-sol.bay <- rsolve_mdpo_sa(mdpo.bayes, discount, "eavaru", 
-               list(alpha = 0.5, beta = 1.0), show_progress = FALSE)
+## ---- NORBU ----------
+
+# not divided by the confidence
+sol.norbu <- rsolve_mdpo_sa(mdp.bayesian, discount, "eavaru", 
+               list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
+cat("NORBU: ", sol.norbu$valuefunction$value %*% init.dist, "policy:", sol.norbu$policy$idaction, "\n")
 

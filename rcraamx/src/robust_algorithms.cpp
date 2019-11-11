@@ -509,13 +509,13 @@ algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
     }
 }
 
-/**
- * Parses the name and the parameter of the provided nature
- */
+/// Parses the name and the parameter of the provided nature
 algorithms::SANature parse_nature_sa(const MDPO& mdpo, const string& nature,
                                      SEXP nature_par) {
 
-    if (nature == "evaru") {
+    if (nature == "exp") {
+        return algorithms::nats::robust_exp();
+    } else if (nature == "evaru") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
         return algorithms::nats::robust_var_exp_u(Rcpp::as<double>(par["alpha"]),
                                                   Rcpp::as<double>(par["beta"]));
@@ -716,6 +716,7 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
 //'
 //' The options for nature and the corresponding nature_par are:
 //'    \itemize{
+//'         \item "exp" plain expectation over the outcomes
 //'         \item "evaru" a convex combination of expectation and V@R over
 //'                 transition probabilites. Uniform over all states and actions
 //'                 nature_par is a list with parameters (alpha, beta). The worst-case
