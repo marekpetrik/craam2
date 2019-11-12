@@ -9,15 +9,15 @@ loadNamespace("stringr")
 
 ## ----- Parameters --------
 
-description <- "riverswim2_mdp.csv"
+description <- "riverswim3_mdp.csv"
 
 init.dist <- rep(1/6,6)
 discount <- 0.9
 confidence <- 0.9
 bayes.samples <- 500
 
-samples <- 100
-sample.seed <- 2011
+samples <- 10
+sample.seed <- 1984
 episodes <- 1
 
 ## ----- Initialization ------
@@ -48,44 +48,60 @@ cat("True optimal return", vf.true %*% init.dist, "policy:", sol.true$policy$ida
 simulation <- simulate_mdp(mdp.truth, 0, ur.policy, episodes = episodes, 
                            horizon = samples, seed = sample.seed)
 
-## ----  Uninformative Bayesian Posterior Sampling ---------
+## ----- Fit JAGS Model ----------------
 
 #' Generate a sample MDP from dirichlet distribution
 #' @param simulation Simulation results
 #' @param rewards.df Rewards for each idstatefrom, idaction, idstateto
 #' @param outcomes Number of outcomes to generate
 mdpo_bayes <- function(simulation, rewards.df, outcomes){
-  priors <- rewards.df %>% select(-reward) %>% unique() 
+  library(rjags)
   
-  # compute sampled state and action counts
-  # add a uniform sample of each state and action to work as the dirichlet prior
-  sas_post_counts <- simulation %>% 
-    select(idstatefrom, idaction, idstateto) %>%
-    rbind(priors) %>%
-    group_by(idstatefrom, idaction, idstateto) %>% 
-    summarize(count = n()) 
+  simulation.subset <- simulation %>%
+    filter(idstatefrom > 0, idstatefrom < 5, idaction == 1) %>%
+    mutate(difference = idstateto - idstatefrom + 2)
   
-  # construct dirichlet posteriors
-  posteriors <- sas_post_counts %>% 
-    group_by(idstatefrom, idaction) %>% 
-    arrange(idstateto) %>% 
-    summarize(posterior = list(count), idstatesto = list(idstateto)) 
+  model_spec <- textConnection("
+      model {
+        for (i in 1:N){
+          difference[i] ~ dcat(beta) 
+        }
+        beta ~ ddirch(dprior)
+      }
+      ")
+  jags <- 
+    jags.model(model_spec,
+               data = list(difference = simulation.subset$difference ,
+                           N = nrow(simulation.subset),
+                           dprior = c(1,1,1)),
+               n.chains=4, n.adapt=100)
+  update(jags, 1000) # warmup
   
-  # draw a dirichlet sample
-  trans.prob <- 
-    mapply(function(idstatefrom, idaction, posterior, idstatesto){
-      samples <- do.call(function(x) {rdirichlet(outcomes,x)}, list(posterior) )
-      # make sure that the dimensions are named correctly
-      dimnames(samples) <- list(seq(0, outcomes-1), idstatesto)
-      reshape2::melt(samples, varnames=c('idoutcome', 'idstateto'), 
-                     value.name = "probability" ) %>%
-        mutate(idstatefrom = idstatefrom, idaction = idaction)
-    },
-    posteriors$idstatefrom,
-    posteriors$idaction,
-    posteriors$posterior,
-    posteriors$idstatesto,
-    SIMPLIFY = FALSE)
+  post_samples <- 
+    coda.samples(jags, c('beta'), bayes.samples, thin = 4)
+  
+  raw_samples <- do.call(rbind, lapply(1:4, function(i) {as.matrix(post_samples[[i]])}))
+  
+  # subsample transitions for each case
+  beta1 <- 
+    rewards.df %>% filter((idstatefrom > idstateto) | 
+                            (idstatefrom == 0 & idstateto == 0)) %>%
+                  filter(idaction == 1)
+  beta2 <- 
+    rewards.df %>% filter(idstatefrom == idstateto & idaction == 1)
+    
+  beta3 <- 
+    rewards.df %>% filter((idstatefrom < idstateto) | 
+                            (idstatefrom == 5 & idstateto == 5)) %>%
+      filter(idaction == 1)
+  
+  gen.beta.mdp <- function(beta, idoutcome.n){
+    rbind(beta1 %>% mutate(probability = beta[1]),
+          beta2 %>% mutate(probability = beta[2]),
+          beta3 %>% mutate(probability = beta[3])) %>%
+      mutate(idoutcome = idoutcome.n)
+  }
+  trans.prob <- mapply(gen.beta.mdp, raw_samples, 0:(nrow(raw_samples)-1)) 
   
   mdpo <- bind_rows(trans.prob) %>% 
     full_join(rewards.df, 
@@ -287,7 +303,7 @@ report_solution("RSVF", mdp.bayesian, sol.rsvf)
 ## ---- NORBU ----------
 
 sol.norbu <- rsolve_mdpo_sa(mdp.bayesian, discount, "eavaru", 
-               list(alpha = 1-confidence, beta = 0.5), show_progress = FALSE)
+               list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
 report_solution("NORBU: ", mdp.bayesian, sol.norbu)
 
 # to see why this is wrong, try running it with a confidence 0.1 or something small
