@@ -57,25 +57,35 @@ update_transition_mat(const BellmanResponse& response, MatrixXd& transitions,
 
     const size_t n = response.state_count();
 
+    bool openmp_error = false;
 #pragma omp parallel for
     for (size_t s = 0; s < n; s++) {
-        const Transition& t = response.transition(s, new_policy[s]);
+        try {
+            const Transition& t = response.transition(s, new_policy[s]);
 
-        // if the policy has not changed then do nothing
-        if (!old_policy.empty() && old_policy[s] == new_policy[s]) continue;
+            // if the policy has not changed then do nothing
+            if (!old_policy.empty() && old_policy[s] == new_policy[s]) continue;
 
-        // add transition probabilities to the matrix
-        const auto& indexes = t.get_indices();
-        const auto& probabilities = t.get_probabilities();
+            // add transition probabilities to the matrix
+            const auto& indexes = t.get_indices();
+            const auto& probabilities = t.get_probabilities();
 
-        if (!transpose) {
-            for (size_t j = 0; j < t.size(); j++)
-                transitions(s, indexes[j]) = discount * probabilities[j];
-        } else {
-            for (size_t j = 0; j < t.size(); j++)
-                transitions(indexes[j], s) = discount * probabilities[j];
+            if (!transpose) {
+                for (size_t j = 0; j < t.size(); j++)
+                    transitions(s, indexes[j]) = discount * probabilities[j];
+            } else {
+                for (size_t j = 0; j < t.size(); j++)
+                    transitions(indexes[j], s) = discount * probabilities[j];
+            }
+        } catch (const exception& e) {
+            // only run this once per loop
+            if (!openmp_error) {
+                internal::openmp_exception_handler(e, "update_transition_mat");
+                openmp_error = true;
+            }
         }
     }
+    if (openmp_error) throw runtime_error("Failed with an exception in OPENMP block.");
 }
 
 /**
@@ -117,10 +127,20 @@ inline numvec rewards_vec(const BellmanResponse& response,
     const auto n = response.state_count();
     numvec rewards(n);
 
+    bool openmp_error = false;
 #pragma omp parallel for
     for (size_t s = 0; s < n; s++) {
-        rewards[s] = response.reward(s, policy[s]);
+        try {
+            rewards[s] = response.reward(s, policy[s]);
+        } catch (const exception& e) {
+            // only run this once per loop
+            if (!openmp_error) {
+                internal::openmp_exception_handler(e, "rewards_vec");
+                openmp_error = true;
+            }
+        }
     }
+    if (openmp_error) throw runtime_error("Failed with an exception in OPENMP block.");
     return rewards;
 }
 

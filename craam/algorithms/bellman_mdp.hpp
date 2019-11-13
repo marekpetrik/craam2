@@ -397,7 +397,7 @@ public:
             return s[action.first].mean_transition(action.second);
         } else {
             // if empty, use the transition probabilities from the policy
-            throw invalid_argument("Empty policies of nature not supported currently.");
+            throw invalid_argument("Nature unexpectedly computed an empty policy.");
             return s[action.first].mean_transition();
         }
     }
@@ -416,7 +416,7 @@ public:
             return s[action.first].mean_reward(action.second);
         } else {
             // if empty, use the transition probabilities from the policy
-            throw invalid_argument("Empty policies of nature not supported currently.");
+            throw invalid_argument("Nature unexpectedly computed an empty policy.");
             return s[action.first].mean_reward();
         }
     }

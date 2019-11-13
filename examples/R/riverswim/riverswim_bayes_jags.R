@@ -16,7 +16,7 @@ discount <- 0.9
 confidence <- 0.9
 bayes.samples <- 500
 
-samples <- 10
+samples <- 100
 sample.seed <- 1984
 episodes <- 1
 

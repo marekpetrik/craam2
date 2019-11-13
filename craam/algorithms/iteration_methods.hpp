@@ -25,6 +25,7 @@
 
 #include "craam/Solution.hpp"
 #include "craam/algorithms/matrices.hpp"
+#include "craam/definitions.hpp"
 
 #include <chrono>
 
@@ -34,17 +35,6 @@ namespace internal {
 
 /// An empty progress function, always returns true
 inline bool empty_progress(size_t iteration, prec_t residual) { return true; }
-
-/// Reports the exception that cannot be passed up from an openmp block
-/// @param e The exception caught
-/// @param fname Name of the offending function
-void openmp_exception_handler(const std::exception& e, const std::string& fname) {
-    std::cerr << "********" << std::endl
-              << "Caught an exception in the OPENMP block: " << std::endl
-              << e.what() << std::endl
-              << "in method " << fname << std::endl
-              << "********" << std::endl;
-}
 
 } // namespace internal
 
@@ -205,13 +195,14 @@ mpi_jac(const ResponseType& response, prec_t discount,
             } catch (const exception& e) {
                 // only run this once per loop
                 if (!openmp_error) {
-                    internal::openmp_exception_handler(e, "mpi_jac_1");
+                    craam::internal::openmp_exception_handler(e, "mpi_jac_1");
                     openmp_error = true;
                 }
             }
         }
         // just terminate if there is an error
-        if (openmp_error) return Solution<typename ResponseType::policy_type>();
+        if (openmp_error)
+            throw runtime_error("Failed with an exception in OPENMP block.");
 
         residual_pi = *max_element(residuals.cbegin(), residuals.cend());
 
@@ -236,13 +227,14 @@ mpi_jac(const ResponseType& response, prec_t discount,
                 } catch (const exception& e) {
                     // only run this once per loop
                     if (!openmp_error) {
-                        internal::openmp_exception_handler(e, "mpi_jac_1");
+                        craam::internal::openmp_exception_handler(e, "mpi_jac_2");
                         openmp_error = true;
                     }
                 }
             }
             // just terminate if there is an error
-            if (openmp_error) return Solution<typename ResponseType::policy_type>();
+            if (openmp_error)
+                throw runtime_error("Failed with an exception in OPENMP block.");
 
             // update the residual value
             residual_vi = *max_element(residuals.begin(), residuals.end());
@@ -333,11 +325,12 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
         } catch (const exception& e) {
             // only run this once per loop
             if (!openmp_error) {
-                internal::openmp_exception_handler(e, "mpi_jac_1");
+                craam::internal::openmp_exception_handler(e, "mpi_jac_1");
                 openmp_error = true;
             }
         }
     }
+    if (openmp_error) throw runtime_error("Failed with an exception in OPENMP block.");
 
     // **discounted** matrix of transition probabilities
     MatrixXd trans_discounted = transition_mat(response, policy, false, discount);
@@ -368,13 +361,14 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
             } catch (const exception& e) {
                 // only run this once per loop
                 if (!openmp_error) {
-                    internal::openmp_exception_handler(e, "pi_2");
+                    craam::internal::openmp_exception_handler(e, "pi_2");
                     openmp_error = true;
                 }
             }
         }
         // just terminate if there is an error
-        if (openmp_error) return Solution<typename ResponseType::policy_type>();
+        if (openmp_error)
+            throw runtime_error("Failed with an exception in OPENMP block.");
 
         // TODO: change this to a span seminorm (in all algorithms)
         residual_pi = *max_element(residuals.cbegin(), residuals.cend());
@@ -469,13 +463,13 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
         } catch (const exception& e) {
             // only run this once per loop
             if (!openmp_error) {
-                internal::openmp_exception_handler(e, "rppi_1");
+                craam::internal::openmp_exception_handler(e, "rppi_1");
                 openmp_error = true;
             }
         }
     }
     // just terminate if there is an error
-    if (openmp_error) return Solution<typename ResponseType::policy_type>();
+    if (openmp_error) throw runtime_error("Failed with an exception in OPENMP block.");
 
     // TODO: change to span seminorm (in all methods and all locations)
     prec_t residual_pi = *max_element(residuals.cbegin(), residuals.cend());
@@ -516,6 +510,7 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
         // *** robust policy update ***
         // set the dec policy to empty to optimize it
         response.set_decision_policy();
+        openmp_error = false;
 #pragma omp parallel for
         for (auto s = 0l; s < long(response.state_count()); s++) {
             try {
@@ -531,14 +526,15 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
             } catch (const exception& e) {
                 // only run this once per loop
                 if (!openmp_error) {
-                    internal::openmp_exception_handler(e, "rppi_2");
+                    craam::internal::openmp_exception_handler(e, "rppi_2");
                     openmp_error = true;
                 }
             }
         }
 
         // just terminate if there is an error
-        if (openmp_error) return Solution<typename ResponseType::policy_type>();
+        if (openmp_error)
+            throw runtime_error("Failed with an exception in OPENMP block.");
 
         // TODO: change to span seminorm (in all methods and all locations)
         residual_pi = *max_element(residuals.cbegin(), residuals.cend());

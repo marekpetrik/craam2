@@ -13,7 +13,7 @@ description <- "riverswim2_mdp.csv"
 
 init.dist <- rep(1/6,6)
 discount <- 0.9
-confidence <- 0.9
+confidence <- 0.6
 bayes.samples <- 500
 
 samples <- 100
@@ -40,7 +40,7 @@ ur.policy = data.frame(idstate = c(seq(0,5), seq(0,5)),
 # compute the true value function
 sol.true <- solve_mdp(mdp.truth, discount, show_progress = FALSE)
 vf.true <- sol.true$valuefunction$value
-cat("True optimal return", vf.true %*% init.dist, "policy:", sol.true$policy$idaction, "\n")
+cat("True optimal return", vf.true %*% init.dist, "policy:", sol.true$policy$idaction, "\n\n")
 
 ## ----- Generate Samples --------------
 
@@ -103,7 +103,7 @@ mdp.bayesian <- mdpo_bayes(simulation, rewards.truth, bayes.samples)
 #' 
 #' @param mdp.bayesion MDPO with outcomes
 #' @param policy Deterministic policy to be evaluated
-bayes.returns <- function(mdp.bayesian, policy, maxcount = 100){
+bayes.returns <- function(mdp.bayesian, policy, maxcount = 200){
   sapply(unique(mdp.bayesian$idoutcome[1:maxcount]),
          function(outcome){
            sol <- mdp.bayesian %>% filter(idoutcome == outcome) %>% 
@@ -127,7 +127,7 @@ report_solution <- function(name, mdp.bayesian, solution){
       solution$valuefunction$value %*% init.dist, "****\n")
   cat("    Policy", solution$policy$idaction,"\n")
   
-  cat("    Return predicted:", solution$valuefunction$value %*% init.dist)
+  cat("    Return guaranteed:", solution$valuefunction$value %*% init.dist)
   sol.tr <- solve_mdp(mdp.truth, discount, 
                       policy_fixed = solution$policy,
                       show_progress = FALSE)
@@ -137,6 +137,7 @@ report_solution <- function(name, mdp.bayesian, solution){
       quantile(posterior.returns, 1-confidence), ", av@r:", 
       mean(posterior.returns[posterior.returns < 
                           quantile(posterior.returns, 1-confidence)]), "\n")
+  cat("\n")
 }
 
 ## ---- Solve Empirical MDP ---------
@@ -287,11 +288,11 @@ report_solution("RSVF", mdp.bayesian, sol.rsvf)
 ## ---- NORBU ----------
 
 sol.norbu <- rsolve_mdpo_sa(mdp.bayesian, discount, "eavaru", 
-               list(alpha = 1-confidence, beta = 0.5), show_progress = FALSE)
+               list(alpha = 1-confidence, beta = 0.9), show_progress = FALSE)
 report_solution("NORBU: ", mdp.bayesian, sol.norbu)
 
 # to see why this is wrong, try running it with a confidence 0.1 or something small
 sol.norbu.w <- rsolve_mdpo_sa(mdp.bayesian, discount, "evaru", 
                             list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
-report_solution("NORBU(wrong): ", mdp.bayesian, sol.norbu.w)
+report_solution("NORBU(maybe?): ", mdp.bayesian, sol.norbu.w)
 

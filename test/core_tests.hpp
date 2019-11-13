@@ -483,6 +483,22 @@ BOOST_AUTO_TEST_CASE(simple_robust_algorithms_ind) {
     CHECK_CLOSE_COLLECTION(solution3.valuefunction, solution5.valuefunction, 1.0);
 }
 
+/*
+BOOST_AUTO_TEST_CASE(robust_budget_nan) {
+
+    MDP small;
+    add_transition(small, 0, 0, 1, 1.0, 1.0);
+    add_transition(small, 0, 1, 2, 1.0, 2.0);
+
+    auto nature_sa =
+        algorithms::nats::robust_l1(numvecvec{{0.1, 0.1}, {0.1, 0.1}, {0.1, 0.1}});
+
+    rsolve_ppi(small, 0.9, nats::robust_l1u(std::nan("")));
+
+    rsolve_mppi(small, 0.9, nats::robust_l1u(std::nan("")));
+
+}*/
+
 // ********************************************************************************
 // ***** Model resize ******
 // ********************************************************************************

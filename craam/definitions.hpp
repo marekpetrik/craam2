@@ -324,4 +324,17 @@ inline void multiply_inplace(numvec& vct, prec_t value) {
         vct[i] *= value;
 }
 
+namespace internal {
+/// Reports the exception that cannot be passed up from an openmp block
+/// @param e The exception caught
+/// @param fname Name of the offending function
+inline void openmp_exception_handler(const std::exception& e, const std::string& fname) {
+    std::cerr << "********" << std::endl
+              << "Caught an exception in the OPENMP block: " << std::endl
+              << e.what() << std::endl
+              << "in method " << fname << std::endl
+              << "********" << std::endl;
+}
+
+} // namespace internal
 } // namespace craam
