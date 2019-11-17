@@ -9,27 +9,26 @@ loadNamespace("stringr")
 
 ## ----- Parameters --------
 
+# a consistent version of riverswim
+# true betas = c(0.1,0.6,0.3)
 description <- "riverswim3_mdp.csv"
 
 init.dist <- rep(1/6,6)
 discount <- 0.9
 confidence <- 0.9
-bayes.samples <- 500
+bayes.samples <- 1000
 
-samples <- 100
+samples <- 20
 sample.seed <- 1984
 episodes <- 1
 
 ## ----- Initialization ------
 
-mdp.truth <- read_csv(description, 
-                      col_types = cols(idstatefrom = 'i',
-                                       idaction = 'i',
-                                       idstateto = 'i',
-                                       probability = 'd',
-                                       reward = 'd'))
+mdp.truth <- 
+  read_csv(description, col_types = 
+             cols(idstatefrom = 'i',idaction = 'i', idstateto = 'i',
+                  probability = 'd', reward = 'd'))
 rewards.truth <- mdp.truth %>% select(-probability)
-
 
 # construct a biased policy to prefer going right
 # this is to ensure that the "goal" state is sampled
@@ -63,50 +62,54 @@ mdpo_bayes <- function(simulation, rewards.df, outcomes){
   
   model_spec <- textConnection("
       model {
-        for (i in 1:N){
-          difference[i] ~ dcat(beta) 
-        }
-        beta ~ ddirch(dprior)
-      }
-      ")
+        for (i in 1:N){ difference[i] ~ dcat(beta) }
+        beta ~ ddirch(dprior)}")
   jags <- 
     jags.model(model_spec,
                data = list(difference = simulation.subset$difference ,
-                           N = nrow(simulation.subset),
-                           dprior = c(1,1,1)),
-               n.chains=4, n.adapt=100)
-  update(jags, 1000) # warmup
-  
+                           N = nrow(simulation.subset),dprior = c(1,1,1)),
+               n.chains=4, n.adapt=100, quiet = TRUE)
+  update(jags, 100, progress.bar = "none") # warmup
   post_samples <- 
-    coda.samples(jags, c('beta'), bayes.samples, thin = 4)
-  
+    coda.samples(jags, c('beta'), bayes.samples, thin = 4, progress.bar = "none")
   raw_samples <- do.call(rbind, lapply(1:4, function(i) {as.matrix(post_samples[[i]])}))
   
-  # subsample transitions for each case
+  # ** subsample transitions for each case
+  # left
   beta1 <- 
     rewards.df %>% filter((idstatefrom > idstateto) | 
                             (idstatefrom == 0 & idstateto == 0)) %>%
                   filter(idaction == 1)
+  # stay
   beta2 <- 
     rewards.df %>% filter(idstatefrom == idstateto & idaction == 1)
-    
+  #right
   beta3 <- 
     rewards.df %>% filter((idstatefrom < idstateto) | 
                             (idstatefrom == 5 & idstateto == 5)) %>%
       filter(idaction == 1)
+  # the back action
+  left <- rewards.df %>% filter(idaction == 0)
   
   gen.beta.mdp <- function(beta, idoutcome.n){
-    rbind(beta1 %>% mutate(probability = beta[1]),
-          beta2 %>% mutate(probability = beta[2]),
-          beta3 %>% mutate(probability = beta[3])) %>%
+    # make sure that idstatefrom, idaction, idstateto are unique
+    rbind(beta1 %>% mutate(probability = beta[1], reward = reward),
+          beta2 %>% mutate(probability = beta[2], reward = reward),
+          beta3 %>% mutate(probability = beta[3], reward = reward),
+          left %>% mutate(probability = 1)) %>%
+      group_by(idstatefrom, idaction, idstateto) %>%
+      summarize(reward = sum(probability * reward) / sum(probability),
+                probability = sum(probability)) %>%
       mutate(idoutcome = idoutcome.n)
   }
-  trans.prob <- mapply(gen.beta.mdp, raw_samples, 0:(nrow(raw_samples)-1)) 
   
-  mdpo <- bind_rows(trans.prob) %>% 
-    full_join(rewards.df, 
-              by = c('idstatefrom', 'idaction','idstateto')) %>%
+  trans.prob <- 
+    lapply(1:nrow(raw_samples), function(i){
+      gen.beta.mdp(raw_samples[i,], i - 1)})
+    
+  mdpo <- bind_rows(trans.prob) %>%
     na.fail()
+  
   return(mdpo)
 }
 
@@ -157,9 +160,9 @@ report_solution <- function(name, mdp.bayesian, solution){
 
 ## ---- Solve Empirical MDP ---------
 
-mdp.empirical <- mdp_from_samples(simulation)
-sol.empirical <- solve_mdp(mdp.empirical, discount, show_progress = FALSE)
-report_solution("Empirical", mdp.bayesian, sol.empirical)
+#mdp.empirical <- mdp_from_samples(simulation)
+#sol.empirical <- solve_mdp(mdp.empirical, discount, show_progress = FALSE)
+#report_solution("Empirical", mdp.bayesian, sol.empirical)
 
 ## ----- Solve Bayesian MDP ---------
 
@@ -183,21 +186,18 @@ rmdp.frequentist <- function(simulation, rewards.df){
   
   # count the number of samples for each state and action
   sa_counts <- simulation %>% select(idstatefrom, idaction) %>%
-    group_by(idstatefrom, idaction) %>%
-    summarize(count = n())
+    group_by(idstatefrom, idaction) %>% summarize(count = n())
 
   sa.count <- nrow(sa_counts)                   # number of valid state-action pairs
   # count the number of possible transitions from each state and action
-  tran.count <- rewards.truth %>% 
-    group_by(idstatefrom, idaction) %>% 
+  tran.count <- rewards.truth %>% group_by(idstatefrom, idaction) %>% 
     summarize(tran_count = n())
   
   budgets <- full_join(sa_counts, tran.count, by = c('idstatefrom','idaction')) %>% 
     mutate(budget = pmin(2,sqrt(1/count * log(sa.count * 2^tran_count / confidence)))) %>%
     rename(idstate = idstatefrom) %>% select(-count) 
   
-  mdp.nominal <- full_join(mdp.nominal %>% select(-reward), 
-                           rewards.df, 
+  mdp.nominal <- full_join(mdp.nominal %>% select(-reward), rewards.df, 
                            by = c('idstatefrom', 'idaction', 'idstateto')) %>% 
     tidyr::replace_na(list(probability = 0))
   return (list(mdp.nominal = mdp.nominal, budgets = budgets))
@@ -211,14 +211,21 @@ report_solution("Hoeff CR", mdp.bayesian, sol.freq)
 
 ## ---- Bayesian Confidence Region -----
 
+#' Constructs a Bayesian credible region for an MDPO
+#' 
+#' The lower bound guarantee is on the total return and the value function
+#' 
+#' @param mdp.bayesian MDPO with Bayesian outcomes, it is important 
+#' that for each outcome, idstatefrom, idaction, idstateto are unique
 rmdp.bayesian <- function(mdp.bayesian){
 # adjust the confidence level
 
   # provides a bound on the value function and the return
   sa.count <- nrow( unique(mdp.bayesian %>% select(idstatefrom, idaction)))
-  confidence.rect <- (1-confidence)/sa.count    
+  confidence.rect <- (1-confidence) / sa.count    
 
   # construct the mean bayesian model
+  # assume that idstatefrom, idaction, idstateto are unique
   mdp.mean.bayes <- mdp.bayesian %>% group_by(idstatefrom, idaction, idstateto) %>%
     summarize(probability = mean(probability), reward = mean(reward))
   mean.probs <- mdp.mean.bayes %>% rename(probability_mean=probability) %>%
@@ -243,13 +250,18 @@ rmdp.bayesian <- function(mdp.bayesian){
 model.bayes.loc <- rmdp.bayesian(mdp.bayesian) 
 sol.bcr <- rsolve_mdp_sa(model.bayes.loc$mdp.mean, discount, "l1", 
                          model.bayes.loc$budgets, show_progress = FALSE)
-report_solution("Local BCR: ", mdp.bayesian, sol.bcr)
+report_solution("Local BCR", mdp.bayesian, sol.bcr)
 
-## ---- Global Bayesian Confidence Region -----
+## ---- Global Bayesian Credible Region -----
 
+#' Constructs a Bayesian credible region for an MDPO
+#' 
 #' Uses a single global solution and relies on rectangularization. 
 #' It picks the confidence fraction of outcomes ordered
 #' by the mean budget size across all states
+#' 
+#' @param mdp.bayesian MDPO with Bayesian outcomes, it is important 
+#' that for each outcome, idstatefrom, idaction, idstateto are unique
 rmdp.bayesian.global <- function(mdp.bayesian){
   # construct the mean bayesian model
   mdp.mean.bayes <- mdp.bayesian %>% group_by(idstatefrom, idaction, idstateto) %>%
@@ -259,28 +271,23 @@ rmdp.bayesian.global <- function(mdp.bayesian){
   
   # compute L1 distances for each outcome averaged/maxed over states
   distances <- 
-    inner_join(mean.probs, 
-               mdp.bayesian, 
+    inner_join(mean.probs, mdp.bayesian, 
                by = c('idstatefrom', 'idaction', 'idstateto')) %>%
     mutate(diff = abs(probability - probability_mean)) %>%
     group_by(idstatefrom, idaction, idoutcome) %>%
     summarize(l1 = sum(diff)) 
   
-  outcome.mean.dist <- distances %>%
-    group_by(idoutcome) %>%
-    summarize(l1 = max(l1)) %>%
-    arrange(l1)
+  outcome.mean.dist <- distances %>% group_by(idoutcome) %>%
+    summarize(l1 = max(l1)) %>% arrange(l1)
 
   # the set of all outcomes that need to be covered by the ambiguity set
   cover.set <- outcome.mean.dist$idoutcome[1:ceiling(nrow(outcome.mean.dist) * confidence)]
   
-  budgets <- inner_join(distances, 
-                        data.frame(idoutcome = cover.set),
+  budgets <- inner_join(distances, data.frame(idoutcome = cover.set),
                         by = "idoutcome") %>% 
     group_by(idstatefrom, idaction) %>% 
     summarize(budget = max(l1)) %>%
     rename(idstate = idstatefrom)
-
   
   return(list(mdp.mean = mdp.mean.bayes,
               budgets = budgets))
@@ -304,10 +311,10 @@ report_solution("RSVF", mdp.bayesian, sol.rsvf)
 
 sol.norbu <- rsolve_mdpo_sa(mdp.bayesian, discount, "eavaru", 
                list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
-report_solution("NORBU: ", mdp.bayesian, sol.norbu)
+report_solution("NORBU", mdp.bayesian, sol.norbu)
 
 # to see why this is wrong, try running it with a confidence 0.1 or something small
 sol.norbu.w <- rsolve_mdpo_sa(mdp.bayesian, discount, "evaru", 
                             list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
-report_solution("NORBU(wrong): ", mdp.bayesian, sol.norbu.w)
+report_solution("NORBU(wrong)", mdp.bayesian, sol.norbu.w)
 

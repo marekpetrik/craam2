@@ -266,7 +266,6 @@ rmdp.bayesian.global <- function(mdp.bayesian){
     summarize(budget = max(l1)) %>%
     rename(idstate = idstatefrom)
 
-  
   return(list(mdp.mean = mdp.mean.bayes,
               budgets = budgets))
 }
