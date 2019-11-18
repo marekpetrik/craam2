@@ -129,20 +129,54 @@ template <class S> void report_solution_status(const S& solution) {
     }
 }
 
-/** Computes the maximum distribution subject to L1 constraints */
+//' Computes the maximum distribution subject to L1 constraints
+//'
+//' @param value Random variable (objective)
+//' @param reference_dst Reference distribution of the same size as value
+//' @param budget Maximum L1 distance from the reference dst
+//'
+//' @returns A list with dst as the worstcase distribution,
+// '         and value as the objective
 // [[Rcpp::export]]
-Rcpp::List worstcase_l1(Rcpp::NumericVector z, Rcpp::NumericVector q, double t) {
-    // resulting probability
-    craam::numvec p;
-    // resulting objective value
-    double objective;
+Rcpp::List worstcase_l1(Rcpp::NumericVector value, Rcpp::NumericVector reference_dst,
+                        double budget) {
 
-    craam::numvec vz(z.begin(), z.end()), vq(q.begin(), q.end());
-    std::tie(p, objective) = craam::worstcase_l1(vz, vq, t);
+    craam::numvec vz(value.begin(), value.end()),
+        vq(reference_dst.begin(), reference_dst.end());
+
+    craam::numvec p;  // resulting probability
+    double objective; // resulting objective value
+    std::tie(p, objective) = craam::worstcase_l1(vz, vq, budget);
 
     Rcpp::List result;
-    result["p"] = Rcpp::NumericVector(p.cbegin(), p.cend());
-    result["obj"] = objective;
+    result["dst"] = Rcpp::NumericVector(p.cbegin(), p.cend());
+    result["value"] = objective;
+
+    return result;
+}
+
+//' Computes average value at risk
+//'
+//' @param value Random variable (as a vector over realizations)
+//' @param reference_dst Reference distribution of the same size as value
+//' @param alpha Confidence value. 0 is worst case, 1 is average
+//'
+//' @returns A list with dst as the distorted distribution,
+// '         and value as the avar value
+// [[Rcpp::export]]
+Rcpp::List avar(Rcpp::NumericVector value, Rcpp::NumericVector reference_dst,
+                double alpha) {
+
+    craam::numvec p;  // resulting probability
+    double objective; // resulting objective value
+
+    craam::numvec vz(value.begin(), value.end()),
+        vq(reference_dst.begin(), reference_dst.end());
+    std::tie(p, objective) = craam::avar(vz, vq, alpha);
+
+    Rcpp::List result;
+    result["dst"] = Rcpp::NumericVector(p.cbegin(), p.cend());
+    result["value"] = objective;
 
     return result;
 }

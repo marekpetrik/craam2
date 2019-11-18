@@ -16,7 +16,7 @@ discount <- 0.9
 confidence <- 0.6
 bayes.samples <- 500
 
-samples <- 100
+samples <- 10000
 sample.seed <- 2011
 episodes <- 1
 
@@ -96,20 +96,20 @@ mdpo_bayes <- function(simulation, rewards.df, outcomes){
 
 mdp.bayesian <- mdpo_bayes(simulation, rewards.truth, bayes.samples)
 
-#' Evaluate the policy with respect to all possible 
-#' Bayesian outcomes. 
+#' Evaluate the policy with respect Bayesian outcomes. 
 #' 
 #' Returns the return values.
 #' 
 #' @param mdp.bayesion MDPO with outcomes
 #' @param policy Deterministic policy to be evaluated
-bayes.returns <- function(mdp.bayesian, policy, maxcount = 200){
-  sapply(unique(mdp.bayesian$idoutcome[1:maxcount]),
+bayes.returns <- function(mdp.bayesian, policy, maxcount = 100){
+  outcomes.unique <- unique(mdp.bayesian$idoutcome)[1:maxcount]
+  maxcount <- min(maxcount, nrow(outcomes.unique))
+  sapply(outcomes.unique,
          function(outcome){
            sol <- mdp.bayesian %>% filter(idoutcome == outcome) %>% 
              solve_mdp(discount, policy_fixed = policy, 
-                       show_progress = FALSE, 
-                       algorithm = "pi")          
+                       show_progress = FALSE, algorithm = "pi")          
            sol$valuefunction$value %*% init.dist
          })
 }
@@ -127,16 +127,16 @@ report_solution <- function(name, mdp.bayesian, solution){
       solution$valuefunction$value %*% init.dist, "****\n")
   cat("    Policy", solution$policy$idaction,"\n")
   
-  cat("    Return guaranteed:", solution$valuefunction$value %*% init.dist)
+  cat("    Return predicted:", solution$valuefunction$value %*% init.dist)
   sol.tr <- solve_mdp(mdp.truth, discount, 
                       policy_fixed = solution$policy,
                       show_progress = FALSE)
   cat(", true:", sol.tr$valuefunction$value %*% init.dist, "\n")
   posterior.returns <- bayes.returns(mdp.bayesian, solution$policy)
+  dst <- rep(1/length(posterior.returns), length(posterior.returns))
   cat("    Posterior mean:", mean(posterior.returns), ", v@r:", 
       quantile(posterior.returns, 1-confidence), ", av@r:", 
-      mean(posterior.returns[posterior.returns < 
-                          quantile(posterior.returns, 1-confidence)]), "\n")
+      avar(posterior.returns, dst, 1-confidence)$value)
   cat("\n")
 }
 
@@ -168,23 +168,31 @@ rmdp.frequentist <- function(simulation, rewards.df){
   
   # count the number of samples for each state and action
   sa_counts <- simulation %>% select(idstatefrom, idaction) %>%
-    group_by(idstatefrom, idaction) %>%
-    summarize(count = n())
-
+    group_by(idstatefrom, idaction) %>% summarize(count = n())
+  
   sa.count <- nrow(sa_counts)                   # number of valid state-action pairs
   # count the number of possible transitions from each state and action
-  tran.count <- rewards.truth %>% 
-    group_by(idstatefrom, idaction) %>% 
+  tran.count <- rewards.truth %>% group_by(idstatefrom, idaction) %>% 
     summarize(tran_count = n())
   
   budgets <- full_join(sa_counts, tran.count, by = c('idstatefrom','idaction')) %>% 
-    mutate(budget = pmin(2,sqrt(1/count * log(sa.count * 2^tran_count / confidence)))) %>%
-    rename(idstate = idstatefrom) %>% select(-count) 
+    mutate(budget = coalesce( 
+      pmin(2.0,sqrt(1/count * log(sa.count * 2^tran_count / confidence))),
+      2.0)) %>%
+    rename(idstate = idstatefrom) %>% select(-count) %>% na.fail()
   
-  mdp.nominal <- full_join(mdp.nominal %>% select(-reward), 
-                           rewards.df, 
+  # add transtions to states that have not been observed, and normalize
+  # them in order to get some kind of a transition probability
+  mdp.nominal <- full_join(mdp.nominal %>% select(-reward), rewards.df, 
                            by = c('idstatefrom', 'idaction', 'idstateto')) %>% 
-    tidyr::replace_na(list(probability = 0))
+    mutate(probability = coalesce(probability, 1.0))
+  # normalize transition probabilities
+  mdp.nominal <-
+    full_join(mdp.nominal %>% group_by(idstatefrom, idaction) %>%
+                summarize(prob.sum = sum(probability)),
+              mdp.nominal, by=c('idstatefrom', 'idaction')) %>%
+    mutate(probability = probability / prob.sum) %>% select(-prob.sum) %>% na.fail()
+  
   return (list(mdp.nominal = mdp.nominal, budgets = budgets))
 }
 

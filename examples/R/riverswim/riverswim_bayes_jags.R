@@ -13,28 +13,57 @@ loadNamespace("stringr")
 # true betas = c(0.1,0.6,0.3)
 description <- "riverswim3_mdp.csv"
 
-init.dist <- rep(1/6,6)
-discount <- 0.9
-confidence <- 0.9
-bayes.samples <- 1000
+confidence <- 0.8
+bayes.samples <- 500
 
 samples <- 20
 sample.seed <- 1984
 episodes <- 1
 
+discount <- 0.95
+state.count <- 30
+init.dist <- rep(1/state.count, state.count)
+left.reward <- 5
+right.reward <- 500000
+probabilities.true <- c(0.34, 0.3, 0.36)
+
+## ------ Construct MDP ------
+
+a0left <- data.frame(idstatefrom = seq(0,state.count-1), idaction = 0,
+                     idstateto = pmax(0, seq(-1,state.count-2)), 
+                     reward = left.reward)
+#a0left <- within(a0left,{reward[idstatefrom == 0 & idaction == 0] <- left.reward})
+
+a1left <- data.frame(idstatefrom = seq(0,state.count-1), idaction = 1,
+                     idstateto = pmax(0, seq(-1,state.count-2)), 
+                     reward = -right.reward/state.count)
+a1left <- within(a1left,{
+  reward[idstatefrom == state.count - 1 & idaction == 1] <- -right.reward})
+
+a1middle <- data.frame(idstatefrom = seq(0,state.count-1), idaction = 1,
+                       idstateto = seq(0,state.count-1), reward = 0)
+
+a1right <- data.frame(idstatefrom = seq(0,state.count-1), idaction = 1,
+                      idstateto = pmin(seq(1,state.count), state.count - 1),
+                      probability = probabilities.true[3], reward = 0)
+a1right <- within(a1right, {
+  reward[idstatefrom == state.count - 1 & idaction == 1] <- right.reward})
+
+mdp.truth <- rbind(a0left %>% mutate(probability = 1.0), 
+                   a1left %>% mutate(probability = probabilities.true[1]), 
+                   a1middle %>% mutate(probability = probabilities.true[2]) , 
+                   a1right %>% mutate(probability = probabilities.true[3]))
+
 ## ----- Initialization ------
 
-mdp.truth <- 
-  read_csv(description, col_types = 
-             cols(idstatefrom = 'i',idaction = 'i', idstateto = 'i',
-                  probability = 'd', reward = 'd'))
 rewards.truth <- mdp.truth %>% select(-probability)
 
 # construct a biased policy to prefer going right
 # this is to ensure that the "goal" state is sampled
-ur.policy = data.frame(idstate = c(seq(0,5), seq(0,5)), 
-                     idaction = c(rep(0,6), rep(1,6)),
-                     probability = c(rep(0.2, 6), rep(0.8, 6)))
+ur.policy = 
+  data.frame(idstate = rep(seq(0,state.count-1), 2), 
+             idaction = c(rep(0,state.count), rep(1,state.count)),
+             probability = c(rep(0.2, state.count), rep(0.8, state.count)))
 
 # compute the true value function
 sol.true <- solve_mdp(mdp.truth, discount, show_progress = FALSE)
@@ -74,61 +103,42 @@ mdpo_bayes <- function(simulation, rewards.df, outcomes){
     coda.samples(jags, c('beta'), bayes.samples, thin = 4, progress.bar = "none")
   raw_samples <- do.call(rbind, lapply(1:4, function(i) {as.matrix(post_samples[[i]])}))
   
-  # ** subsample transitions for each case
-  # left
-  beta1 <- 
-    rewards.df %>% filter((idstatefrom > idstateto) | 
-                            (idstatefrom == 0 & idstateto == 0)) %>%
-                  filter(idaction == 1)
-  # stay
-  beta2 <- 
-    rewards.df %>% filter(idstatefrom == idstateto & idaction == 1)
-  #right
-  beta3 <- 
-    rewards.df %>% filter((idstatefrom < idstateto) | 
-                            (idstatefrom == 5 & idstateto == 5)) %>%
-      filter(idaction == 1)
-  # the back action
-  left <- rewards.df %>% filter(idaction == 0)
-  
   gen.beta.mdp <- function(beta, idoutcome.n){
     # make sure that idstatefrom, idaction, idstateto are unique
-    rbind(beta1 %>% mutate(probability = beta[1], reward = reward),
-          beta2 %>% mutate(probability = beta[2], reward = reward),
-          beta3 %>% mutate(probability = beta[3], reward = reward),
-          left %>% mutate(probability = 1)) %>%
+    rbind(a1left %>% mutate(probability = beta[1], reward = reward),
+          a1middle %>% mutate(probability = beta[2], reward = reward),
+          a1right %>% mutate(probability = beta[3], reward = reward),
+          a0left %>% mutate(probability = 1)) %>%
       group_by(idstatefrom, idaction, idstateto) %>%
       summarize(reward = sum(probability * reward) / sum(probability),
                 probability = sum(probability)) %>%
       mutate(idoutcome = idoutcome.n)
   }
   
-  trans.prob <- 
-    lapply(1:nrow(raw_samples), function(i){
-      gen.beta.mdp(raw_samples[i,], i - 1)})
-    
-  mdpo <- bind_rows(trans.prob) %>%
-    na.fail()
+  trans.prob <- lapply(1:nrow(raw_samples), function(i){
+    gen.beta.mdp(raw_samples[i,], i - 1)})
+  
+  mdpo <- bind_rows(trans.prob) %>% na.fail()
   
   return(mdpo)
 }
 
 mdp.bayesian <- mdpo_bayes(simulation, rewards.truth, bayes.samples)
 
-#' Evaluate the policy with respect to all possible 
-#' Bayesian outcomes. 
+#' Evaluate the policy with respect Bayesian outcomes. 
 #' 
 #' Returns the return values.
 #' 
 #' @param mdp.bayesion MDPO with outcomes
 #' @param policy Deterministic policy to be evaluated
 bayes.returns <- function(mdp.bayesian, policy, maxcount = 100){
-  sapply(unique(mdp.bayesian$idoutcome[1:maxcount]),
+  outcomes.unique <- unique(mdp.bayesian$idoutcome)[1:maxcount]
+  maxcount <- min(maxcount, nrow(outcomes.unique))
+  sapply(outcomes.unique,
          function(outcome){
            sol <- mdp.bayesian %>% filter(idoutcome == outcome) %>% 
              solve_mdp(discount, policy_fixed = policy, 
-                       show_progress = FALSE, 
-                       algorithm = "pi")          
+                       show_progress = FALSE, algorithm = "pi")          
            sol$valuefunction$value %*% init.dist
          })
 }
@@ -152,10 +162,11 @@ report_solution <- function(name, mdp.bayesian, solution){
                       show_progress = FALSE)
   cat(", true:", sol.tr$valuefunction$value %*% init.dist, "\n")
   posterior.returns <- bayes.returns(mdp.bayesian, solution$policy)
+  dst <- rep(1/length(posterior.returns), length(posterior.returns))
   cat("    Posterior mean:", mean(posterior.returns), ", v@r:", 
       quantile(posterior.returns, 1-confidence), ", av@r:", 
-      mean(posterior.returns[posterior.returns < 
-                          quantile(posterior.returns, 1-confidence)]), "\n")
+      avar(posterior.returns, dst, 1-confidence)$value)
+  cat("\n")
 }
 
 ## ---- Solve Empirical MDP ---------
@@ -194,12 +205,23 @@ rmdp.frequentist <- function(simulation, rewards.df){
     summarize(tran_count = n())
   
   budgets <- full_join(sa_counts, tran.count, by = c('idstatefrom','idaction')) %>% 
-    mutate(budget = pmin(2,sqrt(1/count * log(sa.count * 2^tran_count / confidence)))) %>%
-    rename(idstate = idstatefrom) %>% select(-count) 
+    mutate(budget = coalesce( 
+             pmin(2.0,sqrt(1/count * log(sa.count * 2^tran_count / confidence))),
+             2.0)) %>%
+    rename(idstate = idstatefrom) %>% select(-count) %>% na.fail()
   
+  # add transtions to states that have not been observed, and normalize
+  # them in order to get some kind of a transition probability
   mdp.nominal <- full_join(mdp.nominal %>% select(-reward), rewards.df, 
                            by = c('idstatefrom', 'idaction', 'idstateto')) %>% 
-    tidyr::replace_na(list(probability = 0))
+    mutate(probability = coalesce(probability, 1.0))
+  # normalize transition probabilities
+  mdp.nominal <-
+    full_join(mdp.nominal %>% group_by(idstatefrom, idaction) %>%
+                summarize(prob.sum = sum(probability)),
+              mdp.nominal, by=c('idstatefrom', 'idaction')) %>%
+      mutate(probability = probability / prob.sum) %>% select(-prob.sum) %>% na.fail()
+                        
   return (list(mdp.nominal = mdp.nominal, budgets = budgets))
 }
 
@@ -314,6 +336,7 @@ sol.norbu <- rsolve_mdpo_sa(mdp.bayesian, discount, "eavaru",
 report_solution("NORBU", mdp.bayesian, sol.norbu)
 
 # to see why this is wrong, try running it with a confidence 0.1 or something small
+# also it seems to fail on some other simple examples too
 sol.norbu.w <- rsolve_mdpo_sa(mdp.bayesian, discount, "evaru", 
                             list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
 report_solution("NORBU(wrong)", mdp.bayesian, sol.norbu.w)

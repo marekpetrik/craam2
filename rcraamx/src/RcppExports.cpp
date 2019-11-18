@@ -7,15 +7,28 @@
 using namespace Rcpp;
 
 // worstcase_l1
-Rcpp::List worstcase_l1(Rcpp::NumericVector z, Rcpp::NumericVector q, double t);
-RcppExport SEXP _rcraam_worstcase_l1(SEXP zSEXP, SEXP qSEXP, SEXP tSEXP) {
+Rcpp::List worstcase_l1(Rcpp::NumericVector value, Rcpp::NumericVector reference_dst, double budget);
+RcppExport SEXP _rcraam_worstcase_l1(SEXP valueSEXP, SEXP reference_dstSEXP, SEXP budgetSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type z(zSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type q(qSEXP);
-    Rcpp::traits::input_parameter< double >::type t(tSEXP);
-    rcpp_result_gen = Rcpp::wrap(worstcase_l1(z, q, t));
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type value(valueSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type reference_dst(reference_dstSEXP);
+    Rcpp::traits::input_parameter< double >::type budget(budgetSEXP);
+    rcpp_result_gen = Rcpp::wrap(worstcase_l1(value, reference_dst, budget));
+    return rcpp_result_gen;
+END_RCPP
+}
+// avar
+Rcpp::List avar(Rcpp::NumericVector value, Rcpp::NumericVector reference_dst, double alpha);
+RcppExport SEXP _rcraam_avar(SEXP valueSEXP, SEXP reference_dstSEXP, SEXP alphaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type value(valueSEXP);
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type reference_dst(reference_dstSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    rcpp_result_gen = Rcpp::wrap(avar(value, reference_dst, alpha));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -228,6 +241,7 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_rcraam_worstcase_l1", (DL_FUNC) &_rcraam_worstcase_l1, 3},
+    {"_rcraam_avar", (DL_FUNC) &_rcraam_avar, 3},
     {"_rcraam_pack_actions", (DL_FUNC) &_rcraam_pack_actions, 1},
     {"_rcraam_solve_mdp", (DL_FUNC) &_rcraam_solve_mdp, 10},
     {"_rcraam_solve_mdp_rand", (DL_FUNC) &_rcraam_solve_mdp_rand, 9},
