@@ -22,7 +22,7 @@ num.states <- 50
 discount <- 0.8
 
 mdp.df <-  data.frame(matrix(ncol = 5, nrow = 0))
-for (i in seq(1:(num.states-1))){
+for (i in seq(0,(num.states-2))){
   idstatefrom <- i
   idstateto  <- i+1
   
@@ -43,8 +43,8 @@ for (i in seq(1:(num.states-1))){
 }
 
 # add a row for final state 
-  idstatefrom <- num.states
-  idstateto  <- num.states
+  idstatefrom <- num.states - 1
+  idstateto  <- num.states - 1
   probability <- 1
   # add a row for repair final state
   idaction <- 0
@@ -65,7 +65,7 @@ write.csv(mdp.df,"machine_replacement_mdp.csv", row.names = FALSE)
 ```
 
 # MDP with Dirichlet Prior on Transition
-The following scripts genereate an instance of machine replacement problem MDP with 10 states, 2 actions, a discount factor of 0.8. Find the graph in Figure 3. (Percentile Optimization for Markov Decision Processes with Parameter Uncertainty. Erick Delage, Shie Mannor). States 1 to 8 describe the normal aging machine, while states R1 (id=10) and R2 (id=9) repesent two possible stages of repairs: R1 for normal repairs on machine costing 2, and R2 for harder one with a harder one with a cost of 10.  Letting the machine reach the age of 8 is penalized with a cost of 20. 
+The following scripts genereate an instance of machine replacement problem MDP with 10 states, 2 actions, a discount factor of 0.8. Find the graph in Figure 3. (Percentile Optimization for Markov Decision Processes with Parameter Uncertainty. Erick Delage, Shie Mannor). States 0 to 7 describe the normal aging machine, while states R1 (id=9) and R2 (id=8) repesent two possible stages of repairs: R1 for normal repairs on machine costing 2, and R2 for harder one with a harder one with a cost of 10.  Letting the machine reach the age of 8 is penalized with a cost of 20. 
 
 ```{r}
 num.actions <- 2  # actions: 0 = repair, 1 = not repair
@@ -74,7 +74,7 @@ discount <- 0.8
 
 mdp.df <-  data.frame(matrix(ncol = 5, nrow = 0))
 
-for (i in seq(1:7)){
+for (i in seq(0,6)){
   # rows idstatefrom,idaction,idstateto,probability,reward
   # action 0 = do nothin 
   mdp.df <- rbind(mdp.df, c(i,0,i,0.2,0))
@@ -82,35 +82,56 @@ for (i in seq(1:7)){
   # action 1 = repair  
   mdp.df <- rbind(mdp.df, c(i,1,i+1,0.3,0))
   # R1 - cost 2
-  mdp.df <- rbind(mdp.df, c(i,1,10,0.6,-2))
+  mdp.df <- rbind(mdp.df, c(i,1,9,0.6,-2))
   # R2 - cost 10
-  mdp.df <- rbind(mdp.df, c(i,1,9,0.1,-10))
+  mdp.df <- rbind(mdp.df, c(i,1,8,0.1,-10))
 }
 
 colnames(mdp.df) <- c("idstatefrom","idaction","idstateto","probability","reward")
 
 # State 8
-mdp.df <- rbind(mdp.df, c(8,0,8,1,-20))
-mdp.df <- rbind(mdp.df, c(8,1,8,0.3,-20))
-mdp.df <- rbind(mdp.df, c(8,1,10,0.6,-2))
-mdp.df <- rbind(mdp.df, c(8,1,9,0.1,-10))
+mdp.df <- rbind(mdp.df, c(7,0,7,1,-20))
+mdp.df <- rbind(mdp.df, c(7,1,7,0.3,-20))
+mdp.df <- rbind(mdp.df, c(7,1,9,0.6,-2))
+mdp.df <- rbind(mdp.df, c(7,1,8,0.1,-10))
 
 # Reachin 8 cost 20
-mdp.df$reward[mdp.df$idstateto == 8] <- -20
-
-#state R1 
-mdp.df <- rbind(mdp.df, c(10,0,10,0.2,-2))
-mdp.df <- rbind(mdp.df, c(10,0,1,0.8,0))
-mdp.df <- rbind(mdp.df, c(10,1,10,1,-2))
+mdp.df$reward[mdp.df$idstateto == 7] <- -20
 
 
 #S tate R2
-mdp.df <- rbind(mdp.df, c(9,0,9,1,-10))
-mdp.df <- rbind(mdp.df, c(9,1,10,0.6,-2))
-mdp.df <- rbind(mdp.df, c(9,1,9,0.4,-10))
+mdp.df <- rbind(mdp.df, c(8,0,8,1,-10))
+mdp.df <- rbind(mdp.df, c(8,1,9,0.6,-2))
+mdp.df <- rbind(mdp.df, c(8,1,8,0.4,-10))
+
+#state R1 
+mdp.df <- rbind(mdp.df, c(9,0,9,0.2,-2))
+mdp.df <- rbind(mdp.df, c(9,0,0,0.8,0))
+mdp.df <- rbind(mdp.df, c(9,1,9,1,-2))
 
 
 print(mdp.df)
 write.csv(mdp.df,"machine_replacement_mdp.csv", row.names = FALSE)
+```
+# Solve the MDP
+
+```{r}
+library(rcraam)
+library(dplyr)
+library(readr)
+
+discount <- 0.8
+
+
+mdp <- read_csv("machine_replacement_mdp.csv", 
+                col_types = cols(idstatefrom = 'i',
+                                 idaction = 'i',
+                                 idstateto = 'i',
+                                 probability = 'd',
+                                 reward = 'd'))
+sol <- solve_mdp(mdp, discount)
+
+print(sol)
+
 ```
 
