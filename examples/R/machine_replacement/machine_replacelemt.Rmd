@@ -134,4 +134,3 @@ sol <- solve_mdp(mdp, discount)
 print(sol)
 
 ```
-

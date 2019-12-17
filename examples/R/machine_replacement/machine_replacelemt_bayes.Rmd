@@ -1,0 +1,134 @@
+---
+title: "machine_replacement"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##  Parameters
+
+```{r}
+library(rcraam)
+library(dplyr)
+library(readr)
+library(gtools)
+library(reshape2)
+loadNamespace("tidyr")
+loadNamespace("reshape2")
+loadNamespace("stringr")
+
+
+description <- "machine_replacement_mdp.csv"
+
+discount <- 0.9
+confidence <- 0.6
+bayes.samples <- 500
+
+samples <- 10000
+sample.seed <- 2011
+episodes <- 1
+```
+
+## Initialization 
+
+```{r}
+
+mdp.truth <- read_csv(description, 
+                      col_types = cols(idstatefrom = 'i',
+                                       idaction = 'i',
+                                       idstateto = 'i',
+                                       probability = 'd',
+                                       reward = 'd'))
+rewards.truth <- mdp.truth %>% select(-probability)
+```
+
+
+Construct a biased policy to prefer going right this is to ensure that the "goal" state is sampled
+
+```{r}
+
+max.stateid <- max(mdp.truth$idstatefrom, na.rm = TRUE)
+num.state <- max.stateid + 1
+init.dist <- rep(1/num.state,num.state)
+
+
+# construct a biased policy to prefer to not-repair 
+# this is to ensure that the "latest" state is sampled
+
+ur.policy = data.frame(idstate = c(seq(0,max.stateid), seq(0,max.stateid)),
+                     idaction = c(rep(0,num.state), rep(1,num.state)),
+                     probability = c(rep(0.2, num.state), rep(0.8, num.state)))
+
+# compute the true value function
+sol.true <- solve_mdp(mdp.truth, discount, show_progress = FALSE)
+vf.true <- sol.true$valuefunction$value
+cat("True optimal return", vf.true %*% init.dist, "policy:", sol.true$policy$idaction, "\n\n")
+
+```
+
+## Generate Samples 
+Generate samples from the machine replacement domain.
+```{r}
+
+simulation <- simulate_mdp(mdp.truth, 0, ur.policy, episodes = episodes, 
+                           horizon = samples, seed = sample.seed)
+```
+
+##  Uninformative Bayesian Posterior Sampling 
+
+
+```{r}
+#' Generate a sample MDP from dirichlet distribution
+#' @param simulation Simulation results
+#' @param rewards.df Rewards for each idstatefrom, idaction, idstateto
+#' @param outcomes Number of outcomes to generate
+mdpo_bayes <- function(simulation, rewards.df, outcomes){
+  # prior contains a set of s_a_s' that accured in true mdp 
+  priors <- rewards.df %>% select(-reward) %>% unique() 
+  
+  # compute sampled state and action counts
+  # add a uniform sample of each state and action to work as the dirichlet prior
+  sas_post_counts <- simulation %>% 
+    select(idstatefrom, idaction, idstateto) %>%
+    rbind(priors) %>%
+    group_by(idstatefrom, idaction, idstateto) %>% 
+    summarize(count = n()) 
+  
+  
+  # construct dirichlet posteriors
+  posteriors <- sas_post_counts %>% 
+    group_by(idstatefrom, idaction) %>% 
+    arrange(idstateto) %>% 
+    summarize(posterior = list(count), idstatesto = list(idstateto)) 
+
+  
+  # draw a dirichlet sample
+  trans.prob <- 
+    mapply(function(idstatefrom, idaction, posterior, idstatesto){
+      samples <- do.call(function(x) {rdirichlet(outcomes,x)}, list(posterior) )
+      # make sure that the dimensions are named correctly
+      dimnames(samples) <- list(seq(0, outcomes-1), idstatesto)
+      reshape2::melt(samples, varnames=c('idoutcome', 'idstateto'), 
+                     value.name = "probability" ) %>%
+        mutate(idstatefrom = idstatefrom, idaction = idaction)
+    },
+    posteriors$idstatefrom,
+    posteriors$idaction,
+    posteriors$posterior,
+    posteriors$idstatesto,
+    SIMPLIFY = FALSE)
+  
+  
+  mdpo <- bind_rows(trans.prob) %>% 
+    full_join(rewards.df, 
+              by = c('idstatefrom', 'idaction','idstateto')) %>%
+    na.fail()
+  return(mdpo)
+}
+
+mdp.bayesian <- mdpo_bayes(simulation, rewards.truth, bayes.samples)
+```
+
+
