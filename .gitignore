@@ -18,3 +18,4 @@ build
 dist
 /python/craam/__pycache__
 *.so
+*.o
