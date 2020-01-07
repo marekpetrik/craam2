@@ -340,7 +340,28 @@ report_solution("Global BCR", mdp.bayesian, sol.gbcr)
 ```
 
 
+## RSVF-like (simplified) 
 
+```{r}
+sa.count <- nrow( unique(rewards.truth %>% select(idstatefrom, idaction)))
+confidence.rect <- (1-confidence)/sa.count
+sol.rsvf <- rsolve_mdpo_sa(mdp.bayesian, discount, "evaru", 
+                            list(alpha = confidence.rect, beta = 1.0), show_progress = FALSE)
+report_solution("RSVF", mdp.bayesian, sol.rsvf)
+```
+
+## NORBU 
+```{r}
+sol.norbu <- rsolve_mdpo_sa(mdp.bayesian, discount, "eavaru", 
+               list(alpha = 1-confidence, beta = 0.9), show_progress = FALSE)
+report_solution("NORBU: ", mdp.bayesian, sol.norbu)
+
+# to see why this is wrong, try running it with a confidence 0.1 or something small
+sol.norbu.w <- rsolve_mdpo_sa(mdp.bayesian, discount, "evaru", 
+                            list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
+report_solution("NORBU(maybe?): ", mdp.bayesian, sol.norbu.w)
+
+```
 
 
 
