@@ -11,21 +11,20 @@ loadNamespace("stringr")
 
 # a consistent version of riverswim
 # true betas = c(0.1,0.6,0.3)
-description <- "riverswim3_mdp.csv"
 
-confidence <- 0.8
+confidence <- 0.9
 bayes.samples <- 500
 
-samples <- 20
-sample.seed <- 1984
+samples <- 15
+sample.seed <- 1994
 episodes <- 1
 
 discount <- 0.95
-state.count <- 30
+state.count <- 20
 init.dist <- rep(1/state.count, state.count)
 left.reward <- 5
-right.reward <- 500000
-probabilities.true <- c(0.34, 0.3, 0.36)
+right.reward <- 1000000
+probabilities.true <- c(0.3, 0.3, 0.4)
 
 ## ------ Construct MDP ------
 
@@ -76,9 +75,9 @@ cat("True optimal return", vf.true %*% init.dist, "policy:", sol.true$policy$ida
 simulation <- simulate_mdp(mdp.truth, 0, ur.policy, episodes = episodes, 
                            horizon = samples, seed = sample.seed)
 
-## ----- Fit JAGS Model ----------------
+## ----- Fit a JAGS Model ----------------
 
-#' Generate a sample MDP from dirichlet distribution
+#' Generate a sampled MDPO from dirichlet distribution
 #' @param simulation Simulation results
 #' @param rewards.df Rewards for each idstatefrom, idaction, idstateto
 #' @param outcomes Number of outcomes to generate
@@ -103,6 +102,7 @@ mdpo_bayes <- function(simulation, rewards.df, outcomes){
     coda.samples(jags, c('beta'), bayes.samples, thin = 4, progress.bar = "none")
   raw_samples <- do.call(rbind, lapply(1:4, function(i) {as.matrix(post_samples[[i]])}))
   
+  # generates a distribution
   gen.beta.mdp <- function(beta, idoutcome.n){
     # make sure that idstatefrom, idaction, idstateto are unique
     rbind(a1left %>% mutate(probability = beta[1], reward = reward),
@@ -128,11 +128,10 @@ mdp.bayesian <- mdpo_bayes(simulation, rewards.truth, bayes.samples)
 #' Evaluate the policy with respect Bayesian outcomes. 
 #' 
 #' Returns the return values.
-#' 
 #' @param mdp.bayesion MDPO with outcomes
 #' @param policy Deterministic policy to be evaluated
 bayes.returns <- function(mdp.bayesian, policy, maxcount = 100){
-  outcomes.unique <- unique(mdp.bayesian$idoutcome)[1:maxcount]
+  outcomes.unique <- unique(mdp.bayesian$idoutcome)
   maxcount <- min(maxcount, nrow(outcomes.unique))
   sapply(outcomes.unique,
          function(outcome){
@@ -147,7 +146,6 @@ bayes.returns <- function(mdp.bayesian, policy, maxcount = 100){
 #' 
 #' It also prints its guarantees, solution quality and 
 #' posterior expectation of how well it is likely to work
-#' 
 #' @param name Name of the algorithm that produced the results
 #' @param mdp.bayesian MDP with outcomes representing bayesian samples
 #' @param solution Output from the algorithm's solution
@@ -339,5 +337,5 @@ report_solution("NORBU", mdp.bayesian, sol.norbu)
 # also it seems to fail on some other simple examples too
 sol.norbu.w <- rsolve_mdpo_sa(mdp.bayesian, discount, "evaru", 
                             list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
-report_solution("NORBU(wrong)", mdp.bayesian, sol.norbu.w)
+report_solution("NORBU(var)", mdp.bayesian, sol.norbu.w)
 

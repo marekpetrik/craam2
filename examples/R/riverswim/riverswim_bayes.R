@@ -9,7 +9,7 @@ loadNamespace("stringr")
 
 ## ----- Parameters --------
 
-description <- "riverswim2_mdp.csv"
+description <- "riverswim_mdp.csv"
 
 init.dist <- rep(1/6,6)
 discount <- 0.9

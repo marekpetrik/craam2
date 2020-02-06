@@ -298,12 +298,15 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
                      bool output_tran = false, bool show_progress = true) {
 
     if (policy_fixed.isNotNull() && pack_actions) {
-        Rcpp::warning("Proving a policy and packing actions is a bad idea. When the "
-                      "actions are re-indexed, the provided policy may become invalid.");
+        Rcpp::warning(
+            "Providing a policy_fixed and packing actions is a bad idea. When the "
+            "actions are re-indexed, the provided policy may become invalid.");
     }
 
     // parse MDP from the dataframe
     MDP m = mdp_from_dataframe(mdp);
+
+    if (mdp.size() == 0) return Rcpp::List();
 
     // Construct the output (to get the output from pack actions)
     Rcpp::List result;

@@ -408,8 +408,9 @@ enum class MDPSolver { pi, mpi };
  * @param residual Target Bellman residual (when to stop)
  * @param rob_residual_init Initial target residual for solving the robust problem
  * @param rob_residual_rate Multiplicative coefficient that controls the
- * decrese in the target rate. It needs to be smaller than the discount factor.
- * @param mdp_solver What method to use to solve the MDP internally
+ * decrease in the target rate. It needs to be smaller than the discount factor. When nan,
+ * then it is set to be the discount factor squared, but at most 0.99.
+ * @param mdp_solver What method to use to solve the policy evaluation MDP
  * @param progress A method that handles reporting the progress and interrupting
  *                  the computation
  *
@@ -419,12 +420,18 @@ template <class ResponseType>
 inline Solution<typename ResponseType::policy_type>
 rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
      unsigned long iterations_pi = MAXITER, prec_t maxresidual = SOLPREC,
-     const prec_t rob_residual_init = 1.0, const prec_t rob_residual_rate = 0.5,
+     const prec_t rob_residual_init = 1.0, prec_t rob_residual_rate = std::nan(""),
      MDPSolver mdp_solver = MDPSolver::pi,
      const std::function<bool(size_t, prec_t)>& progress = internal::empty_progress) {
 
     using policy_type = typename ResponseType::policy_type;
     using dec_policy_type = typename ResponseType::dec_policy_type;
+
+    // update the residual rate
+    if (isnan(rob_residual_rate)) { rob_residual_rate = min(pow(discount, 2), 0.99); }
+
+    if (rob_residual_rate < 0 || rob_residual_rate >= 1)
+        throw invalid_argument("Parameter rob_residual_rate must be in [0,1).");
 
     // just quit if there are no states
     if (response.state_count() == 0) { return Solution<policy_type>(0, 0); }
@@ -545,6 +552,10 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
 
         // check whether there is a reason to interrupt
         if (!progress(iterations, residual_pi)) break;
+
+        // update the target residual
+        target_residual *= rob_residual_rate;
+
         ++iterations;
     } while (residual_pi > maxresidual && iterations <= iterations_pi);
 
