@@ -26,8 +26,8 @@ loadNamespace("stringr")
 # MDP - 1  (2 state 2 actions)
 
 ```{r}
-create_small_mdp <- function(num.actions = 3, 
-                             num.states = 2, 
+create_small_mdp <- function(num.states = 2, 
+                             num.actions = 3, 
                              discount = 0.8,
                              reward.range = c(-10 , 10), 
                              mdp_csv_filename = "simple_mdp_1.csv"
