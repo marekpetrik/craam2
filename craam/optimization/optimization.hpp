@@ -25,6 +25,7 @@
 #include "craam/definitions.hpp"
 
 #include <algorithm>
+#include <deque>
 #include <numeric>
 #include <tuple>
 // if available, use gurobi
@@ -393,55 +394,66 @@ std::pair<numvec, prec_t> inline worstcase_l1_w(const GradientsL1_w& gradients,
     assert(*min_element(pbar.cbegin(), pbar.cend()) >= 0);
     assert(std::abs(accumulate(pbar.cbegin(), pbar.cend(), 0.0) - 1.0) < 1e-6);
 
-    const prec_t epsilon = 1e-10;
+    constexpr prec_t epsilon = 1e-10;
 
     // the working value of the new probability distribution
     numvec p = pbar;
     // remaining value of xi that needs to be allocated
     prec_t xi_rest = xi;
 
+    // keep a queue of the last few gradients in order to
+    // minimize numerical issues due to ties and near-ties
+    // which can cause nasty inversions in the order in which the bases should be
+    // processed
+    // this is the working set of gradients
+    std::deque<std::tuple<prec_t, size_t, size_t, bool>> grad_que;
+    constexpr prec_t grad_epsilon = 3 * epsilon;
+
     for (size_t k = 0; k < gradients.size(); k++) {
-// edge index
+
+        // push the steepest solution to the queue
+        grad_que.push_back(gradients.steepest_solution(k));
+
+        // check if the span of the gradients in the que if greater than and grad_epsilon
+        // and keep popping from the head (while there are at least two elements)
+        while (grad_que.size() > 1 && std::get<0>(grad_que.front()) <
+                                          std::get<0>(grad_que.back()) - grad_epsilon)
+            grad_que.pop_front();
+
+        // examine the feasibility all gradients and apply them if needed
+        for (size_t l = 0; l < grad_que.size(); l++) {
 #ifdef __cpp_structured_bindings
-        auto [ignore, donor, receiver, donor_greater] = gradients.steepest_solution(k);
+            // edge index
+            auto [ignore, donor, receiver, donor_greater] = grad_que[l];
 #else
-        size_t donor, receiver;
-        bool donor_greater;
-        tie(std::ignore, donor, receiver, donor_greater) = gradients.steepest_solution(k);
+            size_t donor, receiver;
+            bool donor_greater;
+            tie(std::ignore, donor, receiver, donor_greater) = grad_que[l];
 #endif
 
-        // this basic solution is not applicable here, just skip it
-        if (donor_greater && p[donor] <= pbar[donor] + epsilon) continue;
+            // Type C2 basis is not feasible; skip it
+            if (donor_greater && p[donor] <= pbar[donor] + epsilon) continue;
 
-        // No obvious reason how this could happen, but lets just make sure to flag it
-        // if this happens because of ties, see the hack above
-        if (!donor_greater && p[donor] > pbar[donor] + epsilon) {
-            std::cerr << "internal program error (numerical issues? continuing anyway), "
-                         "unexpected value of p, donor = " +
-                             std::to_string(donor) + "\n z = " + to_string(z) +
-                             "\n pbar = " + to_string(pbar) + "\n w = " + to_string(w) +
-                             "\n p = " + to_string(p) + "\n xi = " + std::to_string(xi) +
-                             "\n xi_rest = " + std::to_string(xi_rest) +
-                             "\n gradients = " + gradients.to_string() + "\n"
-                      << std::endl;
-            continue;
+            // Type C1 basis is not feasible; skip it
+            if (!donor_greater && p[donor] > pbar[donor] + epsilon) continue;
+
+            // make sure that the donor can give
+            if (p[donor] < epsilon) continue;
+
+            prec_t weight_change =
+                donor_greater ? (-w[donor] + w[receiver]) : (w[donor] + w[receiver]);
+            assert(weight_change > 0);
+
+            prec_t donor_step = std::min(
+                xi_rest / weight_change,
+                (p[donor] > pbar[donor] + epsilon) ? (p[donor] - pbar[donor]) : p[donor]);
+            p[donor] -= donor_step;
+            p[receiver] += donor_step;
+            xi_rest -= donor_step * weight_change;
+
+            // stop if there is nothing left
+            if (xi_rest < epsilon) break;
         }
-
-        // make sure that the donor can give
-        if (p[donor] < epsilon) continue;
-
-        prec_t weight_change =
-            donor_greater ? (-w[donor] + w[receiver]) : (w[donor] + w[receiver]);
-        assert(weight_change > 0);
-
-        prec_t donor_step = std::min(
-            xi_rest / weight_change,
-            (p[donor] > pbar[donor] + epsilon) ? (p[donor] - pbar[donor]) : p[donor]);
-        p[donor] -= donor_step;
-        p[receiver] += donor_step;
-        xi_rest -= donor_step * weight_change;
-
-        // stop if there is nothing left
         if (xi_rest < epsilon) break;
     }
 
@@ -487,7 +499,7 @@ std::pair<numvec, numvec> inline worstcase_l1_w_knots(const GradientsL1_w& gradi
                                                       const numvec& z, const numvec& pbar,
                                                       const numvec& w) {
 
-    const prec_t epsilon = 1e-10;
+    constexpr prec_t epsilon = 1e-10;
 
     // the working value of the new probability distribution
     numvec p = pbar;
@@ -500,45 +512,57 @@ std::pair<numvec, numvec> inline worstcase_l1_w_knots(const GradientsL1_w& gradi
     knots.push_back(inner_product(pbar.cbegin(), pbar.cend(), z.cbegin(), 0.0)); // u
     values.push_back(0.0); // || ||_{1,w}
 
+    // keep a queue of the last few gradients in order to
+    // minimize numerical issues due to ties and near-ties
+    // which can cause nasty inversions in the order in which the bases should be
+    // processed
+    // this is the working set of gradients
+    std::deque<std::tuple<prec_t, size_t, size_t, bool>> grad_que;
+    constexpr prec_t grad_epsilon = 3 * epsilon;
+
     // trace the value of the norm and update the norm difference as well as the
     // value of the return (u)
     for (size_t k = 0; k < gradients.size(); k++) {
 
+        // push the steepest solution to the queue
+        grad_que.push_back(gradients.steepest_solution(k));
+
+        // check if the span of the gradients in the que if greater than and grad_epsilon
+        // and keep popping from the head (while there are at least two elements)
+        while (grad_que.size() > 1 && std::get<0>(grad_que.front()) <
+                                          std::get<0>(grad_que.back()) - grad_epsilon)
+            grad_que.pop_front();
+
+        // examine the feasibility all gradients and apply them if needed
+        for (size_t l = 0; l < grad_que.size(); l++) {
 #ifdef __cpp_structured_bindings
-        auto [ignore, donor, receiver, donor_greater] = gradients.steepest_solution(k);
+            // edge index
+            auto [ignore, donor, receiver, donor_greater] = grad_que[l];
 #else
-        size_t donor, receiver;
-        bool donor_greater;
-        tie(std::ignore, donor, receiver, donor_greater) = gradients.steepest_solution(k);
+            size_t donor, receiver;
+            bool donor_greater;
+            tie(std::ignore, donor, receiver, donor_greater) = grad_que[l];
 #endif
+            // Type C2 basis is not feasible here, just skip it
+            if (donor_greater && p[donor] <= pbar[donor] + epsilon) continue;
 
-        // this basic solution is not applicable here, just skip it
-        if (donor_greater && p[donor] <= pbar[donor] + epsilon) continue;
+            // Type C1 basis is not feasible here, just skip it
+            if (!donor_greater && p[donor] > pbar[donor] + epsilon) continue;
 
-        // No obvious reason how this could happen, but lets just make sure to flag it
-        // if this happens because of ties, see the hack above
-        if (!donor_greater && p[donor] > pbar[donor] + epsilon) {
-            std::cerr << "internal program error (numerical issues? continuing anyway), "
-                         "unexpected value of p, donor = " +
-                             std::to_string(donor) + "\n z = " + to_string(z) +
-                             "\n pbar = " + to_string(pbar) + "\n w = " + to_string(w) +
-                             "\n gradients = " + gradients.to_string() + "\n"
-                      << std::endl;
-            continue;
+            // make sure that the donor can give
+            if (p[donor] < epsilon) continue;
+
+            prec_t weight_change =
+                donor_greater ? (-w[donor] + w[receiver]) : (w[donor] + w[receiver]);
+            assert(weight_change > 0);
+
+            prec_t donor_step = donor_greater ? (p[donor] - pbar[donor]) : p[donor];
+            p[donor] -= donor_step;
+            p[receiver] += donor_step;
+
+            knots.push_back(knots.back() + donor_step * (z[receiver] - z[donor]));
+            values.push_back(values.back() + donor_step * weight_change);
         }
-        // make sure that the donor can give
-        if (p[donor] < epsilon) continue;
-
-        prec_t weight_change =
-            donor_greater ? (-w[donor] + w[receiver]) : (w[donor] + w[receiver]);
-        assert(weight_change > 0);
-
-        prec_t donor_step = donor_greater ? (p[donor] - pbar[donor]) : p[donor];
-        p[donor] -= donor_step;
-        p[receiver] += donor_step;
-
-        knots.push_back(knots.back() + donor_step * (z[receiver] - z[donor]));
-        values.push_back(values.back() + donor_step * weight_change);
     }
 
     return make_pair(move(knots), move(values));

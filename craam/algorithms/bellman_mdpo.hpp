@@ -50,7 +50,7 @@ class SARobustOutcomeBellman {
 public:
     /// the policy of the decision maker
     using dec_policy_type = long;
-    /// the policy of nature
+    /// the policy of nature: distribution over outcomes
     using nat_policy_type = numvec;
     /// action of the decision maker AND distribution of nature
     using policy_type = pair<typename SARobustOutcomeBellman::dec_policy_type,

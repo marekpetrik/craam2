@@ -35,7 +35,7 @@ endif()
 
 # **** Find packages ****
 find_package(OpenMP)
-find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+#find_package (Eigen3 3.3 REQUIRED NO_MODULE) # this is now included
 find_package(Boost COMPONENTS unit_test_framework ) 
 find_package(Doxygen)
 if(${Boost_FOUND} LESS 1)
@@ -171,7 +171,7 @@ set (BENCH ${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp)
 if (BUILD_TESTS)
     add_executable (unit_tests ${TSTS} ${SRCS} )
     target_link_libraries(unit_tests ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
-    target_link_libraries (unit_tests Eigen3::Eigen)
+    #target_link_libraries (unit_tests Eigen3::Eigen)
     if(GUROBI_USE)
         target_link_libraries(unit_tests ${GUROBI_CXX_LIBRARY_1})
         target_link_libraries(unit_tests ${GUROBI_CXX_LIBRARY_2})
