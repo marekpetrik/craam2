@@ -7,10 +7,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED)
 
 include_directories(../
                     ../include
-                    ~/R/x86_64-pc-linux-gnu-library/3.5/Rcpp/include/
+                    ~/R/x86_64-pc-linux-gnu-library/3.6/Rcpp/include/
                     /usr/include/R/)
 
-find_path(RCPP "Rcpp.h" PATHS "~/R/x86_64-pc-linux-gnu-library/3.5/Rcpp/include/")
+find_path(RCPP "Rcpp.h" PATHS "~/R/x86_64-pc-linux-gnu-library/3.6/Rcpp/include/")
 
 
 add_executable(${PROJECT_NAME}

@@ -45,8 +45,8 @@ inline Rcpp::IntegerVector as_intvec(const craam::indvec& intvector) {
  * Constructs a data frame from the MDP definition
  */
 inline Rcpp::DataFrame mdp_to_dataframe(const craam::MDP& mdp) {
-    Rcpp::IntegerVector idstatefrom, idaction, idstateto;
-    Rcpp::NumericVector probability, reward;
+    craam::indvec idstatefrom, idaction, idstateto;
+    craam::numvec probability, reward;
 
     for (size_t i = 0; i < mdp.size(); i++) {
         const auto& state = mdp[i];
@@ -59,6 +59,8 @@ inline Rcpp::DataFrame mdp_to_dataframe(const craam::MDP& mdp) {
             const auto& probabilities = tran.get_probabilities();
             //idstateto
             for (size_t l = 0; l < tran.size(); l++) {
+                //std::cout << "processing " << i << ", " << j << ", " << l << std::endl;
+
                 idstatefrom.push_back(i);
                 idaction.push_back(j);
                 idstateto.push_back(indices[l]);
@@ -67,7 +69,6 @@ inline Rcpp::DataFrame mdp_to_dataframe(const craam::MDP& mdp) {
             }
         }
     }
-
     return Rcpp::DataFrame::create(
         Rcpp::Named("idstatefrom") = idstatefrom, Rcpp::Named("idaction") = idaction,
         Rcpp::Named("idstateto") = idstateto, Rcpp::Named("probability") = probability,
@@ -356,8 +357,8 @@ inline Rcpp::DataFrame sanature_todataframe(const craam::MDP& mdp,
         throw std::runtime_error("invalid number of states.");
 
     // construct output vectors
-    Rcpp::IntegerVector out_statefrom, out_action, out_stateto;
-    Rcpp::NumericVector out_prob;
+    craam::indvec out_statefrom, out_action, out_stateto;
+    craam::numvec out_prob;
 
     // iterate over states
     for (size_t idstate = 0; idstate < mdp.size(); ++idstate) {
@@ -406,8 +407,8 @@ inline Rcpp::DataFrame sanature_out_todataframe(const craam::MDPO& mdpo,
         throw std::runtime_error("invalid number of states.");
 
     // construct output vectors
-    Rcpp::IntegerVector out_statefrom, out_action, out_outcome;
-    Rcpp::NumericVector out_prob;
+    craam::indvec out_statefrom, out_action, out_outcome;
+    craam::numvec out_prob;
 
     // iterate over states
     for (size_t idstate = 0; idstate < mdpo.size(); ++idstate) {
@@ -455,8 +456,8 @@ sasnature_todataframe(const craam::MDP& mdp,
         throw std::runtime_error("invalid number of states.");
 
     // construct output vectors
-    Rcpp::IntegerVector out_statefrom, out_action, out_stateto;
-    Rcpp::NumericVector out_prob;
+    craam::indvec out_statefrom, out_action, out_stateto;
+    craam::numvec out_prob;
 
     // iterate over states
     for (size_t idstate = 0; idstate < mdp.size(); ++idstate) {

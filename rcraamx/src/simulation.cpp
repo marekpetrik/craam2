@@ -75,7 +75,6 @@ inline Type getopt(const Rcpp::List& list, const std::string& name, Type&& defva
  */
 //[[Rcpp::export]]
 Rcpp::DataFrame mdp_inventory(Rcpp::List params) {
-
     double purchase_cost = Rcpp::as<double>(params["variable_cost"]),
            fixed_cost = Rcpp::as<double>(params["fixed_cost"]),
            holding_cost = Rcpp::as<double>(params["holding_cost"]),

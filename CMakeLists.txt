@@ -44,7 +44,7 @@ endif()
 
 if(GUROBI_USE)
     find_library(GUROBI_CXX_LIBRARY_1 NAMES libgurobi_g++5.2.a PATHS "lib/gurobi")
-    find_library(GUROBI_CXX_LIBRARY_2 NAMES libgurobi81.so PATHS "lib/gurobi")
+    find_library(GUROBI_CXX_LIBRARY_2 NAMES libgurobi90.so PATHS "lib/gurobi")
     find_path(GUROBI_INCLUDE_DIR_1 NAMES gurobi_c++.h PATHS "include/gurobi")
     find_path(GUROBI_INCLUDE_DIR_2 NAMES gurobi_c.h PATHS "include/gurobi")
 

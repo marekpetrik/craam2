@@ -463,6 +463,34 @@ BOOST_AUTO_TEST_CASE(inventory_simulator) {
     BOOST_CHECK_CLOSE(solution.total_return(init), solution2.total_return(init), 3.0);
 }
 
+BOOST_AUTO_TEST_CASE(inventory_build_mdp) {
+    double purchase_cost = 2.49, fixed_cost = 5.99, holding_cost = 0.03,
+           backlog_cost = 0.15, sale_price = 3.99;
+    long max_inventory = 100, max_backlog = 10, max_order = 50;
+    craam::numvec demand_probabilities =
+        numvec{0.01119473, 0.01636988, 0.02299882, 0.03104516, 0.04026340, 0.05017129,
+               0.06006593, 0.06909227, 0.07635877, 0.08108053, 0.08271847, 0.08108053,
+               0.07635877, 0.06909227, 0.06006593, 0.05017129, 0.04026340, 0.03104516,
+               0.02299882, 0.01636988, 0.01119473};
+    long rand_seed = 1;
+
+    std::array<double, 4> costs{purchase_cost, fixed_cost, holding_cost, backlog_cost};
+    std::array<long, 3> limits{max_inventory, max_backlog, max_order};
+
+    craam::msen::InventorySimulator simulator(demand_probabilities, costs, sale_price,
+                                              limits);
+    simulator.set_seed(rand_seed);
+
+    craam::MDP fullmdp;
+
+    simulator.build_mdp(
+        [&fullmdp](long statefrom, long action, long stateto, double prob, double rew) {
+            add_transition(fullmdp, statefrom, action, stateto, prob, rew);
+        });
+
+    BOOST_CHECK_EQUAL(fullmdp.size(), 111);
+}
+
 BOOST_AUTO_TEST_CASE(population_simulator) {
     long horizon = 10, num_runs = 5, initial_population = 30, carrying_capacity = 1000;
     int rand_seed = 7;
