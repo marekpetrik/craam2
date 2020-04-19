@@ -295,9 +295,9 @@ parse_sas_values(const craam::MDP& mdp, const Rcpp::DataFrame& frame,
         }
     }
 
-    Rcpp::IntegerVector idstatesfrom = frame["idstatefrom"],
-                        idactions = frame["idaction"], idstatesto = frame["idstateto"];
-    Rcpp::NumericVector values = frame[val_name];
+    craam::indvec idstatesfrom = frame["idstatefrom"], idactions = frame["idaction"],
+                  idstatesto = frame["idstateto"];
+    craam::numvec values = frame[val_name];
 
     for (long i = 0; i < idstatesfrom.size(); i++) {
         long idstatefrom = idstatesfrom[i], idstateto = idstatesto[i],

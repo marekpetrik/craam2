@@ -407,7 +407,7 @@ std::pair<numvec, prec_t> inline worstcase_l1_w(const GradientsL1_w& gradients,
     // processed
     // this is the working set of gradients
     std::deque<std::tuple<prec_t, size_t, size_t, bool>> grad_que;
-    constexpr prec_t grad_epsilon = 3 * epsilon;
+    constexpr prec_t grad_epsilon = 1e-2;
 
     for (size_t k = 0; k < gradients.size(); k++) {
 
@@ -518,7 +518,7 @@ std::pair<numvec, numvec> inline worstcase_l1_w_knots(const GradientsL1_w& gradi
     // processed
     // this is the working set of gradients
     std::deque<std::tuple<prec_t, size_t, size_t, bool>> grad_que;
-    constexpr prec_t grad_epsilon = 3 * epsilon;
+    constexpr prec_t grad_epsilon = 1e-2;
 
     // trace the value of the norm and update the norm difference as well as the
     // value of the return (u)

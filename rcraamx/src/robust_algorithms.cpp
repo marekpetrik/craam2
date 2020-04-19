@@ -431,7 +431,7 @@ Rcpp::List solve_mdp_rand(Rcpp::DataFrame mdp, double discount,
 
     } else if (algorithm == "vi_j") {
         // Jacobian value iteration
-        rsol = solve_mpi_r(m, discount, numvec(0), rpolicy, iterations, maxresidual, 1,
+        rsol = solve_mpi_r(m, discount, numvec(0), rpolicy, iterations, maxresidual, 0,
                            0.9, progress);
     } else if (algorithm == "vi") {
         // Gauss-seidel value iteration
@@ -483,7 +483,7 @@ Rcpp::DataFrame compute_qvalues(Rcpp::DataFrame mdp, double discount,
     Rcpp::IntegerVector states = valuefunction["idstate"];
     auto minmax_els = std::minmax_element(states.cbegin(), states.cend());
 
-    if (m.size() != (*minmax_els.second + 1)) {
+    if (int(m.size()) != (*minmax_els.second + 1)) {
         Rcpp::stop("The maximum idstate in valuefunction must be the same as the maximum "
                    "MDP state id.");
         return Rcpp::DataFrame();
@@ -585,7 +585,7 @@ algorithms::SANature parse_nature_sa(const MDPO& mdpo, const string& nature,
 //' @param nature Algorithm used to select the robust outcome. See details for options.
 //' @param nature_par Parameters for the nature. Varies depending on the nature.
 //'                   See details for options.
-//' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "pi". MPI and PI may
+//' @param algorithm One of "ppi", "mppi", "vppi", "mpi", "vi", "vi_j", "pi". MPI and PI may
 //'           may not converge
 //' @param policy_fixed States for which the  policy should be fixed. This
 //'          should be a dataframe with columns idstate and idaction. The policy
@@ -630,7 +630,7 @@ algorithms::SANature parse_nature_sa(const MDPO& mdpo, const string& nature,
 //'                 nature_par is a list with parameters (alpha, beta). The worst-case
 //'                 response is computed as:
 //'                 beta * var [z] + (1-beta) * E[z], where
-//'                 var is AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )
+//'                 var is AVaR(z,alpha) = 1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a])
 //'                 where I is the indicator function and
 //'                 x_a = inf{x \in R : P[X <= x] >= alpha} being the
 //'                 worst-case.
@@ -669,6 +669,9 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
     } else if (algorithm == "mppi") {
         sol = rsolve_mppi(m, discount, std::move(natparsed), numvec(0), policy,
                           iterations, maxresidual, progress);
+    } else if (algorithm == "vppi") {
+        sol = rsolve_vppi(m, discount, std::move(natparsed), numvec(0), policy,
+                          iterations, maxresidual, progress);
     } else if (algorithm == "mpi") {
         Rcpp::warning("The robust version of the mpi method may cycle forever "
                       "without converging.");
@@ -680,7 +683,7 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
     } else if (algorithm == "vi_j") {
         // Jacobian value iteration, simulated using mpi
         sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
-                         maxresidual, 1, 0.5, progress);
+                         maxresidual, 0, 0.5, progress);
     } else if (algorithm == "pi") {
         Rcpp::warning("The robust version of the pi method may cycle forever without "
                       "converging.");
@@ -819,7 +822,7 @@ Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String na
     } else if (algorithm == "vi_j") {
         // Jacobian value iteration, simulated using mpi
         sol = rsolve_mpi(m, discount, std::move(natparsed), numvec(0), policy, iterations,
-                         maxresidual, 1, 0.5, progress);
+                         maxresidual, 0, 0.5, progress);
     } else if (algorithm == "pi") {
         Rcpp::warning("The robust version of the pi method may cycle forever without "
                       "converging.");
@@ -976,6 +979,9 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     } else if (algorithm == "mppi") {
         sol = rsolve_s_mppi_r(m, discount, std::move(natparsed), numvec(0), rpolicy,
                               iterations, maxresidual, progress);
+    } else if (algorithm == "vppi") {
+        sol = rsolve_s_vppi_r(m, discount, std::move(natparsed), numvec(0), rpolicy,
+                              iterations, maxresidual, progress);
     } else if (algorithm == "mpi") {
         sol = rsolve_s_mpi_r(m, discount, std::move(natparsed), numvec(0), rpolicy,
                              iterations / defaults::mpi_vi_count, maxresidual,
@@ -986,7 +992,7 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     } else if (algorithm == "vi_j") {
         // Jacobian value iteration, simulated using mpi
         sol = rsolve_s_mpi_r(m, discount, std::move(natparsed), numvec(0), rpolicy,
-                             iterations, maxresidual, 1, 0.5, progress);
+                             iterations, maxresidual, 0, 0.5, progress);
     } else if (algorithm == "pi") {
         sol = rsolve_s_pi_r(m, discount, std::move(natparsed), numvec(0), rpolicy,
                             iterations, maxresidual, progress);

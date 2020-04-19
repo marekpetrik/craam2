@@ -234,7 +234,7 @@ mpi_jac(const ResponseType& response, prec_t discount,
             }
             // just terminate if there is an error
             if (openmp_error)
-                throw runtime_error("Failed with an exception in OPENMP block.");
+                throw runtime_error("Failed with an exception in an OPENMP block.");
 
             // update the residual value
             residual_vi = *max_element(residuals.begin(), residuals.end());
@@ -343,9 +343,15 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
         MatrixXd t_mat =
             MatrixXd::Identity(n, n) - transition_mat(response, policy, false, discount);
         // compute and store the value function
+        // note: this is the standard approach, but it is not parallel
+        //Map<VectorXd, Unaligned>(valuefunction.data(), valuefunction.size()) =
+        //    HouseholderQR<MatrixXd>(t_mat).solve(
+        //        Map<const VectorXd, Unaligned>(rw.data(), rw.size()));
+
+        // this alternative is parallelized:
+        // https://eigen.tuxfamily.org/dox/TopicMultiThreading.html
         Map<VectorXd, Unaligned>(valuefunction.data(), valuefunction.size()) =
-            HouseholderQR<MatrixXd>(t_mat).solve(
-                Map<const VectorXd, Unaligned>(rw.data(), rw.size()));
+            t_mat.lu().solve(Map<const VectorXd, Unaligned>(rw.data(), rw.size()));
 
         // std::cout << policy << std::endl;
         // update policy
@@ -392,8 +398,8 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
                                  duration.count(), status);
 } // namespace algorithms
 
-/// Determines which solver to use internally
-enum class MDPSolver { pi, mpi };
+/// Determines which solver to use when evaluating a policy in the PPI method
+enum class MDPSolver { pi, mpi, vi };
 
 /**
  * Robust partial policy iteration, proposed in Ho 2019. Converges in robust settings to
@@ -505,9 +511,13 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
             solution_rob = pi(response, discount, valuefunction, iters_left,
                               target_residual, inner_progress);
         } else if (mdp_solver == MDPSolver::mpi) {
+            solution_rob = mpi_jac(response, discount, valuefunction,
+                                   long(std::sqrt(iters_left)), target_residual,
+                                   long(std::sqrt(iters_left)), 0.8, inner_progress);
+        } else if (mdp_solver == MDPSolver::vi) {
             solution_rob =
-                mpi_jac(response, discount, valuefunction, std::sqrt(iters_left),
-                        target_residual, std::sqrt(iters_left), 0.8, inner_progress);
+                mpi_jac(response, discount, valuefunction, long(std::sqrt(iters_left)),
+                        target_residual, 1, 1.0, inner_progress);
         } else {
             throw invalid_argument("Unsupported mdp_solver parameter");
         }

@@ -468,10 +468,11 @@ rsolve_pi(const MDP& mdp, prec_t discount, const algorithms::SANature& nature,
 
 /**
  * @ingroup PartialPolicyIteration
- * Robust partial policy iteration with an s,a-rectangular nature.
+ * Robust partial policy iteration with an sa-rectangular nature.
  *
  * Uses policy iteration to solve the inner MDP problem that corresponds
- * to the nature.
+ * to the nature. This can be very efficient, but may not scale to large
+ * problems.
  *
  * This method is guaranteed to converge to the optimal value function
  * and policy.
@@ -490,10 +491,11 @@ rsolve_ppi(const MDP& mdp, prec_t discount, const algorithms::SANature& nature,
 
 /**
  * @ingroup PartialPolicyIteration
- * Robust partial policy iteration with an s,a-rectangular nature.
+ * Robust partial policy iteration with an sa-rectangular nature.
  *
  * Uses modified policy iteration to solve the inner MDP problem that corresponds
- * to the nature.
+ * to the nature. This algorithm scales better than PPI with policy ieration
+ * to problems with large state spaces.
  *
  * This method is guaranteed to converge to the optimal value function
  * and policy.
@@ -508,6 +510,29 @@ rsolve_mppi(const MDP& mdp, prec_t discount, const algorithms::SANature& nature,
     return algorithms::rppi(algorithms::SARobustBellman(mdp, move(nature), policy),
                             discount, move(valuefunction), iterations, maxresidual, 1.0,
                             discount * discount, algorithms::MDPSolver::mpi, progress);
+}
+
+/**
+ * @ingroup PartialPolicyIteration
+ * Robust partial policy iteration with an sa-rectangular nature.
+ *
+ * Uses value iteration to solve the inner MDP problem that corresponds
+ * to the nature. This algorithm scales better than PPI with policy ieration
+ * to problems with large state spaces, but probably worse than MPI.
+ *
+ * This method is guaranteed to converge to the optimal value function
+ * and policy.
+ */
+inline SARobustSolution
+rsolve_vppi(const MDP& mdp, prec_t discount, const algorithms::SANature& nature,
+            numvec valuefunction = numvec(0), const indvec& policy = indvec(0),
+            unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
+            const std::function<bool(size_t, prec_t)>& progress =
+                algorithms::internal::empty_progress) {
+    check_model(mdp);
+    return algorithms::rppi(algorithms::SARobustBellman(mdp, move(nature), policy),
+                            discount, move(valuefunction), iterations, maxresidual, 1.0,
+                            discount * discount, algorithms::MDPSolver::vi, progress);
 }
 
 // **************************************************************************
@@ -673,7 +698,7 @@ rsolve_s_ppi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
  * an MDP solver.
  *
  * Uses modified policy iteration to solve the inner MDP problem that corresponds
- * to the nature.
+ * to the nature. This scales better than the default policy iteration.
  *
  */
 inline SRobustSolution
@@ -688,6 +713,32 @@ rsolve_s_mppi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature
     return algorithms::rppi(algorithms::SRobustBellman(mdp, move(nature), rpolicy),
                             discount, move(valuefunction), iterations, maxresidual, 1.0,
                             discount * discount, algorithms::MDPSolver::mpi, progress);
+}
+
+/**
+ * @ingroup PartialPolicyIteration
+ *
+ * Partial policy iteration. Computes approximations to the value function with
+ * an increasing precision. Each decision maker's policy is evaluated using
+ * an MDP solver.
+ *
+ * Uses value iteration to solve the inner MDP problem that corresponds
+ * to the nature. This algorithm scales better than PPI with policy ieration
+ * to problems with large state spaces, but probably worse than MPI.
+ *
+ */
+inline SRobustSolution
+rsolve_s_vppi(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
+              numvec valuefunction = numvec(0), const indvec& policy = indvec(0),
+              unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
+              const std::function<bool(size_t, prec_t)>& progress =
+                  algorithms::internal::empty_progress) {
+    check_model(mdp);
+
+    auto rpolicy = policy_det2rand(mdp, policy);
+    return algorithms::rppi(algorithms::SRobustBellman(mdp, move(nature), rpolicy),
+                            discount, move(valuefunction), iterations, maxresidual, 1.0,
+                            discount * discount, algorithms::MDPSolver::vi, progress);
 }
 
 /**
@@ -727,6 +778,8 @@ rsolve_s_ppi_r(const MDP& mdp, prec_t discount, const algorithms::SNature& natur
  * Uses modified policy iteration to solve the inner MDP problem that corresponds
  * to the nature.
  *
+ * This policy uses randomized policies as inputs
+ *
  * @param mdp Definition of the MDP
  * @param discount Discount factor
  * @param valuefunction Initial value function
@@ -751,6 +804,31 @@ rsolve_s_mppi_r(const MDP& mdp, prec_t discount, const algorithms::SNature& natu
     return algorithms::rppi(algorithms::SRobustBellman(mdp, move(nature), rpolicy),
                             discount, move(valuefunction), iterations, maxresidual, 1.0,
                             discount * discount, algorithms::MDPSolver::mpi, progress);
+}
+
+/**
+ * @ingroup PartialPolicyIteration
+ *
+ * Uses modified policy iteration to solve the inner MDP problem that corresponds
+ * to the nature.
+ *
+ * Uses value iteration to solve the inner MDP problem that corresponds
+ * to the nature.This algorithm scales better than PPI with policy ieration
+ * to problems with large state spaces, but probably worse than MPI.
+ *
+ * @param rpolicy Randomized policy with a probability for each state and action
+ */
+inline SRobustSolution
+rsolve_s_vppi_r(const MDP& mdp, prec_t discount, const algorithms::SNature& nature,
+                numvec valuefunction = numvec(0), const numvecvec& rpolicy = numvecvec(0),
+                unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
+                const std::function<bool(size_t, prec_t)>& progress =
+                    algorithms::internal::empty_progress) {
+    check_model(mdp);
+
+    return algorithms::rppi(algorithms::SRobustBellman(mdp, move(nature), rpolicy),
+                            discount, move(valuefunction), iterations, maxresidual, 1.0,
+                            discount * discount, algorithms::MDPSolver::vi, progress);
 }
 
 // **************************************************************************
