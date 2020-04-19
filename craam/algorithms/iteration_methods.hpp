@@ -517,7 +517,7 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
         } else if (mdp_solver == MDPSolver::vi) {
             solution_rob =
                 mpi_jac(response, discount, valuefunction, long(std::sqrt(iters_left)),
-                        target_residual, 1, 1.0, inner_progress);
+                        target_residual, 0, 1.0, inner_progress);
         } else {
             throw invalid_argument("Unsupported mdp_solver parameter");
         }
