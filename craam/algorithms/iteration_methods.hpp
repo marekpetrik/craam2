@@ -415,7 +415,7 @@ enum class MDPSolver { pi, mpi, vi };
  * @param rob_residual_init Initial target residual for solving the robust problem
  * @param rob_residual_rate Multiplicative coefficient that controls the
  * decrease in the target rate. It needs to be smaller than the discount factor. When nan,
- * then it is set to be the discount factor squared, but at most 0.99.
+ * then it is set to be the discount factor squared, but at most 0.95.
  * @param mdp_solver What method to use to solve the policy evaluation MDP
  * @param progress A method that handles reporting the progress and interrupting
  *                  the computation
@@ -434,7 +434,7 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
     using dec_policy_type = typename ResponseType::dec_policy_type;
 
     // update the residual rate
-    if (isnan(rob_residual_rate)) { rob_residual_rate = min(pow(discount, 2), 0.99); }
+    if (isnan(rob_residual_rate)) { rob_residual_rate = min(pow(discount, 2), 0.95); }
 
     if (rob_residual_rate < 0 || rob_residual_rate >= 1)
         throw invalid_argument("Parameter rob_residual_rate must be in [0,1).");
@@ -451,7 +451,7 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
     // keep track of the target residual achieved in the policy iteration
     prec_t target_residual = rob_residual_init;
 
-    // intialize the policy (the policy could be randomized or deterministic)
+    // initialize the policy (the policy could be randomized or deterministic)
     vector<dec_policy_type> dec_policy(response.state_count());
     // this an array that holds the output policy (only used for the output)
     vector<policy_type> output_policy(response.state_count());
@@ -505,22 +505,51 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
         };
 
         Solution<policy_type> solution_rob;
-        auto iters_left = iterations_pi - iterations;
+        long iters_left = iterations_pi - iterations;
 
+        // compute bounds on the number of iterations that we can afford to take here
+        // there are some fudge factors. We want to have enough iterations to 
+        // get something reasonable, but also do not want to waste all the time
+        // on evaluate a bad initial policy
         if (mdp_solver == MDPSolver::pi) {
-            solution_rob = pi(response, discount, valuefunction, iters_left,
+
+            // a small number of iterations for the initial policy,
+            // which may not be even all that useful
+            long inner_piiters = iterations == 0 ? iterations_pi / 200l : 
+                                                   std::min(long(iterations_pi / 50), long(iters_left));
+
+            solution_rob = pi(response, discount, valuefunction, inner_piiters,
                               target_residual, inner_progress);
         } else if (mdp_solver == MDPSolver::mpi) {
+
+            // a small number of iterations for the initial policy,
+            // which may not be even all that useful
+            long inner_piiters = iterations == 0 ? iterations_pi / 200l : 
+                                                   std::min(long(iterations_pi / 50u), long(iters_left));
+            long inner_viiters = iterations == 0 ? iterations_pi / 1000l :
+                                                    std::min(long(iterations_pi / 300u), 100l);
+
             solution_rob = mpi_jac(response, discount, valuefunction,
-                                   long(std::sqrt(iters_left)), target_residual,
-                                   long(std::sqrt(iters_left)), 0.8, inner_progress);
+                                   inner_piiters, target_residual,
+                                   inner_viiters, 0.8, inner_progress);
         } else if (mdp_solver == MDPSolver::vi) {
+
+            // this method is meant to approximate the behavior RMPI, so the number 
+            // of iterations per policy improvement is relatively small
             solution_rob =
-                mpi_jac(response, discount, valuefunction, long(std::sqrt(iters_left)),
+                mpi_jac(response, discount, valuefunction, std::min(long(iters_left), 50l),
                         target_residual, 0, 1.0, inner_progress);
         } else {
             throw invalid_argument("Unsupported mdp_solver parameter");
         }
+
+        // update the target residual accordingly for the initial policy
+        // but only increase it; needed if the initial target is set too low
+        // this only happens at the start of the algorithm
+        if(iterations == 0){
+            target_residual = std::max(target_residual, solution_rob.residual);
+        }
+        // TODO: should raise some kind of a warning when the target residual is not achieved
 
         valuefunction = move(solution_rob.valuefunction);
 
