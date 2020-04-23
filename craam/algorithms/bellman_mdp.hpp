@@ -517,7 +517,7 @@ public:
 
         const State& state = mdp[stateid];
 
-        if (state.is_terminal()) return make_pair(-1, make_pair(numvec(0), numvecvec(0)));
+        if (state.is_terminal()) return make_pair(0, make_pair(numvec(0), numvecvec(0)));
 
         // check whether this state should only be evaluated or also optimized
         numvec init_policy =

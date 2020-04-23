@@ -250,7 +250,12 @@ Rcpp::DataFrame output_value_fun(numvec value) {
 }
 
 /**
- * Packs MDP actions to be consequitive
+ * Packs MDP actions to be consequitive.
+ *
+ * If there is a state with actions where idaction = 0 and idaction = 2 and these
+ * actions have transition probabilities associated with them, and idaction = 1 has
+ * no transition probabilities, then idaction = 2 is renamed to idaction = 1.
+ *
  */
 //[[Rcpp::export]]
 Rcpp::List pack_actions(Rcpp::DataFrame mdp) {
@@ -261,6 +266,20 @@ Rcpp::List pack_actions(Rcpp::DataFrame mdp) {
 
     result["mdp"] = mdp_to_dataframe(m);
     return result;
+}
+
+/**
+ * Cleans the MDP dataframe
+ *
+ * Makes cosmetic changes to the MDP. It mostly aggregates transition probabilities
+ * to the same state. When there are multiple rows that represent the same transition,
+ * then it sums the probabilities and computes a weighted average of the rewards.
+ *
+ * The method achieves this by parsing and de-parsing the MDP definition.
+ */
+//[[Rcpp::export]]
+Rcpp::DataFrame mdp_clean(Rcpp::DataFrame mdp) {
+    return mdp_to_dataframe(mdp_from_dataframe(mdp));
 }
 
 //' Solves a plain Markov decision process.

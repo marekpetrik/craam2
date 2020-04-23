@@ -366,6 +366,52 @@ template <class Model> void test_simple_vi(const Model& rmdp) {
 #endif //__cplusplus >= 201703L
 }
 
+BOOST_AUTO_TEST_CASE(small_mdp_cartpole) {
+
+    std::string mdp_string = "idstatefrom,idaction,idstateto,probability,reward\n"
+                             "2,0,1,0.08366533864541832,1\n"
+                             "2,0,2,0.2589641434262948,1\n"
+                             "2,0,3,0.07171314741035857,1\n"
+                             "2,0,4,0.00398406374501992,1\n"
+                             "2,0,5,0.01593625498007968,1\n"
+                             "2,0,6,0.17131474103585656,1\n"
+                             "2,0,7,0.01593625498007968,1\n"
+                             "2,0,8,0.01593625498007968,1\n"
+                             "2,0,9,0.01593625498007968,1\n"
+                             "2,0,10,0.00796812749003984,1\n"
+                             "2,0,11,0.01195219123505976,1\n"
+                             "2,0,12,0.16733067729083664,1\n"
+                             "2,0,13,0.14741035856573706,1\n"
+                             "2,0,14,0.01195219123505976,1\n"
+                             "2,1,15,0.00796812749003984,1\n"
+                             "2,1,2,0.3745019920318725,1\n"
+                             "2,1,16,0.01593625498007968,1\n"
+                             "2,1,17,0.0199203187250996,1\n"
+                             "2,1,6,0.19123505976095617,1\n"
+                             "2,1,7,0.18725099601593626,1\n"
+                             "2,1,18,0.00796812749003984,1\n"
+                             "2,1,8,0.03187250996015936,1\n"
+                             "2,1,9,0.08366533864541832,1\n"
+                             "2,1,19,0.00398406374501992,1\n"
+                             "2,1,20,0.0199203187250996,1\n"
+                             "2,1,13,0.055776892430278883,1\n";
+
+    std::stringstream mdp_stream(mdp_string);
+    io::CSVReader<5> reader("nofile", mdp_stream);
+    craam::MDP mdp = mdp_from_csv(reader);
+
+    auto re1 = rsolve_s_ppi(mdp, 0.9999, nats::robust_s_l1u(0.1), numvec(0));
+    //std::cout << re1.valuefunction << std::endl;
+
+    auto re2 = rsolve_s_mppi(mdp, 0.9999, nats::robust_s_l1u(0.1), numvec(0));
+    //std::cout << re2.valuefunction << std::endl;
+    CHECK_CLOSE_COLLECTION(re1.valuefunction, re2.valuefunction, 1e-2);
+
+    auto re3 = rsolve_s_vi(mdp, 0.9999, nats::robust_s_l1u(0.1), numvec(0));
+    //std::cout << re3.valuefunction << std::endl;
+    CHECK_CLOSE_COLLECTION(re1.valuefunction, re3.valuefunction, 1e-2);
+}
+
 BOOST_AUTO_TEST_CASE(simple_mdp_vi_of_nonrobust) {
     auto rmdp = create_test_mdp<MDP>();
     test_simple_vi<MDP>(rmdp);

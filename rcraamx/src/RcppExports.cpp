@@ -43,6 +43,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// mdp_clean
+Rcpp::DataFrame mdp_clean(Rcpp::DataFrame mdp);
+RcppExport SEXP _rcraam_mdp_clean(SEXP mdpSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type mdp(mdpSEXP);
+    rcpp_result_gen = Rcpp::wrap(mdp_clean(mdp));
+    return rcpp_result_gen;
+END_RCPP
+}
 // solve_mdp
 Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorithm, Rcpp::Nullable<Rcpp::DataFrame> policy_fixed, double maxresidual, size_t iterations, double timeout, Rcpp::Nullable<Rcpp::DataFrame> value_init, bool pack_actions, bool output_tran, bool show_progress);
 RcppExport SEXP _rcraam_solve_mdp(SEXP mdpSEXP, SEXP discountSEXP, SEXP algorithmSEXP, SEXP policy_fixedSEXP, SEXP maxresidualSEXP, SEXP iterationsSEXP, SEXP timeoutSEXP, SEXP value_initSEXP, SEXP pack_actionsSEXP, SEXP output_tranSEXP, SEXP show_progressSEXP) {
@@ -248,6 +259,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_rcraam_worstcase_l1", (DL_FUNC) &_rcraam_worstcase_l1, 3},
     {"_rcraam_avar", (DL_FUNC) &_rcraam_avar, 3},
     {"_rcraam_pack_actions", (DL_FUNC) &_rcraam_pack_actions, 1},
+    {"_rcraam_mdp_clean", (DL_FUNC) &_rcraam_mdp_clean, 1},
     {"_rcraam_solve_mdp", (DL_FUNC) &_rcraam_solve_mdp, 11},
     {"_rcraam_solve_mdp_rand", (DL_FUNC) &_rcraam_solve_mdp_rand, 10},
     {"_rcraam_compute_qvalues", (DL_FUNC) &_rcraam_compute_qvalues, 3},

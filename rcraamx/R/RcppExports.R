@@ -31,6 +31,10 @@ pack_actions <- function(mdp) {
     .Call(`_rcraam_pack_actions`, mdp)
 }
 
+mdp_clean <- function(mdp) {
+    .Call(`_rcraam_mdp_clean`, mdp)
+}
+
 #' Solves a plain Markov decision process.
 #'
 #' This method supports only deterministic policies. See solve_mdp_rand for a
