@@ -497,8 +497,8 @@ public:
     size_t state_count() const { return mdp.size(); }
 
     /**
-     * Computes the Bellman update. If an action is not taken then the transitions for the corresponding
-     * action will have length 0.
+     * Computes the Bellman update. If an action is not taken then the transitions for the
+     * corresponding action will have length 0.
      *
      * @param solution Solution to update
      * @param state State for which to compute the Bellman update
