@@ -509,7 +509,7 @@ rsolve_mppi(const MDP& mdp, prec_t discount, const algorithms::SANature& nature,
     check_model(mdp);
     return algorithms::rppi(algorithms::SARobustBellman(mdp, move(nature), policy),
                             discount, move(valuefunction), iterations, maxresidual, 1.0,
-                            discount * discount, algorithms::MDPSolver::mpi, progress);
+                            std::pow(discount, 2), algorithms::MDPSolver::mpi, progress);
 }
 
 /**

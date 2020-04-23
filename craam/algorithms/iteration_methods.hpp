@@ -508,15 +508,14 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
         long iters_left = iterations_pi - iterations;
 
         // compute bounds on the number of iterations that we can afford to take here
-        // there are some fudge factors. We want to have enough iterations to 
+        // there are some fudge factors. We want to have enough iterations to
         // get something reasonable, but also do not want to waste all the time
         // on evaluate a bad initial policy
         if (mdp_solver == MDPSolver::pi) {
 
             // a small number of iterations for the initial policy,
             // which may not be even all that useful
-            long inner_piiters = iterations == 0 ? iterations_pi / 200l : 
-                                                   std::min(long(iterations_pi / 50), long(iters_left));
+            long inner_piiters = iterations == 0 ? 5l : iters_left;
 
             solution_rob = pi(response, discount, valuefunction, inner_piiters,
                               target_residual, inner_progress);
@@ -524,21 +523,18 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
 
             // a small number of iterations for the initial policy,
             // which may not be even all that useful
-            long inner_piiters = iterations == 0 ? iterations_pi / 200l : 
-                                                   std::min(long(iterations_pi / 50u), long(iters_left));
-            long inner_viiters = iterations == 0 ? iterations_pi / 1000l :
-                                                    std::min(long(iterations_pi / 300u), 100l);
+            long inner_piiters = iterations == 0 ? 5 : iters_left;
+            long inner_viiters = iterations == 0 ? 50 : 2000;
 
-            solution_rob = mpi_jac(response, discount, valuefunction,
-                                   inner_piiters, target_residual,
-                                   inner_viiters, 0.8, inner_progress);
+            solution_rob =
+                mpi_jac(response, discount, valuefunction, inner_piiters, target_residual,
+                        inner_viiters, 0.8 * discount, inner_progress);
         } else if (mdp_solver == MDPSolver::vi) {
 
-            // this method is meant to approximate the behavior RMPI, so the number 
+            // this method is meant to approximate the behavior RMPI, so the number
             // of iterations per policy improvement is relatively small
-            solution_rob =
-                mpi_jac(response, discount, valuefunction, std::min(long(iters_left), 50l),
-                        target_residual, 0, 1.0, inner_progress);
+            solution_rob = mpi_jac(response, discount, valuefunction, 10, target_residual,
+                                   0, 1.0, inner_progress);
         } else {
             throw invalid_argument("Unsupported mdp_solver parameter");
         }
@@ -546,7 +542,7 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
         // update the target residual accordingly for the initial policy
         // but only increase it; needed if the initial target is set too low
         // this only happens at the start of the algorithm
-        if(iterations == 0){
+        if (iterations == 0) {
             target_residual = std::max(target_residual, solution_rob.residual);
         }
         // TODO: should raise some kind of a warning when the target residual is not achieved
