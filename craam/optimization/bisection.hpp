@@ -530,9 +530,11 @@ solve_srect_bisection(const numvecvec& z, const numvecvec& pbar, const prec_t ps
  * The goal is to solve the following optimization problem:
  * min_xi sum_a  d_a * (min_p p^T z s.t. ||p - pbar|| <= xi_a)
  * such that sum_a xi_a <= psi
- * The solution is by bisection on the dual of the problem:
+ *
+ * The solution is by bisection on the dual of the problem, which is:
  * max_lambda sum_a (min_xi_a d_a Q(min_p p^T z s.t. ||p - pbar|| <= xi_a) +
  *              + lambda xi_a - lambda psi)
+ *
  * The method bisects on lambda, but considers only the knots of the
  * piecewise linear functions.
  *
@@ -600,7 +602,6 @@ inline pair<prec_t, numvecvec> evaluate_srect_bisection_l1(
             numvec knots_a, values_a;
             std::tie(values_a, knots_a) = worstcase_l1_knots(z[ai], pbar[ai]);
 #endif
-
             // multiply the derivatives by the probability
             derivatives.push_back(
                 multiply(piecewise_derivatives(knots_a, values_a, 0.0), d[ai]));
@@ -728,6 +729,8 @@ inline pair<prec_t, numvecvec> evaluate_srect_bisection_l1(
     //assert(alpha >= 0.0 && alpha <= 1.0);
     // alpha = 0.0;
     //auto lambda = alpha * (*lambda_lower) + (1 - alpha) * (*lambda_upper);
+
+    // TODO: Why just taking the upper interval works
     auto lambda = *lambda_upper;
     // *** compute the optimal x_a for the lambda
     // return objective value
@@ -786,8 +789,7 @@ inline pair<prec_t, numvecvec> evaluate_srect_bisection_l1(
             probabilities_sol[ai] = prob;
         }
     }
-    //objective_value -= lambda * psi; <=== if psi_remainder were not allocated before
-
+    // objective_value -= lambda * psi; <=== if psi_remainder were not allocated before
     return {objective_value, probabilities_sol};
 }
 

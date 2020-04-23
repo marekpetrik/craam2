@@ -196,6 +196,8 @@ inline craam::numvecvec frame2matrix(const Rcpp::DataFrame& frame, uint dim1, ui
  * @param def_value The default value for when frame does not
  *                  specify anything for the state action pair
  * @param value_column Name of the column with the value
+ * @param param_name The name of the parameter which is being parsed.
+ *                  This is used for error reporting.
  *
  * @tparam T Type of the value to parse
  *
@@ -204,16 +206,25 @@ inline craam::numvecvec frame2matrix(const Rcpp::DataFrame& frame, uint dim1, ui
 template <class T>
 inline std::vector<T> parse_s_values(size_t statecount, const Rcpp::DataFrame& frame,
                                      T def_value = 0,
-                                     const std::string& value_column = "value") {
+                                     const std::string& value_column = "value",
+                                     const std::string& param_name = "") {
     std::vector<T> result(statecount);
     Rcpp::IntegerVector idstates = frame["idstate"];
     Rcpp::NumericVector values = frame[value_column];
     for (long i = 0; i < idstates.size(); i++) {
         long idstate = idstates[i];
 
-        if (idstate < 0) Rcpp::stop("idstate must be non-negative");
-        if (idstate > statecount)
-            Rcpp::stop("idstate must be smaller than the number of MDP states");
+        if (idstate < 0) {
+            Rcpp::stop(
+                "idstate must be non-negative" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
+        }
+
+        if (idstate > statecount) {
+            Rcpp::stop(
+                "idstate must be smaller than the number of MDP states" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
+        }
 
         result[idstate] = values[i];
     }
@@ -232,13 +243,16 @@ inline std::vector<T> parse_s_values(size_t statecount, const Rcpp::DataFrame& f
 *              Only the last value is used if multiple rows are present.
 * @param def_value The default value for when frame does not specify anything for the state action pair
 * @param val_name Name of the value column
+* @param param_name The name of the parameter which is being parsed.
+*                  This is used for error reporting.
 *
 * @returns A vector over states with an inner vector of actions
 */
 inline craam::numvecvec parse_sa_values(const craam::MDP& mdp,
                                         const Rcpp::DataFrame& frame,
                                         double def_value = 0,
-                                        const std::string val_name = "value") {
+                                        const std::string& val_name = "value",
+                                        const std::string& param_name = "") {
 
     craam::numvecvec result(mdp.size());
     for (long i = 0; i < mdp.size(); i++) {
@@ -251,13 +265,23 @@ inline craam::numvecvec parse_sa_values(const craam::MDP& mdp,
     for (long i = 0; i < idstates.size(); i++) {
         long idstate = idstates[i], idaction = idactions[i];
 
-        if (idstate < 0) Rcpp::stop("idstate must be non-negative");
+        if (idstate < 0)
+            Rcpp::stop(
+                "idstate must be non-negative" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
         if (idstate > mdp.size())
-            Rcpp::stop("idstate must be smaller than the number of MDP states");
-        if (idaction < 0) Rcpp::stop("idaction must be non-negative");
+            Rcpp::stop(
+                "idstate must be smaller than the number of MDP states" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
+        if (idaction < 0)
+            Rcpp::stop(
+                "idaction must be non-negative" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
         if (idaction > mdp[idstate].size())
-            Rcpp::stop("idaction must be smaller than the number of actions for the "
-                       "corresponding state");
+            Rcpp::stop(
+                "idaction must be smaller than the number of actions for the "
+                "corresponding state" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
 
         double value = values[i];
         result[idstate][idaction] = value;
@@ -279,12 +303,15 @@ inline craam::numvecvec parse_sa_values(const craam::MDP& mdp,
  * @param def_value The default value for when frame does not specify anything for
  *              the state action pair
  * @param val_name Name of the value column
+ * @param param_name The name of the parameter which is being parsed.
+ *                  This is used for error reporting.
  *
  * @return A vector over states, action, with an inner vector of actions
  */
 inline std::vector<craam::numvecvec>
 parse_sas_values(const craam::MDP& mdp, const Rcpp::DataFrame& frame,
-                 double def_value = 0, const std::string val_name = "value") {
+                 double def_value = 0, const std::string& val_name = "value",
+                 const std::string& param_name = "") {
 
     std::vector<craam::numvecvec> result(mdp.size());
     for (long i = 0; i < mdp.size(); i++) {
@@ -304,24 +331,34 @@ parse_sas_values(const craam::MDP& mdp, const Rcpp::DataFrame& frame,
              idaction = idactions[i];
 
         if (idstatefrom < 0) {
-            Rcpp::warning("idstatefrom must be non-negative");
+            Rcpp::warning(
+                "idstatefrom must be non-negative" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
             continue;
         }
         if (idstatefrom > mdp.size()) {
-            Rcpp::warning("idstatefrom must be smaller than the number of MDP states");
+            Rcpp::warning(
+                "idstatefrom must be smaller than the number of MDP states" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
             continue;
         }
         if (idaction < 0) {
-            Rcpp::warning("idaction must be non-negative");
+            Rcpp::warning(
+                "idaction must be non-negative" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
             continue;
         }
         if (idaction > mdp[idstatefrom].size()) {
-            Rcpp::warning("idaction must be smaller than the number of actions for the "
-                          "corresponding state");
+            Rcpp::warning(
+                "idaction must be smaller than the number of actions for the "
+                "corresponding state" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
             continue;
         }
         if (idstateto < 0) {
-            Rcpp::warning("idstateto must be non-negative");
+            Rcpp::warning(
+                "idstateto must be non-negative" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
             continue;
         }
 
@@ -330,10 +367,11 @@ parse_sas_values(const craam::MDP& mdp, const Rcpp::DataFrame& frame,
         //     << endl;
 
         if (indexto < 0) {
-            Rcpp::warning("idstateto must be one of the states with non-zero probability."
-                          "idstatefrom = " +
-                          std::to_string(idstatefrom) +
-                          ", idaction = " + std::to_string(idaction));
+            Rcpp::warning(
+                "idstateto must be one of the states with non-zero probability."
+                "idstatefrom = " +
+                std::to_string(idstatefrom) + ", idaction = " + std::to_string(idaction) +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
         } else {
             result[idstatefrom][idaction][indexto] = values[i];
         }

@@ -273,7 +273,7 @@ Rcpp::List pack_actions(Rcpp::DataFrame mdp) {
 //'            after taking an action a. The columns are:
 //'            idstatefrom, idaction, idstateto, probability, reward
 //' @param discount Discount factor in [0,1]
-//' @param algorithm One of "mpi", "vi", "vi_j", "pi". Also supports "lp"
+//' @param algorithm One of "mpi", "vi", "vi_j", "vi_g", "pi". Also supports "lp"
 //'           when Gurobi is properly installed
 //' @param policy_fixed States for which the  policy should be fixed. This
 //'          should be a dataframe with columns idstate and idaction. The policy
@@ -322,15 +322,16 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
     DetermSolution sol;
 
     // initialized policies from the parameter
-    indvec policy =
-        policy_fixed.isNotNull()
-            ? parse_s_values<long>(m.size(), policy_fixed.get(), -1, "idaction")
-            : indvec(0);
+    indvec policy = policy_fixed.isNotNull()
+                        ? parse_s_values<long>(m.size(), policy_fixed.get(), -1,
+                                               "idaction", "policy_fixed")
+                        : indvec(0);
 
     // initialized value function from the parameters
-    numvec vf_init = value_init.isNotNull()
-                         ? parse_s_values<prec_t>(m.size(), value_init.get(), 0, "value")
-                         : numvec(0);
+    numvec vf_init =
+        value_init.isNotNull()
+            ? parse_s_values<prec_t>(m.size(), value_init.get(), 0, "value", "value_init")
+            : numvec(0);
 
     ComputeProgress progress(iterations, maxresidual, show_progress, timeout);
 
@@ -338,12 +339,12 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
         // Modified policy iteration
         sol = solve_mpi(m, discount, vf_init, policy, iterations, maxresidual,
                         defaults::mpi_vi_count, 0.9, progress);
-    } else if (algorithm == "vi_j") {
+    } else if (algorithm == "vi_j" || algorithm == "vi") {
         // Jacobian value iteration
 
         sol = solve_mpi(m, discount, vf_init, policy, iterations, maxresidual, 1, 0.9,
                         progress);
-    } else if (algorithm == "vi") {
+    } else if (algorithm == "vi_g") {
         // Gauss-seidel value iteration
 
         sol = solve_vi(m, discount, vf_init, policy, iterations, maxresidual, progress);
@@ -394,7 +395,7 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
 //'            after taking an action a. The columns are:
 //'            idstatefrom, idaction, idstateto, probability, reward
 //' @param discount Discount factor in [0,1]
-//' @param algorithm One of "mpi", "vi", "vi_j", "pi"
+//' @param algorithm One of "mpi", "vi", "vi_j", "vi_g", "pi"
 //' @param policy_fixed States for which the  policy should be fixed. This
 //'         should be a dataframe with columns idstate, idaction, probability.
 //'          The policy is optimized only for states that are missing, and the
@@ -402,6 +403,9 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
 //' @param maxresidual Residual at which to terminate
 //' @param iterations Maximum number of iterations
 //' @param timeout Maximum number of secods for which to run the computation
+//' @param value_init A  dataframe that contains the initial value function used
+//'          to initialize the method. The columns should be idstate and value.
+//'          Any states that are not provided are initialized to 0.
 //' @param output_tran Whether to construct and return a matrix of transition
 //'          probabilites and a vector of rewards
 //' @param show_progress Whether to show a progress bar during the computation
@@ -412,8 +416,9 @@ Rcpp::List solve_mdp_rand(Rcpp::DataFrame mdp, double discount,
                           Rcpp::String algorithm = "mpi",
                           Rcpp::Nullable<Rcpp::DataFrame> policy_fixed = R_NilValue,
                           double maxresidual = 10e-4, size_t iterations = 10000,
-                          double timeout = 300, bool output_tran = false,
-                          bool show_progress = true) {
+                          double timeout = 300,
+                          Rcpp::Nullable<Rcpp::DataFrame> value_init = R_NilValue,
+                          bool output_tran = false, bool show_progress = true) {
 
     // Note: this method only makes sense to be called with a provided
     // fixed policy and in that case, packing the actions is quite nonsensical
@@ -430,28 +435,34 @@ Rcpp::List solve_mdp_rand(Rcpp::DataFrame mdp, double discount,
     numvecvec rpolicy =
         policy_fixed.isNotNull()
             ? parse_sa_values(m, Rcpp::as<Rcpp::DataFrame>(policy_fixed.get()), 0.0,
-                              "probability")
+                              "probability", "policy_fixed")
             : numvecvec(0);
+
+    // initialized value function from the parameters
+    numvec vf_init =
+        value_init.isNotNull()
+            ? parse_s_values<prec_t>(m.size(), value_init.get(), 0, "value", "value_init")
+            : numvec(0);
 
     ComputeProgress progress(iterations, maxresidual, show_progress, timeout);
 
     if (algorithm == "mpi") {
         // Modified policy iteration
-        rsol = solve_mpi_r(m, discount, numvec(0), rpolicy, iterations, maxresidual,
+        rsol = solve_mpi_r(m, discount, vf_init, rpolicy, iterations, maxresidual,
                            defaults::mpi_vi_count, 0.9, progress);
 
-    } else if (algorithm == "vi_j") {
+    } else if (algorithm == "vi_j" || algorithm == "vi") {
         // Jacobian value iteration
-        rsol = solve_mpi_r(m, discount, numvec(0), rpolicy, iterations, maxresidual, 0,
-                           0.9, progress);
-    } else if (algorithm == "vi") {
+        rsol = solve_mpi_r(m, discount, vf_init, rpolicy, iterations, maxresidual, 0, 0.9,
+                           progress);
+    } else if (algorithm == "vi_g") {
         // Gauss-seidel value iteration
-        rsol = solve_vi_r(m, discount, numvec(0), rpolicy, iterations, maxresidual,
-                          progress);
+        rsol =
+            solve_vi_r(m, discount, vf_init, rpolicy, iterations, maxresidual, progress);
     } else if (algorithm == "pi") {
         // Gauss-seidel value iteration
-        rsol = solve_pi_r(m, discount, numvec(0), rpolicy, iterations, maxresidual,
-                          progress);
+        rsol =
+            solve_pi_r(m, discount, vf_init, rpolicy, iterations, maxresidual, progress);
     } else {
         Rcpp::stop("Unknown algorithm type.");
     }
@@ -519,15 +530,15 @@ algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
     if (nature == "l1u") {
         return algorithms::nats::robust_l1u(Rcpp::as<double>(nature_par));
     } else if (nature == "l1") {
-        numvecvec values =
-            parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0, "budget");
+        numvecvec values = parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(nature_par),
+                                           0.0, "budget", "nature_par");
         return algorithms::nats::robust_l1(values);
     } else if (nature == "l1w") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
         auto budgets = parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["budgets"]),
-                                       0.0, "budget");
+                                       0.0, "budget", "budgets");
         auto weights = parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]),
-                                        1.0, "weight");
+                                        1.0, "weight", "weights");
         return algorithms::nats::robust_l1w(budgets, weights);
     } else if (nature == "evaru") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
@@ -540,15 +551,15 @@ algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
     }
 #ifdef GUROBI_USE
     else if (nature == "l1_g") {
-        vector<numvec> values =
-            parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0, "budget");
+        vector<numvec> values = parse_sa_values(
+            mdp, Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0, "budget", "budget");
         return algorithms::nats::robust_l1w_gurobi(values);
     } else if (nature == "l1w_g") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
         auto budgets = parse_sa_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["budgets"]),
-                                       0.0, "budget");
+                                       0.0, "budget", "budgets");
         auto weights = parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]),
-                                        1.0, "weight");
+                                        1.0, "weight", "weights");
         return algorithms::nats::robust_l1w_gurobi(budgets, weights);
     }
 #endif // end gurobi
@@ -596,7 +607,7 @@ algorithms::SANature parse_nature_sa(const MDPO& mdpo, const string& nature,
 //' @param nature Algorithm used to select the robust outcome. See details for options.
 //' @param nature_par Parameters for the nature. Varies depending on the nature.
 //'                   See details for options.
-//' @param algorithm One of "ppi", "mppi", "vppi", "mpi", "vi", "vi_j", "pi". MPI and PI may
+//' @param algorithm One of "ppi", "mppi", "vppi", "mpi", "vi", "vi_j", "vi_g", "pi". MPI and PI may
 //'           may not converge
 //' @param policy_fixed States for which the  policy should be fixed. This
 //'          should be a dataframe with columns idstate and idaction. The policy
@@ -668,15 +679,16 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
     if (pack_actions) { result["action_map"] = m.pack_actions(); }
 
     // policy: the method can be used to compute the robust solution for a policy
-    indvec policy =
-        policy_fixed.isNotNull()
-            ? parse_s_values<long>(m.size(), policy_fixed.get(), -1, "idaction")
-            : indvec(0);
+    indvec policy = policy_fixed.isNotNull()
+                        ? parse_s_values<long>(m.size(), policy_fixed.get(), -1,
+                                               "idaction", "policy_fixed")
+                        : indvec(0);
 
     // initialized value function from the parameters
-    numvec vf_init = value_init.isNotNull()
-                         ? parse_s_values<prec_t>(m.size(), value_init.get(), 0, "value")
-                         : numvec(0);
+    numvec vf_init =
+        value_init.isNotNull()
+            ? parse_s_values<prec_t>(m.size(), value_init.get(), 0, "value", "value_init")
+            : numvec(0);
 
     SARobustSolution sol;
     algorithms::SANature natparsed = parse_nature_sa(m, nature, nature_par);
@@ -698,10 +710,10 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
                       "without converging.");
         sol = rsolve_mpi(m, discount, std::move(natparsed), vf_init, policy, iterations,
                          maxresidual, defaults::mpi_vi_count, 0.5, progress);
-    } else if (algorithm == "vi") {
+    } else if (algorithm == "vi_g") {
         sol = rsolve_vi(m, discount, std::move(natparsed), vf_init, policy, iterations,
                         maxresidual, progress);
-    } else if (algorithm == "vi_j") {
+    } else if (algorithm == "vi_j" || algorithm == "vi") {
         // Jacobian value iteration, simulated using mpi
         sol = rsolve_mpi(m, discount, std::move(natparsed), vf_init, policy, iterations,
                          maxresidual, 0, 0.5, progress);
@@ -754,7 +766,7 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
 //' The algorithms ppi and mppi are guaranteed to converge to an optimal solution.
 //'
 //'
-//' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "pi". MPI may
+//' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "vi_g", "pi". MPI may
 //'           may not converge
 //' @param policy_fixed States for which the  policy should be fixed. This
 //'          should be a dataframe with columns idstate and idaction. The policy
@@ -821,14 +833,16 @@ Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String na
     if (pack_actions) { result["action_map"] = m.pack_actions(); }
 
     // policy: the method can be used to compute the robust solution for a policy
-    indvec policy = policy_fixed.isNotNull()
-                        ? parse_s_values<long>(m.size(), policy_fixed, -1, "idaction")
-                        : indvec(0);
+    indvec policy =
+        policy_fixed.isNotNull()
+            ? parse_s_values<long>(m.size(), policy_fixed, -1, "idaction", "policy_fixed")
+            : indvec(0);
 
     // initialized value function from the parameters
-    numvec vf_init = value_init.isNotNull()
-                         ? parse_s_values<prec_t>(m.size(), value_init.get(), 0, "value")
-                         : numvec(0);
+    numvec vf_init =
+        value_init.isNotNull()
+            ? parse_s_values<prec_t>(m.size(), value_init.get(), 0, "value", "value_init")
+            : numvec(0);
 
     SARobustSolution sol;
     algorithms::SANature natparsed = parse_nature_sa(m, nature, nature_par);
@@ -846,10 +860,10 @@ Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String na
                       "without converging.");
         sol = rsolve_mpi(m, discount, std::move(natparsed), vf_init, policy, iterations,
                          maxresidual, defaults::mpi_vi_count, 0.5, progress);
-    } else if (algorithm == "vi") {
+    } else if (algorithm == "vi_g") {
         sol = rsolve_vi(m, discount, std::move(natparsed), vf_init, policy, iterations,
                         maxresidual, progress);
-    } else if (algorithm == "vi_j") {
+    } else if (algorithm == "vi_j" || algorithm == "vi") {
         // Jacobian value iteration, simulated using mpi
         sol = rsolve_mpi(m, discount, std::move(natparsed), vf_init, policy, iterations,
                          maxresidual, 0, 0.5, progress);
@@ -901,30 +915,32 @@ algorithms::SNature parse_nature_s(const MDP& mdp, const string& nature,
     }
     if (nature == "l1") {
         numvec values = parse_s_values<prec_t>(
-            mdp.size(), Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0, "budget");
+            mdp.size(), Rcpp::as<Rcpp::DataFrame>(nature_par), 0.0, "budget", "budgets");
         return algorithms::nats::robust_s_l1(values);
     }
     if (nature == "l1w") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
-        auto budgets = parse_s_values(
-            mdp.size(), Rcpp::as<Rcpp::DataFrame>(par["budgets"]), 0.0, "budget");
+        auto budgets =
+            parse_s_values(mdp.size(), Rcpp::as<Rcpp::DataFrame>(par["budgets"]), 0.0,
+                           "budget", "budgets");
         auto weights = parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]),
-                                        1.0, "weight");
+                                        1.0, "weight", "weights");
         return algorithms::nats::robust_s_l1w(budgets, weights);
     }
     // ----- gurobi only -----
 #ifdef GUROBI_USE
     if (nature == "l1_g") {
         numvec values = parse_s_values(mdp.size(), Rcpp::as<Rcpp::DataFrame>(nature_par),
-                                       0.0, "budget");
+                                       0.0, "budget", "budget");
         return algorithms::nats::robust_s_l1_gurobi(values);
     }
     if (nature == "l1w_g") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
-        auto budgets = parse_s_values(
-            mdp.size(), Rcpp::as<Rcpp::DataFrame>(par["budgets"]), 0.0, "budget");
+        auto budgets =
+            parse_s_values(mdp.size(), Rcpp::as<Rcpp::DataFrame>(par["budgets"]), 0.0,
+                           "budget", "budgets");
         auto weights = parse_sas_values(mdp, Rcpp::as<Rcpp::DataFrame>(par["weights"]),
-                                        1.0, "weight");
+                                        1.0, "weight", "weights");
         return algorithms::nats::robust_s_l1w_gurobi(budgets, weights);
     }
 #endif
@@ -946,7 +962,7 @@ algorithms::SNature parse_nature_s(const MDP& mdp, const string& nature,
 //' are provided in the mdp dataframe, even when the transition
 //' probability to those states is 0.
 //'
-//' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "pi". MPI may
+//' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "v_g", "pi". MPI may
 //'           may not converge
 //' @param policy_fixed States for which the  policy should be fixed. This
 //'          should be a dataframe with columns idstate and idaction. The policy
@@ -999,14 +1015,16 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     if (pack_actions) { result["action_map"] = m.pack_actions(); }
 
     // policy: the method can be used to compute the robust solution for a policy
-    numvecvec rpolicy = policy_fixed.isNotNull()
-                            ? parse_sa_values(m, policy_fixed, 0.0, "probability")
-                            : numvecvec(0);
+    numvecvec rpolicy =
+        policy_fixed.isNotNull()
+            ? parse_sa_values(m, policy_fixed, 0.0, "probability", "policy_fixed")
+            : numvecvec(0);
 
     // initialized value function from the parameters
-    numvec vf_init = value_init.isNotNull()
-                         ? parse_s_values<prec_t>(m.size(), value_init.get(), 0, "value")
-                         : numvec(0);
+    numvec vf_init =
+        value_init.isNotNull()
+            ? parse_s_values<prec_t>(m.size(), value_init.get(), 0, "value", "value_init")
+            : numvec(0);
 
     craam::SRobustSolution sol;
     algorithms::SNature natparsed = parse_nature_s(m, nature, nature_par);
@@ -1026,10 +1044,10 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
         sol = rsolve_s_mpi_r(m, discount, std::move(natparsed), vf_init, rpolicy,
                              iterations / defaults::mpi_vi_count, maxresidual,
                              defaults::mpi_vi_count, 0.5, progress);
-    } else if (algorithm == "vi") {
+    } else if (algorithm == "vi_g") {
         sol = rsolve_s_vi_r(m, discount, std::move(natparsed), vf_init, rpolicy,
                             iterations, maxresidual, progress);
-    } else if (algorithm == "vi_j") {
+    } else if (algorithm == "vi_j" || algorithm == "vi") {
         // Jacobian value iteration, simulated using mpi
         sol = rsolve_s_mpi_r(m, discount, std::move(natparsed), vf_init, rpolicy,
                              iterations, maxresidual, 0, 0.5, progress);

@@ -143,8 +143,6 @@ public:
  *
  *  beta * var_alpha[X] + (1-beta) * E[x]
  *
- * NOTE: this method does not guarantee convergence when var is not
- * convex (usually not convex)!
  */
 class robust_var_exp_u {
 protected:

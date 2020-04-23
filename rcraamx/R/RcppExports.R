@@ -41,7 +41,7 @@ pack_actions <- function(mdp) {
 #'            after taking an action a. The columns are:
 #'            idstatefrom, idaction, idstateto, probability, reward
 #' @param discount Discount factor in [0,1]
-#' @param algorithm One of "mpi", "vi", "vi_j", "pi". Also supports "lp"
+#' @param algorithm One of "mpi", "vi", "vi_j", "vi_g", "pi". Also supports "lp"
 #'           when Gurobi is properly installed
 #' @param policy_fixed States for which the  policy should be fixed. This
 #'          should be a dataframe with columns idstate and idaction. The policy
@@ -75,7 +75,7 @@ solve_mdp <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, max
 #'            after taking an action a. The columns are:
 #'            idstatefrom, idaction, idstateto, probability, reward
 #' @param discount Discount factor in [0,1]
-#' @param algorithm One of "mpi", "vi", "vi_j", "pi"
+#' @param algorithm One of "mpi", "vi", "vi_j", "vi_g", "pi"
 #' @param policy_fixed States for which the  policy should be fixed. This
 #'         should be a dataframe with columns idstate, idaction, probability.
 #'          The policy is optimized only for states that are missing, and the
@@ -83,13 +83,16 @@ solve_mdp <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, max
 #' @param maxresidual Residual at which to terminate
 #' @param iterations Maximum number of iterations
 #' @param timeout Maximum number of secods for which to run the computation
+#' @param value_init A  dataframe that contains the initial value function used
+#'          to initialize the method. The columns should be idstate and value.
+#'          Any states that are not provided are initialized to 0.
 #' @param output_tran Whether to construct and return a matrix of transition
 #'          probabilites and a vector of rewards
 #' @param show_progress Whether to show a progress bar during the computation
 #'
 #' @return A list with value function policy and other values
-solve_mdp_rand <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, output_tran = FALSE, show_progress = TRUE) {
-    .Call(`_rcraam_solve_mdp_rand`, mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, output_tran, show_progress)
+solve_mdp_rand <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, output_tran = FALSE, show_progress = TRUE) {
+    .Call(`_rcraam_solve_mdp_rand`, mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, output_tran, show_progress)
 }
 
 #' Computes the function for the MDP for the given value function and discount factor
@@ -127,7 +130,7 @@ compute_qvalues <- function(mdp, discount, valuefunction) {
 #' @param nature Algorithm used to select the robust outcome. See details for options.
 #' @param nature_par Parameters for the nature. Varies depending on the nature.
 #'                   See details for options.
-#' @param algorithm One of "ppi", "mppi", "vppi", "mpi", "vi", "vi_j", "pi". MPI and PI may
+#' @param algorithm One of "ppi", "mppi", "vppi", "mpi", "vi", "vi_j", "vi_g", "pi". MPI and PI may
 #'           may not converge
 #' @param policy_fixed States for which the  policy should be fixed. This
 #'          should be a dataframe with columns idstate and idaction. The policy
@@ -195,7 +198,7 @@ rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi",
 #' The algorithms ppi and mppi are guaranteed to converge to an optimal solution.
 #'
 #'
-#' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "pi". MPI may
+#' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "vi_g", "pi". MPI may
 #'           may not converge
 #' @param policy_fixed States for which the  policy should be fixed. This
 #'          should be a dataframe with columns idstate and idaction. The policy
@@ -255,7 +258,7 @@ rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi
 #' are provided in the mdp dataframe, even when the transition
 #' probability to those states is 0.
 #'
-#' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "pi". MPI may
+#' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "v_g", "pi". MPI may
 #'           may not converge
 #' @param policy_fixed States for which the  policy should be fixed. This
 #'          should be a dataframe with columns idstate and idaction. The policy
