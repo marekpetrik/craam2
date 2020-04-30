@@ -63,9 +63,10 @@ mdp_clean <- function(mdp) {
 #'          in the result
 #' @param output_tran Whether to construct and return a matrix of transition
 #'          probabilites and a vector of rewards
-#' @param show_progress Whether to show a progress bar during the computation
+#' @param show_progress Whether to show a progress bar during the computation.
+#'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 #' @return A list with value function policy and other values
-solve_mdp <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
+solve_mdp <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, pack_actions = FALSE, output_tran = FALSE, show_progress) {
     .Call(`_rcraam_solve_mdp`, mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, pack_actions, output_tran, show_progress)
 }
 
@@ -93,9 +94,10 @@ solve_mdp <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, max
 #' @param output_tran Whether to construct and return a matrix of transition
 #'          probabilites and a vector of rewards
 #' @param show_progress Whether to show a progress bar during the computation
+#'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 #'
 #' @return A list with value function policy and other values
-solve_mdp_rand <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, output_tran = FALSE, show_progress = TRUE) {
+solve_mdp_rand <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, output_tran = FALSE, show_progress = 1L) {
     .Call(`_rcraam_solve_mdp_rand`, mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, output_tran, show_progress)
 }
 
@@ -152,7 +154,8 @@ compute_qvalues <- function(mdp, discount, valuefunction) {
 #'          in the result
 #' @param output_tran Whether to construct and return a matrix of transition
 #'          probabilites and a vector of rewards
-#' @param show_progress Whether to show a progress bar during the computation
+#' @param show_progress Whether to show a progress bar during the computation.
+#'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 #'
 #' @return A list with value function policy and other values
 #'
@@ -187,7 +190,7 @@ compute_qvalues <- function(mdp, discount, valuefunction) {
 #'                 x_a = inf{x \in R : P[X <= x] >= alpha} being the
 #'                 worst-case.
 #'    }
-rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
+rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, pack_actions = FALSE, output_tran = FALSE, show_progress = 1L) {
     .Call(`_rcraam_rsolve_mdp_sa`, mdp, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, pack_actions, output_tran, show_progress)
 }
 
@@ -220,7 +223,8 @@ rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi",
 #'          in the result
 #' @param output_tran Whether to construct and return a matrix of transition
 #'          probabilites and a vector of rewards
-#' @param show_progress Whether to show a progress bar during the computation
+#' @param show_progress Whether to show a progress bar during the computation.
+#'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 #'
 #' @return A list with value function policy and other values
 #'
@@ -246,7 +250,7 @@ rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi",
 #'                 \eqn{x_a = \inf{x \in R : P[X <= x] >= \alpha}} being the
 #'                 worst-case.
 #'    }
-rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
+rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, pack_actions = FALSE, output_tran = FALSE, show_progress = 1L) {
     .Call(`_rcraam_rsolve_mdpo_sa`, mdpo, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, pack_actions, output_tran, show_progress)
 }
 
@@ -280,7 +284,8 @@ rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi
 #'          in the result
 #' @param output_tran Whether to construct and return a matrix of transition
 #'          probabilites and a vector of rewards
-#' @param show_progress Whether to show a progress bar during the computation
+#' @param show_progress Whether to show a progress bar during the computation.
+#'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 #'
 #' @return A list with value function policy and other values
 #' @details
@@ -298,7 +303,7 @@ rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi
 #'                 and weights must be a dataframe with columns:
 #'                 idstatefrom, idaction, idstateto, weight (for the l1 weighted norms)
 #'    }
-rsolve_mdp_s <- function(mdp, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
+rsolve_mdp_s <- function(mdp, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, pack_actions = FALSE, output_tran = FALSE, show_progress = 1L) {
     .Call(`_rcraam_rsolve_mdp_s`, mdp, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, pack_actions, output_tran, show_progress)
 }
 

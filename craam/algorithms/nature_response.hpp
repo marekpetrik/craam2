@@ -692,6 +692,8 @@ public:
 
         assert(actiondist.size() == zvalues.size());
 
+        // use the fast method once the budgets have been calculated (avoids
+        // having to solve the gurobi dual)
         vector<numvec> new_probability;
         new_probability.reserve(actiondist.size());
         for (size_t a = 0; a < nominalprobs.size(); a++) {

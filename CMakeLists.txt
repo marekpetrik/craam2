@@ -35,7 +35,7 @@ endif()
 
 # **** Find packages ****
 find_package(OpenMP)
-#find_package (Eigen3 3.3 REQUIRED NO_MODULE) # this is now included
+#find_package (Eigen3 3.3 REQUIRED NO_MODULE) # this is now included in the git
 find_package(Boost COMPONENTS unit_test_framework ) 
 find_package(Doxygen)
 if(${Boost_FOUND} LESS 1)
@@ -48,7 +48,8 @@ if(GUROBI_USE)
     find_path(GUROBI_INCLUDE_DIR_1 NAMES gurobi_c++.h PATHS "include/gurobi")
     find_path(GUROBI_INCLUDE_DIR_2 NAMES gurobi_c.h PATHS "include/gurobi")
 
-    if(NOT GUROBI_CXX_LIBRARY_1 OR NOT GUROBI_CXX_LIBRARY_2 OR NOT GUROBI_INCLUDE_DIR_1 OR NOT GUROBI_INCLUDE_DIR_2 )
+    if(NOT GUROBI_CXX_LIBRARY_1 OR NOT GUROBI_CXX_LIBRARY_2 OR
+            NOT GUROBI_INCLUDE_DIR_1 OR NOT GUROBI_INCLUDE_DIR_2 )
         message(WARNING "Gurobi files not found in lib/gurobi or include/gurobi, disabling support.")
         set (GUROBI_USE FALSE)
     endif()
@@ -180,7 +181,6 @@ if (BUILD_TESTS)
                         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
                         COMMENT "Running unit tests")
 endif (BUILD_TESTS)
-
 
 # **** COMMAND-LINE EXECUTABLE ****
 add_executable(craam-cli EXCLUDE_FROM_ALL ${BENCH} ${SRCS} )

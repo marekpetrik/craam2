@@ -55,7 +55,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // solve_mdp
-Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorithm, Rcpp::Nullable<Rcpp::DataFrame> policy_fixed, double maxresidual, size_t iterations, double timeout, Rcpp::Nullable<Rcpp::DataFrame> value_init, bool pack_actions, bool output_tran, bool show_progress);
+Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorithm, Rcpp::Nullable<Rcpp::DataFrame> policy_fixed, double maxresidual, size_t iterations, double timeout, Rcpp::Nullable<Rcpp::DataFrame> value_init, bool pack_actions, bool output_tran, int show_progress);
 RcppExport SEXP _rcraam_solve_mdp(SEXP mdpSEXP, SEXP discountSEXP, SEXP algorithmSEXP, SEXP policy_fixedSEXP, SEXP maxresidualSEXP, SEXP iterationsSEXP, SEXP timeoutSEXP, SEXP value_initSEXP, SEXP pack_actionsSEXP, SEXP output_tranSEXP, SEXP show_progressSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -70,13 +70,13 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::DataFrame> >::type value_init(value_initSEXP);
     Rcpp::traits::input_parameter< bool >::type pack_actions(pack_actionsSEXP);
     Rcpp::traits::input_parameter< bool >::type output_tran(output_tranSEXP);
-    Rcpp::traits::input_parameter< bool >::type show_progress(show_progressSEXP);
+    Rcpp::traits::input_parameter< int >::type show_progress(show_progressSEXP);
     rcpp_result_gen = Rcpp::wrap(solve_mdp(mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, pack_actions, output_tran, show_progress));
     return rcpp_result_gen;
 END_RCPP
 }
 // solve_mdp_rand
-Rcpp::List solve_mdp_rand(Rcpp::DataFrame mdp, double discount, Rcpp::String algorithm, Rcpp::Nullable<Rcpp::DataFrame> policy_fixed, double maxresidual, size_t iterations, double timeout, Rcpp::Nullable<Rcpp::DataFrame> value_init, bool output_tran, bool show_progress);
+Rcpp::List solve_mdp_rand(Rcpp::DataFrame mdp, double discount, Rcpp::String algorithm, Rcpp::Nullable<Rcpp::DataFrame> policy_fixed, double maxresidual, size_t iterations, double timeout, Rcpp::Nullable<Rcpp::DataFrame> value_init, bool output_tran, int show_progress);
 RcppExport SEXP _rcraam_solve_mdp_rand(SEXP mdpSEXP, SEXP discountSEXP, SEXP algorithmSEXP, SEXP policy_fixedSEXP, SEXP maxresidualSEXP, SEXP iterationsSEXP, SEXP timeoutSEXP, SEXP value_initSEXP, SEXP output_tranSEXP, SEXP show_progressSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -90,7 +90,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type timeout(timeoutSEXP);
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::DataFrame> >::type value_init(value_initSEXP);
     Rcpp::traits::input_parameter< bool >::type output_tran(output_tranSEXP);
-    Rcpp::traits::input_parameter< bool >::type show_progress(show_progressSEXP);
+    Rcpp::traits::input_parameter< int >::type show_progress(show_progressSEXP);
     rcpp_result_gen = Rcpp::wrap(solve_mdp_rand(mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, output_tran, show_progress));
     return rcpp_result_gen;
 END_RCPP
@@ -109,7 +109,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // rsolve_mdp_sa
-Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String nature, SEXP nature_par, Rcpp::String algorithm, Rcpp::Nullable<Rcpp::DataFrame> policy_fixed, double maxresidual, size_t iterations, double timeout, Rcpp::Nullable<Rcpp::DataFrame> value_init, bool pack_actions, bool output_tran, bool show_progress);
+Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String nature, SEXP nature_par, Rcpp::String algorithm, Rcpp::Nullable<Rcpp::DataFrame> policy_fixed, double maxresidual, size_t iterations, double timeout, Rcpp::Nullable<Rcpp::DataFrame> value_init, bool pack_actions, bool output_tran, int show_progress);
 RcppExport SEXP _rcraam_rsolve_mdp_sa(SEXP mdpSEXP, SEXP discountSEXP, SEXP natureSEXP, SEXP nature_parSEXP, SEXP algorithmSEXP, SEXP policy_fixedSEXP, SEXP maxresidualSEXP, SEXP iterationsSEXP, SEXP timeoutSEXP, SEXP value_initSEXP, SEXP pack_actionsSEXP, SEXP output_tranSEXP, SEXP show_progressSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -126,13 +126,13 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::DataFrame> >::type value_init(value_initSEXP);
     Rcpp::traits::input_parameter< bool >::type pack_actions(pack_actionsSEXP);
     Rcpp::traits::input_parameter< bool >::type output_tran(output_tranSEXP);
-    Rcpp::traits::input_parameter< bool >::type show_progress(show_progressSEXP);
+    Rcpp::traits::input_parameter< int >::type show_progress(show_progressSEXP);
     rcpp_result_gen = Rcpp::wrap(rsolve_mdp_sa(mdp, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, pack_actions, output_tran, show_progress));
     return rcpp_result_gen;
 END_RCPP
 }
 // rsolve_mdpo_sa
-Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String nature, SEXP nature_par, Rcpp::String algorithm, Rcpp::Nullable<Rcpp::DataFrame> policy_fixed, double maxresidual, size_t iterations, double timeout, Rcpp::Nullable<Rcpp::DataFrame> value_init, bool pack_actions, bool output_tran, bool show_progress);
+Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String nature, SEXP nature_par, Rcpp::String algorithm, Rcpp::Nullable<Rcpp::DataFrame> policy_fixed, double maxresidual, size_t iterations, double timeout, Rcpp::Nullable<Rcpp::DataFrame> value_init, bool pack_actions, bool output_tran, int show_progress);
 RcppExport SEXP _rcraam_rsolve_mdpo_sa(SEXP mdpoSEXP, SEXP discountSEXP, SEXP natureSEXP, SEXP nature_parSEXP, SEXP algorithmSEXP, SEXP policy_fixedSEXP, SEXP maxresidualSEXP, SEXP iterationsSEXP, SEXP timeoutSEXP, SEXP value_initSEXP, SEXP pack_actionsSEXP, SEXP output_tranSEXP, SEXP show_progressSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -149,13 +149,13 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::DataFrame> >::type value_init(value_initSEXP);
     Rcpp::traits::input_parameter< bool >::type pack_actions(pack_actionsSEXP);
     Rcpp::traits::input_parameter< bool >::type output_tran(output_tranSEXP);
-    Rcpp::traits::input_parameter< bool >::type show_progress(show_progressSEXP);
+    Rcpp::traits::input_parameter< int >::type show_progress(show_progressSEXP);
     rcpp_result_gen = Rcpp::wrap(rsolve_mdpo_sa(mdpo, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, pack_actions, output_tran, show_progress));
     return rcpp_result_gen;
 END_RCPP
 }
 // rsolve_mdp_s
-Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String nature, SEXP nature_par, Rcpp::String algorithm, Rcpp::Nullable<Rcpp::DataFrame> policy_fixed, double maxresidual, size_t iterations, double timeout, Rcpp::Nullable<Rcpp::DataFrame> value_init, bool pack_actions, bool output_tran, bool show_progress);
+Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String nature, SEXP nature_par, Rcpp::String algorithm, Rcpp::Nullable<Rcpp::DataFrame> policy_fixed, double maxresidual, size_t iterations, double timeout, Rcpp::Nullable<Rcpp::DataFrame> value_init, bool pack_actions, bool output_tran, int show_progress);
 RcppExport SEXP _rcraam_rsolve_mdp_s(SEXP mdpSEXP, SEXP discountSEXP, SEXP natureSEXP, SEXP nature_parSEXP, SEXP algorithmSEXP, SEXP policy_fixedSEXP, SEXP maxresidualSEXP, SEXP iterationsSEXP, SEXP timeoutSEXP, SEXP value_initSEXP, SEXP pack_actionsSEXP, SEXP output_tranSEXP, SEXP show_progressSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -172,7 +172,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::DataFrame> >::type value_init(value_initSEXP);
     Rcpp::traits::input_parameter< bool >::type pack_actions(pack_actionsSEXP);
     Rcpp::traits::input_parameter< bool >::type output_tran(output_tranSEXP);
-    Rcpp::traits::input_parameter< bool >::type show_progress(show_progressSEXP);
+    Rcpp::traits::input_parameter< int >::type show_progress(show_progressSEXP);
     rcpp_result_gen = Rcpp::wrap(rsolve_mdp_s(mdp, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, pack_actions, output_tran, show_progress));
     return rcpp_result_gen;
 END_RCPP

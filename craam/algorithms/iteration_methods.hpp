@@ -31,10 +31,23 @@
 
 namespace craam { namespace algorithms {
 
-namespace internal {
+/// Function type representing the progress reporting function
+/// It returns whether the computation should continue and the
+/// parameters are: iteration, residual, location, sublocation, message
+///
+/// Note: The residual value does not always indicate the absolute value of
+/// the residual, but may be used sometimes to indicate another value (such as the
+/// target residual in PPI). It should be used to provide information,
+/// and not for decisions, like stopping the iteration
+using progress_t = std::function<bool(size_t, prec_t, const std::string&,
+                                      const std::string&, const std::string&)>;
 
+namespace internal {
 /// An empty progress function, always returns true
-inline bool empty_progress(size_t iteration, prec_t residual) { return true; }
+inline bool empty_progress(size_t, prec_t, const std::string&, const std::string&,
+                           const std::string&) {
+    return true;
+}
 
 } // namespace internal
 
@@ -69,7 +82,7 @@ template <class ResponseType>
 inline Solution<typename ResponseType::policy_type>
 vi_gs(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(0),
       unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
-      const std::function<bool(size_t, prec_t)>& progress = internal::empty_progress) {
+      const progress_t& progress = internal::empty_progress) {
     using policy_type = typename ResponseType::policy_type;
 
     // just quit if there are no states
@@ -86,7 +99,9 @@ vi_gs(const ResponseType& response, prec_t discount, numvec valuefunction = numv
     prec_t residual = numeric_limits<prec_t>::infinity();
     size_t i; // iterations defined outside to make them reportable
 
-    for (i = 0; i < iterations && residual > maxresidual && progress(i, residual); i++) {
+    for (i = 0;
+         i < iterations && residual > maxresidual && progress(i, residual, "vi", "", "");
+         i++) {
         residual = 0;
 
         for (size_t s = 0l; s < response.state_count(); s++) {
@@ -149,8 +164,10 @@ mpi_jac(const ResponseType& response, prec_t discount,
         const numvec& valuefunction = numvec(0), unsigned long iterations_pi = MAXITER,
         prec_t maxresidual_pi = SOLPREC, unsigned long iterations_vi = MAXITER,
         prec_t maxresidual_vi_rel = 0.9,
-        const std::function<bool(size_t, prec_t)>& progress = internal::empty_progress) {
+        const progress_t& progress = internal::empty_progress) {
+
     using policy_type = typename ResponseType::policy_type;
+
     // just quit if there are no states
     if (response.state_count() == 0) { return Solution<policy_type>(0, 0); }
 
@@ -204,11 +221,16 @@ mpi_jac(const ResponseType& response, prec_t discount,
         if (openmp_error)
             throw runtime_error("Failed with an exception in OPENMP block.");
 
+        const prec_t old_residual_pi = residual_pi;
         residual_pi = *max_element(residuals.cbegin(), residuals.cend());
 
         // the residual is sufficiently small
-        //if (residual_pi <= maxresidual_pi || !progress(iter_total, residual_pi)) break;
-        if (residual_pi <= maxresidual_pi || !progress(i, residual_pi)) break;
+        if (residual_pi <= maxresidual_pi || !progress(i, residual_pi, "mpi", "", ""))
+            break;
+
+        // if this implements value iteration then the bellman residual should always
+        // decrease in easch iteration
+        if (iterations_vi <= 0) { assert(residual_pi <= old_residual_pi + 1e-5); }
 
         // compute values using value iteration
         for (size_t j = 0;
@@ -291,7 +313,7 @@ template <class ResponseType>
 inline Solution<typename ResponseType::policy_type>
 pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(0),
    unsigned long iterations_pi = MAXITER, prec_t maxresidual_pi = SOLPREC,
-   const std::function<bool(size_t, prec_t)>& progress = internal::empty_progress) {
+   const progress_t& progress = internal::empty_progress) {
 
     const auto n = response.state_count();
 
@@ -383,7 +405,7 @@ pi(const ResponseType& response, prec_t discount, numvec valuefunction = numvec(
         assert(!isinf(residual_pi));
 
         // the residual is sufficiently small
-        auto is_continue = !progress(i, residual_pi);
+        auto is_continue = !progress(i, residual_pi, "pi", "", "");
         if (is_continue || residual_pi <= maxresidual_pi || policy == policy_old) break;
 
         // ** now compute the value function
@@ -428,7 +450,12 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
      unsigned long iterations_pi = MAXITER, prec_t maxresidual = SOLPREC,
      const prec_t rob_residual_init = 1.0, prec_t rob_residual_rate = std::nan(""),
      MDPSolver mdp_solver = MDPSolver::pi,
-     const std::function<bool(size_t, prec_t)>& progress = internal::empty_progress) {
+     const progress_t& progress = internal::empty_progress) {
+
+    // the policy evaluation target should be no greater than the
+    // residual of the policy optimization (also it can only shrink and
+    // cannot expand)
+    constexpr prec_t target_of_pi_factor = 0.5;
 
     using policy_type = typename ResponseType::policy_type;
     using dec_policy_type = typename ResponseType::dec_policy_type;
@@ -497,9 +524,12 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
         response.set_decision_policy(dec_policy);
 
         // track the number of iterations in the inner optimization too
-        auto inner_progress = [&iterations, residual_pi, &progress,
-                               &inner_continue](size_t iters, prec_t res) {
-            inner_continue = progress(iterations, residual_pi + res);
+        auto inner_progress = [&iterations, residual_pi, &progress, &inner_continue](
+                                  size_t iters, prec_t res, const std::string& level,
+                                  const std::string& sublevel,
+                                  const std::string& message) {
+            inner_continue =
+                progress(iterations, residual_pi + res, "ppi", level, message);
             ++iterations;
             return inner_continue;
         };
@@ -528,24 +558,27 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
 
             solution_rob =
                 mpi_jac(response, discount, valuefunction, inner_piiters, target_residual,
-                        inner_viiters, 0.8 * discount, inner_progress);
+                        inner_viiters, target_of_pi_factor * discount, inner_progress);
         } else if (mdp_solver == MDPSolver::vi) {
 
             // this method is meant to approximate the behavior RMPI, so the number
             // of iterations per policy improvement is relatively small
-            solution_rob = mpi_jac(response, discount, valuefunction, 10, target_residual,
-                                   0, 1.0, inner_progress);
+            solution_rob = mpi_jac(response, discount, valuefunction, 1000,
+                                   target_residual, 0, 1.0, inner_progress);
         } else {
             throw invalid_argument("Unsupported mdp_solver parameter");
         }
 
         // update the target residual accordingly for the initial policy
         // but only increase it; needed if the initial target is set too low
-        // this only happens at the start of the algorithm
-        if (iterations == 0) {
-            target_residual = std::max(target_residual, solution_rob.residual);
-        }
-        // TODO: should raise some kind of a warning when the target residual is not achieved
+        // this should only happen at the start of the algorithm
+        //target_residual = std::max(target_residual, solution_rob.residual);
+
+        progress(iterations, target_residual, "ppi-target", "",
+                 "Policy eval target residual.");
+
+        // TODO: maybe we should raise some kind of a warning when the target
+        // residual is not achieved
 
         valuefunction = move(solution_rob.valuefunction);
 
@@ -581,12 +614,15 @@ rppi(ResponseType response, prec_t discount, numvec valuefunction = numvec(0),
         // TODO: change to span seminorm (in all methods and all locations)
         residual_pi = *max_element(residuals.cbegin(), residuals.cend());
 
+        // adjust the target residual to be smaller than the policy residual
+        target_residual = std::min(target_of_pi_factor * residual_pi, target_residual);
+
         // cannot break earlier because the Bellman residual is not computed yet
         // at that time (could be because the inner iteration was interrupted)
         if (!inner_continue) break;
 
         // check whether there is a reason to interrupt
-        if (!progress(iterations, residual_pi)) break;
+        if (!progress(iterations, residual_pi, "ppi", "", "")) break;
 
         // update the target residual
         target_residual *= rob_residual_rate;

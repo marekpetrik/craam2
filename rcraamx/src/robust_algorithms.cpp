@@ -52,10 +52,12 @@ using namespace craam;
 using namespace std;
 
 namespace defaults {
-constexpr size_t iterations = 1000;
-constexpr double maxresidual = 0.0001;
-constexpr double timeout = -1;
-constexpr bool show_progress = true;
+// these constants do not work because Rcpp cannot parse default
+// parameters values then
+//constexpr size_t iterations = 1000;
+//constexpr double maxresidual = 0.0001;
+//constexpr double timeout = -1;
+//constexpr bool show_progress = true;
 constexpr long mpi_vi_count = 50;
 } // namespace defaults
 
@@ -71,8 +73,8 @@ protected:
     chrono::steady_clock::time_point start = chrono::steady_clock::now();
     /// Timeout
     double timeout_seconds;
-    /// Show progress
-    bool show_progress;
+    /// Show progress level (verbosity)
+    int show_progress;
 
 public:
     /**
@@ -80,11 +82,14 @@ public:
      * @param min_residual Desired level of Bellman residual
      * @param timeout_seconds Number of seconds before a timeout. 0 or less means
      *                          that there is no timeout
+     * @param show_progress The level of progress to report. Non-positive value indicates
+     *        no progress shown, 1 means a progress bar, and 2 is detailed report for
+     *        each iteration (and no progress bar)
      */
-    ComputeProgress(size_t max_iterations, prec_t min_residual, bool show_progress,
+    ComputeProgress(size_t max_iterations, prec_t min_residual, int show_progress,
                     double timeout_seconds)
         : max_iterations(max_iterations), min_residual(min_residual),
-          progress(max_iterations, show_progress), timeout_seconds(timeout_seconds),
+          progress(max_iterations, show_progress == 1), timeout_seconds(timeout_seconds),
           show_progress(show_progress){};
 
     /**
@@ -94,8 +99,9 @@ public:
 
      * @return Whether to continue with the computation
      */
-    bool operator()(size_t iterations, prec_t residual) {
-        //std::cerr << iterations << "," << residual << std::endl;
+    bool operator()(size_t iterations, prec_t residual, const std::string& location,
+                    const std::string& sublocation, const std::string& message) {
+
         if (RcppProg::Progress::check_abort()) { return false; }
         if (timeout_seconds > craam::EPSILON) {
             auto finish = chrono::steady_clock::now();
@@ -106,6 +112,17 @@ public:
             }
         }
         progress.update(iterations);
+        if (show_progress == 2) {
+
+            if (sublocation.length() == 0) {
+                Rcpp::Rcout << iterations << ":[" << location << "]: " << residual << " "
+                            << message << std::endl;
+            } else {
+                Rcpp::Rcout << "    " << iterations << ":[" << location << "-"
+                            << sublocation << "]: " << residual << " " << message
+                            << std::endl;
+            }
+        }
         return true;
     }
 };
@@ -310,7 +327,8 @@ Rcpp::DataFrame mdp_clean(Rcpp::DataFrame mdp) {
 //'          in the result
 //' @param output_tran Whether to construct and return a matrix of transition
 //'          probabilites and a vector of rewards
-//' @param show_progress Whether to show a progress bar during the computation
+//' @param show_progress Whether to show a progress bar during the computation.
+//'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 //' @return A list with value function policy and other values
 // [[Rcpp::export]]
 Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorithm = "mpi",
@@ -319,8 +337,7 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
                      double timeout = 300,
                      Rcpp::Nullable<Rcpp::DataFrame> value_init = R_NilValue,
                      bool pack_actions = false, bool output_tran = false,
-                     bool show_progress = true) {
-
+                     int show_progress = 1) {
     if (policy_fixed.isNotNull() && pack_actions) {
         Rcpp::warning(
             "Providing a policy_fixed and packing actions is a bad idea. When the "
@@ -428,6 +445,7 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
 //' @param output_tran Whether to construct and return a matrix of transition
 //'          probabilites and a vector of rewards
 //' @param show_progress Whether to show a progress bar during the computation
+//'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 //'
 //' @return A list with value function policy and other values
 // [[Rcpp::export]]
@@ -437,8 +455,7 @@ Rcpp::List solve_mdp_rand(Rcpp::DataFrame mdp, double discount,
                           double maxresidual = 10e-4, size_t iterations = 10000,
                           double timeout = 300,
                           Rcpp::Nullable<Rcpp::DataFrame> value_init = R_NilValue,
-                          bool output_tran = false, bool show_progress = true) {
-
+                          bool output_tran = false, int show_progress = 1) {
     // Note: this method only makes sense to be called with a provided
     // fixed policy and in that case, packing the actions is quite nonsensical
 
@@ -519,7 +536,6 @@ Rcpp::List solve_mdp_rand(Rcpp::DataFrame mdp, double discount,
 // [[Rcpp::export]]
 Rcpp::DataFrame compute_qvalues(Rcpp::DataFrame mdp, double discount,
                                 Rcpp::DataFrame valuefunction) {
-
     MDP m = mdp_from_dataframe(mdp);
     Rcpp::IntegerVector states = valuefunction["idstate"];
     auto minmax_els = std::minmax_element(states.cbegin(), states.cend());
@@ -590,7 +606,6 @@ algorithms::SANature parse_nature_sa(const MDP& mdp, const string& nature,
 /// Parses the name and the parameter of the provided nature
 algorithms::SANature parse_nature_sa(const MDPO& mdpo, const string& nature,
                                      SEXP nature_par) {
-
     if (nature == "exp") {
         return algorithms::nats::robust_exp();
     } else if (nature == "evaru") {
@@ -644,7 +659,8 @@ algorithms::SANature parse_nature_sa(const MDPO& mdpo, const string& nature,
 //'          in the result
 //' @param output_tran Whether to construct and return a matrix of transition
 //'          probabilites and a vector of rewards
-//' @param show_progress Whether to show a progress bar during the computation
+//' @param show_progress Whether to show a progress bar during the computation.
+//'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 //'
 //' @return A list with value function policy and other values
 //'
@@ -687,8 +703,7 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
                          double timeout = 300,
                          Rcpp::Nullable<Rcpp::DataFrame> value_init = R_NilValue,
                          bool pack_actions = false, bool output_tran = false,
-                         bool show_progress = true) {
-
+                         int show_progress = 1) {
     Rcpp::List result;
 
     // make robust transitions to states with 0 probability possible
@@ -803,7 +818,8 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
 //'          in the result
 //' @param output_tran Whether to construct and return a matrix of transition
 //'          probabilites and a vector of rewards
-//' @param show_progress Whether to show a progress bar during the computation
+//' @param show_progress Whether to show a progress bar during the computation.
+//'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 //'
 //' @return A list with value function policy and other values
 //'
@@ -837,8 +853,7 @@ Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String na
                           double timeout = 300,
                           Rcpp::Nullable<Rcpp::DataFrame> value_init = R_NilValue,
                           bool pack_actions = false, bool output_tran = false,
-                          bool show_progress = true) {
-
+                          int show_progress = 1) {
     Rcpp::List result;
 
     // What would be the point of forcing to add transitions even if
@@ -999,7 +1014,8 @@ algorithms::SNature parse_nature_s(const MDP& mdp, const string& nature,
 //'          in the result
 //' @param output_tran Whether to construct and return a matrix of transition
 //'          probabilites and a vector of rewards
-//' @param show_progress Whether to show a progress bar during the computation
+//' @param show_progress Whether to show a progress bar during the computation.
+//'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 //'
 //' @return A list with value function policy and other values
 //' @details
@@ -1025,7 +1041,7 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
                         double timeout = 300,
                         Rcpp::Nullable<Rcpp::DataFrame> value_init = R_NilValue,
                         bool pack_actions = false, bool output_tran = false,
-                        bool show_progress = true) {
+                        int show_progress = 1) {
     Rcpp::List result;
 
     MDP m = mdp_from_dataframe(mdp, true);

@@ -105,7 +105,7 @@ inline std::pair<prec_t, size_t> piecewise_linear(const numvec& knots,
 }
 
 /**
- * Computes the right derivatives of a piecewise linear function h(x).
+ * Computes the right derivatives of a piecewise linear *concave* function h(x).
  * The function is not differentiable, but it has right derivatives.
  *
  * The right derivative is defined as:
@@ -114,7 +114,7 @@ inline std::pair<prec_t, size_t> piecewise_linear(const numvec& knots,
  * @param knots Knots of the function (in parameter x). The array must be
  *              sorted increasingly.
  * @param values Values in the knots (h(k) for knot k)
- * @param last_derivative The last derivetive (assuming that the function is convex).
+ * @param last_derivative The last derivative (assuming that the function is convex).
  *                          Optional.
  *
  * @return The right derivative at each knot, except for the last one.
@@ -122,17 +122,33 @@ inline std::pair<prec_t, size_t> piecewise_linear(const numvec& knots,
 inline numvec piecewise_derivatives(const numvec& knots, const numvec& values,
                                     prec_t last_derivative = 0.0) {
 
+    // allowable tolerance for the concavity of derivatives
+    constexpr prec_t epsilon = 1e-7;
+
     assert(knots.size() == values.size());
 
     // preallocate the derivates
     numvec derivatives;
     derivatives.reserve(knots.size());
 
+    if (knots.size() >= 2) {
+        const long int i = 0;
+        const prec_t derivative = (values[i + 1] - values[i]) / (knots[i + 1] - knots[i]);
+        derivatives.push_back(derivative);
+    }
+
     // compute each right derivative
-    for (long i = 0; i < long(knots.size()) - 1; ++i) {
-        derivatives.push_back((values[i + 1] - values[i]) / (knots[i + 1] - knots[i]));
+    for (long i = 1; i < long(knots.size()) - 1; ++i) {
+        const prec_t derivative = (values[i + 1] - values[i]) / (knots[i + 1] - knots[i]);
+        // make sure that the function is indeed concave (allowing for epsilon decrease)
+        if (derivative < derivatives.back() - epsilon) {
+            throw runtime_error(
+                "Derivatives of a non-concave piecewise linear function.");
+        }
+        derivatives.push_back(std::max(derivative, derivatives.back()));
     }
     derivatives.push_back(last_derivative);
+    //assert(std::is_sorted(derivatives.cbegin(), derivatives.cend()));
     return derivatives;
 }
 
@@ -169,7 +185,14 @@ inline long minimize_piecewise(const numvec& knots, const numvec& derivatives,
 
     assert(knots.size() == derivatives.size());
     // make sure that the derivatives are non-decreasing
-    assert(std::is_sorted(cbegin(derivatives), cend(derivatives)));
+#ifndef NDEBUG
+    if (!std::is_sorted(cbegin(derivatives), cend(derivatives))) {
+        std::cerr << "ERROR: Derivatives are not sorted: " << std::endl
+                  << derivatives << std::endl;
+        //assert(false);
+        //   assert(std::is_sorted(cbegin(derivatives), cend(derivatives)));
+    }
+#endif
 
     auto begin = cbegin(derivatives);
     long pos = std::distance(begin, std::lower_bound(begin, cend(derivatives), -lambda));
@@ -284,13 +307,8 @@ solve_srect_bisection(const numvecvec& z, const numvecvec& pbar, const prec_t ps
         assert(abs(values[a].back()) <= 1e-6);
 
         // update the lower and upper limits on u
-#ifdef __cpp_structured_bindings
         auto [minval, maxval] = minmax_element(knots[a].cbegin(), knots[a].cend());
-#else
-        auto minmaxval = minmax_element(knots[a].cbegin(), knots[a].cend());
-        auto minval = minmaxval.first;
-        auto maxval = minmaxval.second;
-#endif
+
         // cout << "minval " << *minval << "  maxval " << *maxval << endl;
         // the function is infinite for values smaller than the minumum for any
         // action
@@ -328,32 +346,21 @@ solve_srect_bisection(const numvecvec& z, const numvecvec& pbar, const prec_t ps
 
     // compute xisum_upper and indices,
     for (size_t a = 0; a < nactions; a++) {
-#ifdef __cpp_structured_bindings
         auto [xia, index] =
             piecewise_linear(knots[a], values[a], u_upper, true); // choose the min xi
-#else
-        double xia;
-        size_t index;
-        tie(xia, index) =
-            piecewise_linear(knots[a], values[a], u_upper, true); // choose the min xi
-#endif
+
         xisum_upper += xia * (wa.empty() ? 1.0 : wa[a]);
         indices_upper[a] = index;
     }
 
     // compute xisum_lower
     for (size_t a = 0; a < nactions; a++) {
-#ifdef __cpp_structured_bindings
+
         // this function should compute the **smallest** xi that can achieve
         // the desired u.
         auto [xia, index] =
             piecewise_linear(knots[a], values[a], u_lower, false); // choose the max xi
-#else
-        double xia;
-        size_t index;
-        tie(xia, index) =
-            piecewise_linear(knots[a], values[a], u_lower, false); // choose the max xi
-#endif
+
         assert((wa.empty() ? 1.0 : wa[a]) > 0.0);
         xisum_lower += xia * (wa.empty() ? 1.0 : wa[a]);
         indices_lower[a] = index;
@@ -391,15 +398,9 @@ solve_srect_bisection(const numvecvec& z, const numvecvec& pbar, const prec_t ps
         prec_t xisum = 0;
         sizvec indices_pivot(nactions);
         for (size_t a = 0; a < nactions; a++) {
-#ifdef __cpp_structured_bindings
             auto [xia, index] =
                 piecewise_linear(knots[a], values[a], u_pivot, true); // choose the min xi
-#else
-            double xia;
-            size_t index;
-            tie(xia, index) =
-                piecewise_linear(knots[a], values[a], u_pivot, true); //choose the min xi
-#endif
+
             xisum += xia * (wa.empty() ? 1.0 : wa[a]);
             indices_pivot[a] = index;
         }
@@ -452,15 +453,9 @@ solve_srect_bisection(const numvecvec& z, const numvecvec& pbar, const prec_t ps
     // segment)
 
     for (size_t a = 0; a < nactions; a++) {
-#ifdef __cpp_structured_bindings
+
         auto [xia, index] =
             piecewise_linear(knots[a], values[a], u_result, true); // choose min xi
-#else
-        double xia;
-        size_t index;
-        tie(xia, index) =
-            piecewise_linear(knots[a], values[a], u_result, true); // choose min xi
-#endif
         xi[a] = xia;
 
         // cout << " index " << index << "/" << knots[a].size() << endl;
@@ -472,20 +467,6 @@ solve_srect_bisection(const numvecvec& z, const numvecvec& pbar, const prec_t ps
 
             assert(abs(u_result - knots[a][0]) < EPSILON);
             index = 1;
-            //std::cout << "z[a] = " << z[a] << std::endl;
-            //std::cout << "pbar[a] = " << pbar[a] << std::endl;
-            //std::cout << "knots = " << knots[a] << std::endl;
-            //std::cout << "values = " << values[a] << std::endl;
-
-            // TODO: Can this ever happen?
-            //throw std::runtime_error(
-            //    "This should not happen (can happen when z's are all "
-            //    "the same); index = 0 should be handled by the "
-            //    "special case with u_lower feasible. u_lower = " +
-            //    to_string(u_lower) + ", u_upper = " + to_string(u_upper) +
-            //    ", xisum_lower = " + to_string(xisum_lower) +
-            //    ", xisum_upper = " + to_string(xisum_upper) +
-            //    ", psi = " + to_string(psi) + ", knots = " + to_string(knots[a].size()));
         }
 
         // the value u lies between index - 1 and index
@@ -587,7 +568,7 @@ inline pair<prec_t, numvecvec> evaluate_srect_bisection_l1(
     size_t count_allknots = 0;
 
     // TODO: ignore actions that have 0 or close to 0 transition
-    // probabilities
+    // probabilities to improve computational performance
 
     // compute the knots and values
     if (ws.empty()) {
@@ -596,12 +577,7 @@ inline pair<prec_t, numvecvec> evaluate_srect_bisection_l1(
             // NOTE: values and knots are intentionally different from the names in the
             // function. We need the function q and not q^{-1} here.
             assert(z[ai].size() == pbar[ai].size());
-#ifdef __cpp_structured_bindings
             auto [values_a, knots_a] = worstcase_l1_knots(z[ai], pbar[ai]);
-#else
-            numvec knots_a, values_a;
-            std::tie(values_a, knots_a) = worstcase_l1_knots(z[ai], pbar[ai]);
-#endif
             // multiply the derivatives by the probability
             derivatives.push_back(
                 multiply(piecewise_derivatives(knots_a, values_a, 0.0), d[ai]));
@@ -615,18 +591,11 @@ inline pair<prec_t, numvecvec> evaluate_srect_bisection_l1(
             // NOTE: values and knots are intentionally different from the names in the
             // function. We need the function q and not q^{-1} here.
             assert(z[ai].size() == pbar[ai].size());
-#ifdef __cpp_structured_bindings
+
             auto [values_a, knots_a] =
                 gradients.empty()
                     ? worstcase_l1_w_knots(z[ai], pbar[ai], ws[ai])
                     : worstcase_l1_w_knots(gradients[ai], z[ai], pbar[ai], ws[ai]);
-#else
-            numvec knots_a, values_a;
-            std::tie(values_a, knots_a) =
-                gradients.empty()
-                    ? worstcase_l1_w_knots(z[ai], pbar[ai], ws[ai])
-                    : worstcase_l1_w_knots(gradients[ai], z[ai], pbar[ai], ws[ai]);
-#endif
 
             derivatives.push_back(
                 multiply(piecewise_derivatives(knots_a, values_a, 0.0), d[ai]));
@@ -759,31 +728,19 @@ inline pair<prec_t, numvecvec> evaluate_srect_bisection_l1(
     for (long ai = 0; ai < long(actioncount); ++ai) {
         auto xi = xi_values[ai];
         if (ws.empty()) {
-#ifdef __cpp_structured_bindings
             auto [prob, value] = worstcase_l1(z[ai], pbar[ai], xi);
-#else
-            numvec prob;
-            prec_t value;
-            std::tie(prob, value) = worstcase_l1(z[ai], pbar[ai], xi);
-#endif
+
             //objective_value += d[ai] * value + xi * lambda;  <=== if psi_remainder were not allocated before
             objective_value += d[ai] * value;
             probabilities_sol[ai] = prob;
 
         } else {
-#ifdef __cpp_structured_bindings
+
             auto [prob, value] =
                 gradients.empty()
                     ? worstcase_l1_w(z[ai], pbar[ai], ws[ai], xi)
                     : worstcase_l1_w(gradients[ai], z[ai], pbar[ai], ws[ai], xi);
-#else
-            numvec prob;
-            prec_t value;
-            std::tie(prob, value) =
-                gradients.empty()
-                    ? worstcase_l1_w(z[ai], pbar[ai], ws[ai], xi)
-                    : worstcase_l1_w(gradients[ai], z[ai], pbar[ai], ws[ai], xi);
-#endif
+
             //objective_value += d[ai] * value + xi * lambda; <=== if psi_remainder were not allocated before
             objective_value += d[ai] * value;
             probabilities_sol[ai] = prob;

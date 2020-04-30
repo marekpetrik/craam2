@@ -66,11 +66,11 @@ std::pair<numvec, prec_t> inline worstcase_l1(numvec const& z, numvec const& pba
                                               prec_t xi) {
     assert(*min_element(pbar.cbegin(), pbar.cend()) >= -THRESHOLD);
     assert(*max_element(pbar.cbegin(), pbar.cend()) <= 1 + THRESHOLD);
-    assert(xi >= 0.0);
+    assert(xi >= -EPSILON);
     assert(z.size() > 0 && z.size() == pbar.size());
 
     // run craam::clamp when std is not available
-    xi = clamp(xi, 0.0, 2.0);
+    xi = std::clamp(xi, 0.0, 2.0);
 
     const size_t sz = z.size();
     // sort z values
@@ -271,7 +271,7 @@ public:
      * @param w Weights in the definition of the L1 norm
      */
     GradientsL1_w(const numvec& z, const numvec& w) {
-        constexpr prec_t epsilon = 1e-10;
+        constexpr prec_t epsilon = 1e-8;
         size_t element_count = z.size();
 
         assert(z.size() == element_count);
@@ -310,7 +310,8 @@ public:
                 if (z[i] <= z[j]) continue;
 
                 // case a: donor is less or equal to pbar
-                derivatives.push_back((-z[i] + z[j]) / (w[i] + w[j]));
+                const prec_t derivative = (-z[i] + z[j]) / (w[i] + w[j]);
+                derivatives.push_back(derivative < -epsilon ? derivative : 0);
                 donors.push_back(long(i));
                 receivers.push_back(long(j));
                 donor_greater.push_back(false);
@@ -327,10 +328,8 @@ public:
                 if (z[i] <= z[j]) continue;
 
                 if (std::abs(w[i] - w[j]) > epsilon && w[i] < w[j]) {
-                    // HACK!: adding the epsilon here makes sure that these basic
-                    // solutions are preferred in case of ties. This is to prevent
-                    // skipping over this kind of basis when it is tied with type a
-                    derivatives.push_back(epsilon + (-z[i] + z[j]) / (-w[i] + w[j]));
+                    const prec_t derivative = (-z[i] + z[j]) / (-w[i] + w[j]);
+                    derivatives.push_back(derivative < -epsilon ? derivative : 0);
                     donors.push_back(long(i));
                     receivers.push_back(long(j));
                     donor_greater.push_back(true);
@@ -356,6 +355,7 @@ public:
      * be greater than nominal?)
      */
     std::tuple<prec_t, size_t, size_t, bool> steepest_solution(size_t index) const {
+        assert(index >= 0 && index < sorted.size());
         size_t e = sorted[index];
         return {derivatives[e], donors[e], receivers[e], donor_greater[e]};
     }

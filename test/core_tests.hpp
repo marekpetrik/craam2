@@ -1730,14 +1730,19 @@ prec_t compute_s_value(const numvec& d, const numvecvec& p, const numvecvec& z) 
 #ifdef GUROBI_USE
 BOOST_AUTO_TEST_CASE(test_srect_evaluation) {
     // set parameters
-    const numvecvec p{{0.3, 0.2, 0.1, 0.4}, {0.3, 0.6, 0.1}, {0.1, 0.3, 0.6}};
-    const numvecvec z{{3.0, 2.0, 4.0, 1.0}, {3.0, 1.3, 4.0}, {6.0, 0.3, 4.5}};
-    const numvecvec w{{0.3, 0.3, 0.3, 0.1}, {0.2, 0.5, 0.3}, {0.7, 0.1, 0.2}};
+    const numvecvec p{
+        {0.3, 0.2, 0.1, 0.4}, {0.3, 0.6, 0.1}, {0.1, 0.3, 0.6}, {0.4, 0.0, 0.6}};
+    const numvecvec z{
+        {3.0, 2.0, 4.0, 1.0}, {3.0, 1.3, 4.0}, {6.0, 0.3, 4.5}, {6.0, 0.3, 4.5}};
+    const numvecvec w{
+        {0.3, 0.3, 0.3, 0.1}, {0.2, 0.5, 0.3}, {0.7, 0.1, 0.2}, {0.7, 0.1, 0.2}};
     // TODO: change this to multiple different policies
-    const numvecvec pis{{1.0, 0, 0}, {0.3, 0.1, 0.6}, {0, 1.0, 0}, {0.8, 0.2, 0.0}};
+    const numvecvec pis{
+        {1.0, 0, 0, 0}, {0.2, 0.1, 0.6, 0.1}, {0, 1.0, 0, 0}, {0.7, 0.2, 0.0, 0.1}};
 
     // uniform weights
-    const vector<numvec> wu{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
+    const vector<numvec> wu{
+        {1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
 
     GRBEnv env = get_gurobi();
 
