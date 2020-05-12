@@ -56,8 +56,8 @@ init.dist <- rep(1/num.state, num.state)
 # this is to ensure that the "latest" state is sampled
 
 ur.policy = data.frame(idstate = c(seq(0, last.stateid), seq(0, last.stateid)),
-                     idaction = c(rep(0,num.state), rep(1,num.state)),
-                     probability = c(rep(0.2, num.state), rep(0.8, num.state)))
+                       idaction = c(rep(0,num.state), rep(1,num.state)),
+                       probability = c(rep(0.2, num.state), rep(0.8, num.state)))
 
 # compute the true value function
 sol.true <- solve_mdp(mdp.truth, discount, show_progress = FALSE)

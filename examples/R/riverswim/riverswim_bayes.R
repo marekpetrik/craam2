@@ -9,14 +9,14 @@ loadNamespace("stringr")
 
 ## ----- Parameters --------
 
-description <- "riverswim_mdp.csv"
+description <- "riverswim_mdp2.csv"
 
-init.dist <- rep(1/6,6)
-discount <- 0.9
-confidence <- 0.6
-bayes.samples <- 500
+init.dist <- c(1,0,0,0,0,0)# rep(1/6,6)
+discount <- 0.99
+confidence <- 0.95
+bayes.samples <- 1000
 
-samples <- 10000
+samples <- 500
 sample.seed <- 2011
 episodes <- 1
 
@@ -295,7 +295,7 @@ report_solution("RSVF", mdp.bayesian, sol.rsvf)
 ## ---- NORBU ----------
 
 sol.norbu <- rsolve_mdpo_sa(mdp.bayesian, discount, "eavaru", 
-               list(alpha = 1-confidence, beta = 0.9), show_progress = FALSE)
+               list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
 report_solution("NORBU: ", mdp.bayesian, sol.norbu)
 
 # to see why this is wrong, try running it with a confidence 0.1 or something small
