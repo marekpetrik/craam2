@@ -1446,6 +1446,30 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_same) {
         BOOST_CHECK_CLOSE(obj, 1.00, 1e-3);
     }
 }
+
+BOOST_AUTO_TEST_CASE(test_solve_srect_cvar) {
+    // set parameters
+    //const numvecvec v{{30.0, 0.0}, {0.0, 70.0}};
+
+    const numvecvec z{
+        {30.0, 0.0, 0.0},
+        {0.0, 70.0, 0.0},
+    };
+
+    const numvec f{0.5, 0.5, 0.0};
+
+    const prec_t alpha = 0.3;
+    GRBEnv env = get_gurobi();
+    auto [obj, d] = srect_cvar(env, z, f, alpha, 1);
+    //cout << d << endl;
+    //cout << obj << endl;
+    //cout << "objective and policy" << endl;
+    // These values not verified
+    BOOST_CHECK_CLOSE(d[0], 0.7, 1e-3);
+    BOOST_CHECK_CLOSE(d[1], 0.3, 1e-3);
+    BOOST_CHECK_CLOSE(obj, 21.0, 1e-3);
+}
+
 #endif
 
 BOOST_AUTO_TEST_CASE(test_responses) {

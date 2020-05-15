@@ -407,7 +407,7 @@ std::tuple<prec_t, numvec> srect_cvar(const GRBEnv& env, const numvecvec& zvalue
                                       const numvec& nominal, prec_t alpha, prec_t lambda,
                                       const numvec& policy_eval = numvec(0)) {
     assert(zvalue.size() != 0);
-    assert(nominal.size() == zvalue.size());
+    assert(nominal.size() == zvalue[0].size());
 
     // general constants values
     const prec_t inf = std::numeric_limits<prec_t>::infinity();

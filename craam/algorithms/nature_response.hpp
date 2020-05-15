@@ -710,6 +710,12 @@ public:
     };
 };
 
+class robust_s_cvar_exp_gurobi {
+protected:
+    numvec budgets;
+    shared_ptr<GRBEnv> env;
+};
+
 class robust_s_linf_gurobi {
 protected:
     // a budget for every state
