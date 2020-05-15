@@ -190,21 +190,20 @@ public:
     }
 
     /**
-        Adds a sufficient number of empty outcomes/transitions for the provided
-        outcomeid to be a valid identifier. The weights of new outcomes < outcomeid
-        are set to 0. This operation does rescale weights in order to preserve their
-        sum.
-
-        If the outcome already exists, its nominal weight is overwritten.
-
-        Note that this operation may leave the action in an invalid state in
-        which the nominal outcome distribution does not sum to 1.
-
-
-        @param outcomeid Index of outcome to create
-        @param weight New nominal weight for the outcome.
-        @returns Transition that corresponds to outcomeid
-        */
+     * Adds a sufficient number of empty outcomes/transitions for the provided
+     * outcomeid to be a valid identifier. The weights of new outcomes < outcomeid
+     * are set to 0. This operation does rescale weights in order to preserve their
+     *  sum.
+     *
+     * If the outcome already exists, its nominal weight is overwritten.
+     *
+     * Note that this operation may leave the action in an invalid state in
+     * which the nominal outcome distribution does not sum to 1.
+     *
+     * @param outcomeid Index of outcome to create
+     * @param weight New nominal weight for the outcome.
+     * @returns Transition that corresponds to outcomeid
+     */
     Transition& create_outcome(long outcomeid, prec_t weight) {
         if (outcomeid < 0) throw invalid_argument("Outcomeid must be non-negative.");
         assert(weight >= 0 && weight <= 1);
@@ -252,10 +251,10 @@ public:
     const numvec& get_distribution() const { return distribution; };
 
     /**
-      Normalizes outcome weights to sum to one. Assumes that the distribution
-      is initialized. Exception is thrown if the distribution sums
-      to zero.
-    */
+     * Normalizes outcome weights to sum to one. Assumes that the distribution
+     * is initialized. Exception is thrown if the distribution sums
+     * to zero.
+     */
     void normalize_distribution() {
         auto weightsum = accumulate(distribution.begin(), distribution.end(), 0.0);
 
