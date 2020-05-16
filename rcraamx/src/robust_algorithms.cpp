@@ -1136,6 +1136,8 @@ algorithms::SNatureOutcome parse_nature_s(const MDPO& mdpo, const string& nature
     }
 }
 
+#ifdef GUROBI_USE // all srectangular MDPO methods require gurobi so far
+
 //' Solves a robust Markov decision process with state-action rectangular
 //' ambiguity sets.
 //'
@@ -1256,13 +1258,7 @@ Rcpp::List rsolve_mdpo_s(Rcpp::DataFrame mdpo, double discount, Rcpp::String nat
     result["residual"] = sol.residual;
     result["time"] = sol.time;
 
-#if __cplusplus >= 201703L
     auto [dec_pol, nat_pol] = unzip(sol.policy);
-#else
-    craam::indvec dec_pol;
-    std::vector<craam::numvec> nat_pol;
-    std::tie(dec_pol, nat_pol) = unzip(sol.policy);
-#endif
 
     if (output_tran) {
         auto pb = craam::algorithms::SRobustOutcomeBellman(m, natparsed);
@@ -1273,13 +1269,15 @@ Rcpp::List rsolve_mdpo_s(Rcpp::DataFrame mdpo, double discount, Rcpp::String nat
     }
 
     result["policy"] = output_policy(dec_pol);
-    result["nature"] = snature_out_todataframe(m, dec_pol, nat_pol);
+    result["nature"] = output_snature(m, nat_pol);
     result["valuefunction"] = output_value_fun(move(sol.valuefunction));
     result["status"] = sol.status;
     report_solution_status(sol);
 
     return result;
 }
+
+#endif
 
 /**
  * Sets the number of threads for parallelization.

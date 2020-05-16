@@ -298,8 +298,16 @@ sol.norbu <- rsolve_mdpo_sa(mdp.bayesian, discount, "eavaru",
                list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
 report_solution("NORBU: ", mdp.bayesian, sol.norbu)
 
+## ---- NORBU-s ---------
+
+sol.norbu <- rsolve_mdpo_s(mdp.bayesian, discount, "eavaru", 
+                            list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
+report_solution("NORBU-s: ", mdp.bayesian, sol.norbu)
+
+## ---- NORBU VaR version ----------
+
 # to see why this is wrong, try running it with a confidence 0.1 or something small
 sol.norbu.w <- rsolve_mdpo_sa(mdp.bayesian, discount, "evaru", 
                             list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
-report_solution("NORBU(maybe?): ", mdp.bayesian, sol.norbu.w)
+report_solution("NORBU-v: ", mdp.bayesian, sol.norbu.w)
 
