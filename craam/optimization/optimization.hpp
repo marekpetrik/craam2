@@ -1059,20 +1059,23 @@ std::pair<numvec, prec_t> inline var(const numvec& z, const numvec& pbar, prec_t
  *
  * beta * var_pbar [z] + (1-beta) * E_pbar[z]
  *
- * See also var for the details on how the variance is computed. alpha = 0 is the
+ * See also var for the details on how the VaR is computed. alpha = 0 is the
  * worst case.
  *
+ * @param z  Objective / random variable
+ * @param pbar Nominal distribution of the random variable
+ * @param alpha Risk level in [0,1]. alpha = 0 is the worst case
+ *              (minimum of z, alpha = 0 is treated as alpha -> 0)
+ *              alpha = 0.5 is the median, and alpha
+ * @param beta Weight on the VaR component
+ *
+ * @return A distribution p and the value at risk as well as the distribution such that
+ * p^T z = var. Note that there may not be an equivalent robust representation for var like there
+ * is for coherent/convex risk measures.
  */
 std::pair<numvec, prec_t> inline var_exp(const numvec& z, const numvec& pbar,
                                          prec_t alpha, prec_t beta) {
-
-#ifdef __cpp_structured_bindings
     auto [var_dist, var_value] = var(z, pbar, alpha);
-#else
-    numvec var_dist;
-    prec_t var_value;
-    std::tie(var_dist, var_value) = var(z, pbar, alpha);
-#endif
 
     assert(var_dist.size() == pbar.size());
     const auto mean_value = std::inner_product(z.cbegin(), z.cend(), pbar.cbegin(), 0.0);
@@ -1090,20 +1093,23 @@ std::pair<numvec, prec_t> inline var_exp(const numvec& z, const numvec& pbar,
  *
  * beta * avar_pbar [z] + (1-beta) * E_pbar[z]
  *
- * See also avar for the details on how the variance is computed. alpha = 0 is the
+ * See also avar for the details on how the AVaR is computed. alpha = 0 is the
  * worst case.
  *
+ * @param z  Objective / random variable
+ * @param pbar Nominal distribution of the random variable
+  * @param alpha Risk level in [0,1]. alpha = 0 is the worst case
+ *              (minimum of z, alpha = 0 is treated as alpha -> 0)
+ *              alpha = 0.5 is the median, and alpha
+ * @param beta Weight on the AVaR component
+ *
+ * @return A distribution p and the value at risk as well as the distribution such that
+ * p^T z = objective.
  */
 std::pair<numvec, prec_t> inline avar_exp(const numvec& z, const numvec& pbar,
                                           prec_t alpha, prec_t beta) {
-
-#ifdef __cpp_structured_bindings
     auto [avar_dist, avar_value] = avar(z, pbar, alpha);
-#else
-    numvec avar_dist;
-    prec_t avar_value;
-    std::tie(avar_dist, avar_value) = avar(z, pbar, alpha);
-#endif
+
     assert(avar_dist.size() == pbar.size());
     const auto mean_value = std::inner_product(z.cbegin(), z.cend(), pbar.cbegin(), 0.0);
 

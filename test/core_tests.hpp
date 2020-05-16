@@ -1459,8 +1459,10 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_cvar) {
     const numvec f{0.5, 0.5, 0.0};
 
     const prec_t alpha = 0.3;
+    const prec_t beta = 1.0;
+
     GRBEnv env = get_gurobi();
-    auto [obj, d] = srect_cvar(env, z, f, alpha, 1);
+    auto [obj, d, dist_lp] = srect_avar_exp(env, z, f, alpha, beta);
     //cout << d << endl;
     //cout << obj << endl;
     //cout << "objective and policy" << endl;
@@ -1468,6 +1470,18 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_cvar) {
     BOOST_CHECK_CLOSE(d[0], 0.7, 1e-3);
     BOOST_CHECK_CLOSE(d[1], 0.3, 1e-3);
     BOOST_CHECK_CLOSE(obj, 21.0, 1e-3);
+
+    // compute cvar for the combined response and make sure that it is the same
+    numvec zcombined(3, 0.0);
+    for (size_t i = 0; i < z.size(); ++i) {
+        for (size_t j = 0; j < z[0].size(); ++j) {
+            zcombined[j] += d[i] * z[i][j];
+        }
+    }
+
+    auto [dist, obj_s] = avar_exp(zcombined, f, alpha, beta);
+    // the results should be the same
+    BOOST_CHECK_CLOSE(obj, obj_s, 1e-3);
 }
 
 #endif

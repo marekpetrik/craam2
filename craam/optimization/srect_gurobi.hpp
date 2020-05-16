@@ -24,6 +24,7 @@
 #pragma once
 
 #include "craam/definitions.hpp"
+#include "craam/optimization/optimization.hpp"
 #include <algorithm>
 
 #ifdef GUROBI_USE
@@ -78,7 +79,7 @@ using namespace std;
  *
  * @returns A tuple with: objective value, policy, and the individual budgets xi_a
  */
-std::tuple<double, numvec, numvec>
+inline std::tuple<double, numvec, numvec>
 srect_l1_solve_gurobi(const GRBEnv& env, const numvecvec& z, const numvecvec& pbar,
                       const prec_t kappa, const numvecvec& w = numvecvec(0),
                       const numvec& policy_eval = numvec(0)) {
@@ -174,8 +175,6 @@ srect_l1_solve_gurobi(const GRBEnv& env, const numvecvec& z, const numvecvec& pb
     model.optimize();
 
     int status = model.get(GRB_IntAttr_Status);
-    //if ((status == GRB_INF_OR_UNBD) || (status == GRB_INFEASIBLE) ||
-    //    (status == GRB_UNBOUNDED)) {
     if (status != GRB_OPTIMAL) { throw invalid_argument("Failed to solve the LP."); }
 
     // retrieve policy values
@@ -268,7 +267,7 @@ srect_l1_solve_gurobi(const GRBEnv& env, const numvecvec& z, const numvecvec& pb
 * @param w Weights assigned to the L1 errors (optional). A uniform vector of all ones if omitted
 * @returns A tuple with: objective value, policy, sa_budgets
 */
-std::tuple<double, numvec, numvec>
+inline std::tuple<double, numvec, numvec>
 srect_linf_solve_gurobi(const GRBEnv& env, const numvecvec& z, const numvecvec& pbar,
                         const prec_t kappa, const numvecvec& w = numvecvec(0)) {
     // general constants values
@@ -381,8 +380,8 @@ srect_linf_solve_gurobi(const GRBEnv& env, const numvecvec& z, const numvecvec& 
  *  alpha = 0 is the worst-case realization and alpha = 1 is the expectation
  *
  * this can be formulated as the following linear program:
- * max_{d,x,y}     lambda * (x - 1/alpha * sum_{j=1}^N f_j y_j)) +
- *             (1-lambda) * sum_{j=1}^N sum_a d_a f_j z_{a,j}
+ * max_{d,x,y}       lambda * (x - 1/alpha * sum_{j=1}^N f_j y_j)) +
+ *               (1-lambda) * sum_{j=1}^N sum_a d_a f_j z_{a,j}
  * subject to
  *           1^T d = 1
  *               d >= 0
@@ -401,23 +400,30 @@ srect_linf_solve_gurobi(const GRBEnv& env, const numvecvec& z, const numvecvec& 
  * @param policy_eval If empty than optimizes over valued of d, otherwise,
  *         the values of d are assumed to be fixed
  *
- * @return The objective value and the decision rule values d
+ * @return The objective value, the decision rule values d, and the distribution u
+ *   over the outcomes (a distorted version of the nominal distribution)
+ *   such that the objective = d^T Z u
  */
-std::tuple<prec_t, numvec> srect_cvar(const GRBEnv& env, const numvecvec& zvalue,
-                                      const numvec& nominal, prec_t alpha, prec_t lambda,
-                                      const numvec& policy_eval = numvec(0)) {
-    assert(zvalue.size() != 0);
-    assert(nominal.size() == zvalue[0].size());
+inline std::tuple<prec_t, numvec, numvec>
+srect_avar_exp(const GRBEnv& env, const numvecvec& zvalue, const numvec& nominal,
+               prec_t alpha, prec_t lambda, const numvec& policy_eval = numvec(0)) {
 
     // general constants values
     const prec_t inf = std::numeric_limits<prec_t>::infinity();
 
-    // make sure that the coefficients are clamped to their limits
-    alpha = std::clamp(alpha, 0.0, 0.9999);
-    lambda = std::clamp(lambda, 0.0, 1.0);
+    assert(zvalue.size() != 0);
+    assert(nominal.size() == zvalue[0].size());
 
     const size_t nactions = zvalue.size();
     const size_t num_samples = zvalue[0].size(); // the number of realizations
+
+    for (size_t actionid = 0; actionid < nactions; ++actionid) {
+        assert(num_samples == zvalue[actionid].size());
+    }
+
+    // make sure that the coefficients are clamped to their limits
+    alpha = std::clamp(alpha, 0.0, 0.9999);
+    lambda = std::clamp(lambda, 0.0, 1.0);
 
     GRBModel model = GRBModel(env);
     auto y = std::unique_ptr<GRBVar[]>(model.addVars(
@@ -433,6 +439,7 @@ std::tuple<prec_t, numvec> srect_cvar(const GRBEnv& env, const numvecvec& zvalue
     //assert(policy_eval.empty() || policy_eval.size() == z.size());
     if (!policy_eval.empty()) {
         assert(is_probability_dist(policy_eval.begin(), policy_eval.end()));
+
         for (size_t i = 0; i < policy_eval.size(); ++i)
             model.addConstr(d[i] == policy_eval[i]);
     } else {
@@ -443,13 +450,13 @@ std::tuple<prec_t, numvec> srect_cvar(const GRBEnv& env, const numvecvec& zvalue
 
     // objective (updated later)
     GRBLinExpr objective = lambda * x;
-    for (size_t sampleid = 0; sampleid < num_samples; sampleid++) {
+    for (size_t sampleid = 0; sampleid < num_samples; ++sampleid) {
         // objective: cvar component
         objective -= lambda * (1.0 / alpha) * y[sampleid] * nominal[sampleid];
 
         // sum of zvalues for the sample
         GRBLinExpr res = 0;
-        for (size_t actionid = 0; actionid < nactions; actionid++) {
+        for (size_t actionid = 0; actionid < nactions; ++actionid) {
             res += d[actionid] * zvalue[actionid][sampleid];
             // objective: exp component
             objective += -(1 - lambda) * nominal[sampleid] * d[actionid] *
@@ -477,7 +484,21 @@ std::tuple<prec_t, numvec> srect_cvar(const GRBEnv& env, const numvecvec& zvalue
     for (size_t i = 0; i < nactions; i++) {
         policy[i] = d[i].get(GRB_DoubleAttr_X);
     }
-    return {model.get(GRB_DoubleAttr_ObjVal), policy};
+    // retrieve the objective
+    const prec_t obj_lp = model.get(GRB_DoubleAttr_ObjVal);
+
+    // compute the distorted nominal distribution
+    numvec zcombined(num_samples, 0.0); // z for every sample
+    for (size_t i = 0; i < nactions; ++i) {
+        for (size_t j = 0; j < num_samples; ++j) {
+            zcombined[j] += policy[i] * zvalue[i][j];
+        }
+    }
+    auto [dist, obj_s] = avar_exp(zcombined, nominal, alpha, lambda);
+    // make sure that the objectives are equal
+    assert(std::abs(obj_s - obj_lp) < 1e-10);
+
+    return {obj_lp, move(policy), move(dist)};
 }
 
 } // namespace craam

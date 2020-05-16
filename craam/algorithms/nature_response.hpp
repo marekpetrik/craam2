@@ -620,7 +620,7 @@ public:
 
         // make sure that the states and nature have the same number of elements
         assert(actiondist.size() == new_probability.size());
-        return make_tuple(move(actiondist), move(new_probability), outcome);
+        return {move(actiondist), move(new_probability), outcome};
     }
 };
 
@@ -710,10 +710,47 @@ public:
     };
 };
 
-class robust_s_cvar_exp_gurobi {
+class robust_s_avar_exp_u_gurobi {
 protected:
-    numvec budgets;
+    /// a single risk-level for all states, must be in [0,1)
+    prec_t alpha;
+    /// a single beta for all states, must be in [0,1]
+    prec_t beta;
+
     shared_ptr<GRBEnv> env;
+
+public:
+    /**
+     * Constructs the Gurobi enviroment and initializes variables.
+     *
+     * The objective is lambda * AVaR_alpha [Z] + (1 - lambda) Exp [Z]
+     *
+     * @param alpha Risk level of avar (0 = worst-case)
+     * @param lambda Weight on AVaR and the complement (1-lambda) is the weight
+     * on expectation
+     */
+    robust_s_avar_exp_u_gurobi(prec_t alpha, prec_t beta) : alpha(alpha), beta(beta) {
+        env = make_shared<GRBEnv>();
+        // make sure it is run in a single thread so it can be parallelized
+        env->set(GRB_IntParam_OutputFlag, 0);
+        env->set(GRB_IntParam_Threads, 1);
+    }
+
+    /**
+     * Implements SNatureOutcome interface
+     */
+    tuple<numvec, numvec, prec_t> operator()(long stateid, const numvec& policy,
+                                             const numvec& nominalprobs,
+                                             const numvecvec& zvalues) const {
+        assert(zvalues.size() > 0);
+        assert(zvalues[0].size() == nominalprobs.size());
+        assert(zvalues.size() == policy.size());
+
+        auto [objective, opt_policy, opt_nature] =
+            srect_avar_exp(*env, zvalues, nominalprobs, alpha, beta, policy);
+
+        return {move(opt_policy), move(opt_nature), objective};
+    }
 };
 
 class robust_s_linf_gurobi {
@@ -724,10 +761,10 @@ protected:
 
 public:
     /**
-       * Automatically constructs a gurobi environment object. Weights are uniform
-       * when not provided
-       * @param budgets Budgets, with a single value for each MDP state
-       */
+     * Automatically constructs a gurobi environment object. Weights are uniform
+     * when not provided
+     * @param budgets Budgets, with a single value for each MDP state
+     */
     robust_s_linf_gurobi(numvec budgets) : budgets(move(budgets)) {
         env = make_shared<GRBEnv>();
         // make sure it is run in a single thread so it can be parallelized
