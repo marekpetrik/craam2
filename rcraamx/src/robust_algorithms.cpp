@@ -835,7 +835,7 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
 //'                 beta * var [z] + (1-beta) * E[z], where
 //'                 var is \eqn{VaR(z,\alpha) = \inf{x \in R : P[X <= x] >= \alpha}}, with \eqn{\alpha = 0} being the
 //'                 worst-case.
-//'         \item "evaru" a convex combination of expectation and AV@R over
+//'         \item "eavaru" a convex combination of expectation and AV@R over
 //'                 transition probabilites. Uniform over states
 //'                 nature_par is a list with parameters (alpha, beta). The worst-case
 //'                 response is computed as:
@@ -1050,6 +1050,7 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     if (pack_actions) { result["action_map"] = m.pack_actions(); }
 
     // policy: the method can be used to compute the robust solution for a policy
+    // rpolicy stands for randomize policy and NOT robust policy
     numvecvec rpolicy =
         policy_fixed.isNotNull()
             ? parse_sa_values(m, policy_fixed, 0.0, "probability", "policy_fixed")
@@ -1113,6 +1114,166 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
 
     result["policy_rand"] = output_policy(dec_pol);
     result["nature"] = sasnature_todataframe(m, nat_pol);
+    result["valuefunction"] = output_value_fun(move(sol.valuefunction));
+    result["status"] = sol.status;
+    report_solution_status(sol);
+
+    return result;
+}
+
+/// Parses the name and the parameter of the provided nature
+algorithms::SNatureOutcome parse_nature_s(const MDPO& mdpo, const string& nature,
+                                          SEXP nature_par) {
+    //if (nature == "exp") {
+    //    return algorithms::nats::robust_exp();
+    //} else
+    if (nature == "eavaru") {
+        Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
+        return algorithms::nats::robust_s_avar_exp_u_gurobi(
+            Rcpp::as<double>(par["alpha"]), Rcpp::as<double>(par["beta"]));
+    } else {
+        Rcpp::stop("unknown nature");
+    }
+}
+
+//' Solves a robust Markov decision process with state-action rectangular
+//' ambiguity sets.
+//'
+//' The worst-case is computed across the outcomes and not
+//' the actual transition probabilities.
+//'
+//' NOTE: The algorithms  mpi and pi may cycle infinitely without converging to a solution,
+//' when solving a robust MDP.
+//' The algorithms ppi and mppi are guaranteed to converge to an optimal solution.
+//'
+//'
+//' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "vi_g", "pi". MPI may
+//'           may not converge
+//' @param policy_fixed States for which the  policy should be fixed. This
+//'          should be a dataframe with columns idstate and idaction. The policy
+//'          is optimized only for states that are missing, and the fixed policy
+//'          is used otherwise
+//' @param maxresidual Residual at which to terminate
+//' @param iterations Maximum number of iterations
+//' @param timeout Maximum number of secods for which to run the computation
+//' @param value_init A  dataframe that contains the initial value function used
+//'          to initialize the method. The columns should be idstate and value.
+//'          Any states that are not provided are initialized to 0.
+//' @param pack_actions Whether to remove actions with no transition probabilities,
+//'          and rename others for the same state to prevent gaps. The policy
+//'          for the original actions can be recovered using ``action_map'' frame
+//'          in the result
+//' @param output_tran Whether to construct and return a matrix of transition
+//'          probabilites and a vector of rewards
+//' @param show_progress Whether to show a progress bar during the computation.
+//'         0 means no progress, 1 is progress bar, and 2 is a detailed report
+//'
+//' @return A list with value function policy and other values
+//'
+//' @details
+//'
+//' The options for nature and the corresponding nature_par are:
+//'    \itemize{
+//'         \item "exp" plain expectation over the outcomes
+//'         \item "eavaru" a convex combination of expectation and AV@R over
+//'                 transition probabilites. Uniform over states
+//'                 nature_par is a list with parameters (alpha, beta). The worst-case
+//'                 response is computed as:
+//'                 beta * var [z] + (1-beta) * E[z], where
+//'                 var is \eqn{AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )}
+//'                 where I is the indicator function and
+//'                 \eqn{x_a = \inf{x \in R : P[X <= x] >= \alpha}} being the
+//'                 worst-case.
+//'    }
+// [[Rcpp::export]]
+Rcpp::List rsolve_mdpo_s(Rcpp::DataFrame mdpo, double discount, Rcpp::String nature,
+                         SEXP nature_par, Rcpp::String algorithm = "mppi",
+                         Rcpp::Nullable<Rcpp::DataFrame> policy_fixed = R_NilValue,
+                         double maxresidual = 10e-4, size_t iterations = 10000,
+                         double timeout = 300,
+                         Rcpp::Nullable<Rcpp::DataFrame> value_init = R_NilValue,
+                         bool pack_actions = false, bool output_tran = false,
+                         int show_progress = 1) {
+    Rcpp::List result;
+
+    // What would be the point of forcing to add transitions even if
+    // the  probabilities are 0?
+    // perhaps only if the RMDP is transformed to an MDP
+    // that is why this is set to true for now .... it is also easy to remove the 0s from
+    // the dataframe
+    MDPO m = mdpo_from_dataframe(mdpo, true);
+
+    // remove actions that are not being used
+    if (pack_actions) { result["action_map"] = m.pack_actions(); }
+
+    // policy: the method can be used to compute the robust solution for a policy
+    // rpolicy stands for randomize policy and NOT robust policy
+    numvecvec rpolicy =
+        policy_fixed.isNotNull()
+            ? parse_sa_values(m, policy_fixed, 0.0, "probability", "policy_fixed")
+            : numvecvec(0);
+
+    // initialized value function from the parameters
+    numvec vf_init =
+        value_init.isNotNull()
+            ? parse_s_values<prec_t>(m.size(), value_init.get(), 0, "value", "value_init")
+            : numvec(0);
+
+    SRobustOutcomeSolution sol;
+    algorithms::SNatureOutcome natparsed = parse_nature_s(m, nature, nature_par);
+
+    ComputeProgress progress(iterations, maxresidual, show_progress, timeout);
+
+    if (algorithm == "mppi") {
+        sol = rsolve_s_mppi(m, discount, std::move(natparsed), vf_init, rpolicy,
+                            iterations, maxresidual, progress);
+    } else if (algorithm == "ppi") {
+        sol = rsolve_s_ppi(m, discount, std::move(natparsed), vf_init, rpolicy,
+                           iterations, maxresidual, progress);
+    } else if (algorithm == "mpi") {
+        Rcpp::warning("The robust version of the mpi method may cycle forever "
+                      "without converging.");
+        sol =
+            rsolve_s_mpi(m, discount, std::move(natparsed), vf_init, rpolicy, iterations,
+                         maxresidual, defaults::mpi_vi_count, 0.5, progress);
+    } else if (algorithm == "vi_g") {
+        sol = rsolve_s_vi(m, discount, std::move(natparsed), vf_init, rpolicy, iterations,
+                          maxresidual, progress);
+    } else if (algorithm == "vi_j" || algorithm == "vi") {
+        // Jacobian value iteration, simulated using mpi
+        sol = rsolve_s_mpi(m, discount, std::move(natparsed), vf_init, rpolicy,
+                           iterations, maxresidual, 0, 0.5, progress);
+    } else if (algorithm == "pi") {
+        Rcpp::warning("The robust version of the pi method may cycle forever without "
+                      "converging.");
+        sol = rsolve_s_pi(m, discount, std::move(natparsed), vf_init, rpolicy, iterations,
+                          maxresidual, progress);
+    } else {
+        Rcpp::stop("Unknown solver type.");
+    }
+
+    result["iters"] = sol.iterations;
+    result["residual"] = sol.residual;
+    result["time"] = sol.time;
+
+#if __cplusplus >= 201703L
+    auto [dec_pol, nat_pol] = unzip(sol.policy);
+#else
+    craam::indvec dec_pol;
+    std::vector<craam::numvec> nat_pol;
+    std::tie(dec_pol, nat_pol) = unzip(sol.policy);
+#endif
+
+    if (output_tran) {
+        auto pb = craam::algorithms::SRobustOutcomeBellman(m, natparsed);
+        auto tmat = craam::algorithms::transition_mat(pb, sol.policy);
+        auto rew = craam::algorithms::rewards_vec(pb, sol.policy);
+        result["transitions"] = as_matrix(tmat);
+        result["rewards"] = rew;
+    }
+
+    result["policy"] = output_policy(dec_pol);
+    result["nature"] = snature_out_todataframe(m, dec_pol, nat_pol);
     result["valuefunction"] = output_value_fun(move(sol.valuefunction));
     result["status"] = sol.status;
     report_solution_status(sol);

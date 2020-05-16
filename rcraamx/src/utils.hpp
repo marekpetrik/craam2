@@ -232,27 +232,29 @@ inline std::vector<T> parse_s_values(size_t statecount, const Rcpp::DataFrame& f
 }
 
 /**
-* Parses a data frame definition of values that correspond to states and
-* actions.
-*
-* Also checks whether the values passed are consistent with the MDP definition.
-*
-* @param mdp The definition of the MDP to know how many states and actions there are.
-* @param frame Dataframe with 3 comlumns, idstate, idaction, value. Here, idstate and idaction
-*              determine which value should be set.
-*              Only the last value is used if multiple rows are present.
-* @param def_value The default value for when frame does not specify anything for the state action pair
-* @param val_name Name of the value column
-* @param param_name The name of the parameter which is being parsed.
-*                  This is used for error reporting.
-*
-* @returns A vector over states with an inner vector of actions
-*/
-inline craam::numvecvec parse_sa_values(const craam::MDP& mdp,
-                                        const Rcpp::DataFrame& frame,
-                                        double def_value = 0,
-                                        const std::string& val_name = "value",
-                                        const std::string& param_name = "") {
+ * Parses a data frame definition of values that correspond to states and
+ * actions.
+ *
+ * Also checks whether the values passed are consistent with the MDP definition.
+ *
+ * @param mdp The definition of the MDP to know how many states and actions there are.
+ * @param frame Dataframe with 3 comlumns, idstate, idaction, value. Here, idstate and idaction
+ *              determine which value should be set.
+ *              Only the last value is used if multiple rows are present.
+ * @param def_value The default value for when frame does not specify anything for the state action pair
+ * @param val_name Name of the value column
+ * @param param_name The name of the parameter which is being parsed.
+ *                  This is used for error reporting.
+ *
+ * @tparam M It is either and MDP or MDPO
+ *
+ * @returns A vector over states with an inner vector of actions
+ */
+inline template <typename M>
+craam::numvecvec parse_sa_values(const M& mdp, const Rcpp::DataFrame& frame,
+                                 double def_value = 0,
+                                 const std::string& val_name = "value",
+                                 const std::string& param_name = "") {
 
     craam::numvecvec result(mdp.size());
     for (long i = 0; i < mdp.size(); i++) {
@@ -459,6 +461,53 @@ inline Rcpp::DataFrame sanature_out_todataframe(const craam::MDPO& mdpo,
 
         if (idaction >= state.size()) throw std::runtime_error("invalid policy");
 
+        const auto& action = state[idaction];
+
+        // check if the output states match
+        if (action.size() != nature[idstate].size())
+            throw std::runtime_error("invalid number of to-states");
+
+        // iterate over all state tos
+        for (size_t idoutcome = 0; idoutcome < action.size(); ++idoutcome) {
+            out_statefrom.push_back(idstate);
+            out_action.push_back(idaction);
+            out_outcome.push_back(idoutcome);
+            out_prob.push_back(nature[idstate][idoutcome]);
+        }
+    }
+
+    return Rcpp::DataFrame::create(
+        Rcpp::_["idstatefrom"] = out_statefrom, Rcpp::_["idaction"] = out_action,
+        Rcpp::_["idoutcome"] = out_outcome, Rcpp::_["probability"] = out_prob);
+}
+
+/**
+ * Turns the definition of the sas nature output to a dataframe
+ * @param mdp The definition of the mdp, needed to parse which transitions are possible
+ *              from a given state and action
+ * @param policy Policy to determine which actions are active
+ * @param nature A vector over: state-from, action, outcome
+ * @return
+ */
+inline Rcpp::DataFrame snature_out_todataframe(const craam::MDPO& mdpo,
+                                               const craam::indvec& policy,
+                                               const craam::numvec& nature) {
+
+    if (nature.size() != mdpo.size())
+        throw std::runtime_error("invalid number of states.");
+
+    // construct output vectors
+    craam::indvec out_statefrom, out_action, out_outcome;
+    craam::numvec out_prob;
+
+    // iterate over states
+    for (size_t idstate = 0; idstate < mdpo.size(); ++idstate) {
+        const auto& state = mdpo[idstate];
+        long idaction = policy[idstate];
+        // skip all actions in terminal states
+        if (idaction < 0) continue;
+
+        if (idaction >= state.size()) throw std::runtime_error("invalid policy");
         const auto& action = state[idaction];
 
         // check if the output states match

@@ -968,11 +968,11 @@ inline SARobustSolution rsolve_mppi(
  * @ingroup ValueIteration
  * Robust value iteration with an s-rectangular nature.
  */
-inline SRobustOutcomeSolution
-rsolve_vi(const MDPO& mdp, prec_t discount, const algorithms::SNatureOutcome& nature,
-          numvec valuefunction = numvec(0), const numvecvec& policy = numvecvec(0),
-          unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
-          const algorithms::progress_t& progress = algorithms::internal::empty_progress) {
+inline SRobustOutcomeSolution rsolve_s_vi(
+    const MDPO& mdp, prec_t discount, const algorithms::SNatureOutcome& nature,
+    numvec valuefunction = numvec(0), const numvecvec& policy = numvecvec(0),
+    unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
+    const algorithms::progress_t& progress = algorithms::internal::empty_progress) {
     check_model(mdp);
     return algorithms::vi_gs(algorithms::SRobustOutcomeBellman(mdp, nature, policy),
                              discount, move(valuefunction), iterations, maxresidual,
@@ -989,11 +989,11 @@ rsolve_vi(const MDPO& mdp, prec_t discount, const algorithms::SNatureOutcome& na
  * Advances in Computational Complexity Theory, DIMACS Series in Discrete Mathematics
  * and Theoretical Computer Science, 13, 51–71.
  */
-inline SRobustOutcomeSolution
-rsolve_pi(const MDPO& mdp, prec_t discount, const algorithms::SNatureOutcome& nature,
-          numvec valuefunction = numvec(0), const numvecvec& policy = numvecvec(0),
-          unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
-          const algorithms::progress_t& progress = algorithms::internal::empty_progress) {
+inline SRobustOutcomeSolution rsolve_s_pi(
+    const MDPO& mdp, prec_t discount, const algorithms::SNatureOutcome& nature,
+    numvec valuefunction = numvec(0), const numvecvec& policy = numvecvec(0),
+    unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
+    const algorithms::progress_t& progress = algorithms::internal::empty_progress) {
     check_model(mdp);
     return algorithms::pi(algorithms::SRobustOutcomeBellman(mdp, nature, policy),
                           discount, move(valuefunction), iterations, maxresidual,
@@ -1010,7 +1010,7 @@ rsolve_pi(const MDPO& mdp, prec_t discount, const algorithms::SNatureOutcome& na
  * modified policy iteration. INFORMS Journal on Computing, 25(3), 396–410. See
  * the discussion in the paper on methods like this one (e.g. Seid, White)
  */
-inline SRobustOutcomeSolution rsolve_mpi(
+inline SRobustOutcomeSolution rsolve_s_mpi(
     const MDPO& mdp, prec_t discount, const algorithms::SNatureOutcome&& nature,
     const numvec& valuefunction = numvec(0), const numvecvec& policy = numvecvec(0),
     unsigned long iterations_pi = MAXITER, prec_t maxresidual_pi = SOLPREC,
@@ -1032,7 +1032,7 @@ inline SRobustOutcomeSolution rsolve_mpi(
  * Uses  policy iteration to solve the inner MDP problem that corresponds
  * to the nature.
  */
-inline SRobustOutcomeSolution rsolve_ppi(
+inline SRobustOutcomeSolution rsolve_s_ppi(
     const MDPO& mdp, prec_t discount, const algorithms::SNatureOutcome& nature,
     numvec valuefunction = numvec(0), const numvecvec& policy = numvecvec(0),
     unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
@@ -1054,7 +1054,7 @@ inline SRobustOutcomeSolution rsolve_ppi(
  * Uses modified policy iteration to solve the inner MDP problem that corresponds
  * to the nature.
  */
-inline SRobustOutcomeSolution rsolve_mppi(
+inline SRobustOutcomeSolution rsolve_s_mppi(
     const MDPO& mdp, prec_t discount, const algorithms::SNatureOutcome& nature,
     numvec valuefunction = numvec(0), const numvecvec& policy = numvecvec(0),
     unsigned long iterations = MAXITER, prec_t maxresidual = SOLPREC,
