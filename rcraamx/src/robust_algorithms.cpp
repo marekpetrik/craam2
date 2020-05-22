@@ -346,8 +346,7 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
 
     // parse MDP from the dataframe
     MDP m = mdp_from_dataframe(mdp);
-
-    if (mdp.size() == 0) return Rcpp::List();
+    if (m.size() == 0) return Rcpp::List();
 
     // Construct the output (to get the output from pack actions)
     Rcpp::List result;
@@ -463,6 +462,7 @@ Rcpp::List solve_mdp_rand(Rcpp::DataFrame mdp, double discount,
     Rcpp::List result;
 
     MDP m = mdp_from_dataframe(mdp);
+    if (m.size() == 0) return Rcpp::List();
 
     // use one of the solutions, stochastic or deterministic
     RandSolution rsol;
@@ -708,6 +708,7 @@ Rcpp::List rsolve_mdp_sa(Rcpp::DataFrame mdp, double discount, Rcpp::String natu
 
     // make robust transitions to states with 0 probability possible
     MDP m = mdp_from_dataframe(mdp, true);
+    if (m.size() == 0) return Rcpp::List();
 
     // remove actions that are not being used
     if (pack_actions) { result["action_map"] = m.pack_actions(); }
@@ -862,6 +863,7 @@ Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String na
     // that is why this is set to true for now .... it is also easy to remove the 0s from
     // the dataframe
     MDPO m = mdpo_from_dataframe(mdpo, true);
+    if (m.size() == 0) return Rcpp::List();
 
     // remove actions that are not being used
     if (pack_actions) { result["action_map"] = m.pack_actions(); }
@@ -1045,6 +1047,7 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     Rcpp::List result;
 
     MDP m = mdp_from_dataframe(mdp, true);
+    if (m.size() == 0) return Rcpp::List();
 
     // remove actions that are not being used
     if (pack_actions) { result["action_map"] = m.pack_actions(); }
@@ -1204,6 +1207,7 @@ Rcpp::List rsolve_mdpo_s(Rcpp::DataFrame mdpo, double discount, Rcpp::String nat
     // that is why this is set to true for now .... it is also easy to remove the 0s from
     // the dataframe
     MDPO m = mdpo_from_dataframe(mdpo, true);
+    if (m.size() == 0) return Rcpp::List();
 
     // remove actions that are not being used
     if (pack_actions) { result["action_map"] = m.pack_actions(); }
@@ -1268,7 +1272,7 @@ Rcpp::List rsolve_mdpo_s(Rcpp::DataFrame mdpo, double discount, Rcpp::String nat
         result["rewards"] = rew;
     }
 
-    result["policy"] = output_policy(dec_pol);
+    result["policy_rand"] = output_policy(dec_pol);
     result["nature"] = output_snature(m, nat_pol);
     result["valuefunction"] = output_value_fun(move(sol.valuefunction));
     result["status"] = sol.status;

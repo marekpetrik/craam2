@@ -220,7 +220,7 @@ inline std::vector<T> parse_s_values(size_t statecount, const Rcpp::DataFrame& f
                 (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
         }
 
-        if (idstate > statecount) {
+        if (idstate >= statecount) {
             Rcpp::stop(
                 "idstate must be smaller than the number of MDP states" +
                 (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
@@ -271,7 +271,7 @@ inline craam::numvecvec parse_sa_values(const M& mdp, const Rcpp::DataFrame& fra
             Rcpp::stop(
                 "idstate must be non-negative" +
                 (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
-        if (idstate > mdp.size())
+        if (idstate >= mdp.size())
             Rcpp::stop(
                 "idstate must be smaller than the number of MDP states" +
                 (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
@@ -279,7 +279,7 @@ inline craam::numvecvec parse_sa_values(const M& mdp, const Rcpp::DataFrame& fra
             Rcpp::stop(
                 "idaction must be non-negative" +
                 (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
-        if (idaction > mdp[idstate].size())
+        if (idaction >= mdp[idstate].size())
             Rcpp::stop(
                 "idaction must be smaller than the number of actions for the "
                 "corresponding state" +
@@ -338,7 +338,7 @@ parse_sas_values(const craam::MDP& mdp, const Rcpp::DataFrame& frame,
                 (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
             continue;
         }
-        if (idstatefrom > mdp.size()) {
+        if (idstatefrom >= mdp.size()) {
             Rcpp::warning(
                 "idstatefrom must be smaller than the number of MDP states" +
                 (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
@@ -350,7 +350,7 @@ parse_sas_values(const craam::MDP& mdp, const Rcpp::DataFrame& frame,
                 (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
             continue;
         }
-        if (idaction > mdp[idstatefrom].size()) {
+        if (idaction >= mdp[idstatefrom].size()) {
             Rcpp::warning(
                 "idaction must be smaller than the number of actions for the "
                 "corresponding state" +
