@@ -193,12 +193,14 @@ public:
             // check whether this state should only be evaluated
             if (initial_policy.empty() || initial_policy[stateid].empty()) { // optimizing
 
-                auto output = value_max_state(mdp[stateid], valuefunction, discount);
-                prec_t newvalue = output.first;
+                auto [newaction, newvalue] =
+                    value_max_state(mdp[stateid], valuefunction, discount);
                 // create the distribution of the appropriate size
                 policy_type action = numvec(mdp[stateid].size());
-                // assign a deterministic policy
-                action[output.second] = 1.0;
+                // assign a deterministic policy (newaction == -1 means the
+                // state is terminal)
+                assert((!action.empty()) ^ (newaction < 0));
+                if (newaction >= 0) action[newaction] = 1.0;
 
                 return make_pair(newvalue, action);
             } else { // fixed-action, do not copy

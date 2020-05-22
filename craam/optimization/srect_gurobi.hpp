@@ -459,7 +459,7 @@ srect_avar_exp(const GRBEnv& env, const numvecvec& zvalue, const numvec& nominal
         for (size_t actionid = 0; actionid < nactions; ++actionid) {
             res += d[actionid] * zvalue[actionid][sampleid];
             // objective: exp component
-            objective += -(1 - lambda) * nominal[sampleid] * d[actionid] *
+            objective += (1 - lambda) * nominal[sampleid] * d[actionid] *
                          zvalue[actionid][sampleid];
         }
         // do not spend time naming constraints in the release version

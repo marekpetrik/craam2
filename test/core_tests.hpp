@@ -86,6 +86,15 @@ template <class Model> Model create_test_mdp() {
     return rmdp;
 }
 
+template <class Model> Model create_mdp_2states_terminal() {
+    Model rmdp(2);
+
+    add_transition(rmdp, 0, 0, 1, 1.0, 0.0);
+    add_transition(rmdp, 0, 1, 1, 1.0, 0.0);
+
+    return rmdp;
+}
+
 // ********************************************************************************
 // ***** L1 worst case
 // ********************************************************************************
@@ -527,6 +536,17 @@ BOOST_AUTO_TEST_CASE(simple_robust_algorithms_ind) {
     auto solution5 = rsolve_s_ppi(fullmdp, discount, nature_s);
     BOOST_CHECK(solution5.status == 0);
     CHECK_CLOSE_COLLECTION(solution3.valuefunction, solution5.valuefunction, 1.0);
+}
+
+BOOST_AUTO_TEST_CASE(terminal_randomized_policy) {
+    // check if everything works out without an error when
+    // passing in an MDP with a randomized policy
+
+    MDP m = create_mdp_2states_terminal<MDP>();
+    // the probabilities vector for the terminal state is empty
+    numvecvec policy = {{0.1, 0.9}, {}};
+
+    solve_pi_r(m, 0.9, numvec(0), policy);
 }
 
 /*
@@ -1466,7 +1486,7 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_cvar) {
     //cout << d << endl;
     //cout << obj << endl;
     //cout << "objective and policy" << endl;
-    // These values not verified
+    // TODO: These values not verified
     BOOST_CHECK_CLOSE(d[0], 0.7, 1e-3);
     BOOST_CHECK_CLOSE(d[1], 0.3, 1e-3);
     BOOST_CHECK_CLOSE(obj, 21.0, 1e-3);
@@ -1482,6 +1502,28 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_cvar) {
     auto [dist, obj_s] = avar_exp(zcombined, f, alpha, beta);
     // the results should be the same
     BOOST_CHECK_CLOSE(obj, obj_s, 1e-3);
+}
+
+BOOST_AUTO_TEST_CASE(test_solve_srect_cvar_exp) {
+    // set parameters
+    //const numvecvec v{{30.0, 0.0}, {0.0, 70.0}};
+
+    const numvecvec z{
+        {30.0, 0.0, 0.0},
+        {0.0, 70.0, 0.0},
+    };
+
+    const numvec f{0.5, 0.5, 0.0};
+
+    const prec_t alpha = 0.3;
+    const prec_t beta = 0.0;
+
+    GRBEnv env = get_gurobi();
+    auto [obj, d, dist_lp] = srect_avar_exp(env, z, f, alpha, beta);
+
+    BOOST_CHECK_CLOSE(d[0], 0.0, 1e-3);
+    BOOST_CHECK_CLOSE(d[1], 1.0, 1e-3);
+    BOOST_CHECK_CLOSE(obj, 35.0, 1e-3);
 }
 
 #endif

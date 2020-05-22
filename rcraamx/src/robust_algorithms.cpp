@@ -496,7 +496,7 @@ Rcpp::List solve_mdp_rand(Rcpp::DataFrame mdp, double discount,
         rsol =
             solve_vi_r(m, discount, vf_init, rpolicy, iterations, maxresidual, progress);
     } else if (algorithm == "pi") {
-        // Gauss-seidel value iteration
+        // Policy iteration
         rsol =
             solve_pi_r(m, discount, vf_init, rpolicy, iterations, maxresidual, progress);
     } else {

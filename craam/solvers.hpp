@@ -336,6 +336,9 @@ inline RandSolution solve_vi_r(
     const algorithms::progress_t& progress = algorithms::internal::empty_progress) {
 
     check_model(mdp);
+    if (!policy.empty() && policy.size() != mdp.size())
+        throw invalid_argument("Policy length does not match number of states.");
+
     return algorithms::vi_gs(algorithms::PlainBellmanRand(mdp, policy), discount,
                              move(valuefunction), iterations, maxresidual, progress);
 }
@@ -351,6 +354,9 @@ inline RandSolution solve_mpi_r(
     const algorithms::progress_t& progress = algorithms::internal::empty_progress) {
 
     check_model(mdp);
+    if (!policy.empty() && policy.size() != mdp.size())
+        throw invalid_argument("Policy length does not match number of states.");
+
     return algorithms::mpi_jac(algorithms::PlainBellmanRand(mdp, policy), discount,
                                valuefunction, iterations_pi, maxresidual_pi,
                                iterations_vi, maxresidual_vi, progress);
@@ -382,6 +388,9 @@ inline RandSolution solve_pi_r(
     const algorithms::progress_t& progress = algorithms::internal::empty_progress) {
 
     check_model(mdp);
+    if (!policy.empty() && policy.size() != mdp.size())
+        throw invalid_argument("Policy length does not match number of states.");
+
     return algorithms::pi(algorithms::PlainBellmanRand(mdp, policy), discount,
                           move(valuefunction), iterations, maxresidual, progress);
 }
