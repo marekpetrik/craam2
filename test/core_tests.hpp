@@ -1396,7 +1396,8 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_l1) {
     // uniform weights
     const vector<numvec> wu{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
 
-    GRBEnv env = get_gurobi();
+    auto genv = get_gurobi();
+    GRBEnv& env = *genv;
 
     for (double psi = 0.0; psi < 3.0; psi += 0.1) {
         auto [obj, d, xi] = solve_srect_bisection(z, p, psi, numvec(0), w);
@@ -1429,7 +1430,8 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_linf) {
     // uniform weights
     const vector<numvec> wu{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
 
-    GRBEnv env = get_gurobi();
+    auto genv = get_gurobi();
+    GRBEnv& env = *genv;
 
     for (double psi = 0.0; psi < 3.0; psi += 0.1) {
         //TODO: Integrate the linf bisection method for comparison with gurobi
@@ -1459,7 +1461,8 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_same) {
     const vector<numvec> p{{0.3, 0.2, 0.1, 0.4}, {0.3, 0.6, 0.1}, {0.1, 0.3, 0.6}};
     const vector<numvec> z{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 0.9}};
 
-    GRBEnv env = get_gurobi();
+    auto genv = get_gurobi();
+    GRBEnv& env = *genv;
 
     for (double psi = 0.0; psi < 3.0; psi += 0.1) {
         auto [obj, d, xi] = solve_srect_bisection(z, p, psi);
@@ -1481,7 +1484,9 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_cvar) {
     const prec_t alpha = 0.3;
     const prec_t beta = 1.0;
 
-    GRBEnv env = get_gurobi();
+    auto genv = get_gurobi();
+    GRBEnv& env = *genv;
+
     auto [obj, d, dist_lp] = srect_avar_exp(env, z, f, alpha, beta);
     //cout << d << endl;
     //cout << obj << endl;
@@ -1490,6 +1495,45 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_cvar) {
     BOOST_CHECK_CLOSE(d[0], 0.7, 1e-3);
     BOOST_CHECK_CLOSE(d[1], 0.3, 1e-3);
     BOOST_CHECK_CLOSE(obj, 21.0, 1e-3);
+
+    // compute cvar for the combined response and make sure that it is the same
+    numvec zcombined(3, 0.0);
+    for (size_t i = 0; i < z.size(); ++i) {
+        for (size_t j = 0; j < z[0].size(); ++j) {
+            zcombined[j] += d[i] * z[i][j];
+        }
+    }
+
+    auto [dist, obj_s] = avar_exp(zcombined, f, alpha, beta);
+    // the results should be the same
+    BOOST_CHECK_CLOSE(obj, obj_s, 1e-3);
+}
+
+BOOST_AUTO_TEST_CASE(test_solve_srect_cvar_pol) {
+    // set parameters
+    //const numvecvec v{{30.0, 0.0}, {0.0, 70.0}};
+
+    const numvecvec z{
+        {30.0, 0.0, 0.0},
+        {0.0, 70.0, 0.0},
+    };
+
+    const numvec f{0.5, 0.5, 0.0};
+
+    const prec_t alpha = 0.3;
+    const prec_t beta = 0.6;
+
+    auto genv = get_gurobi();
+    GRBEnv& env = *genv;
+
+    auto [obj, d, dist_lp] = srect_avar_exp(env, z, f, alpha, beta, {0.1, 0.9});
+    //cout << d << endl;
+    //cout << obj << endl;
+    //cout << "objective and policy" << endl;
+    // TODO: These values not verified
+    BOOST_CHECK_CLOSE(d[0], 0.1, 1e-3);
+    BOOST_CHECK_CLOSE(d[1], 0.9, 1e-3);
+    //BOOST_CHECK_CLOSE(obj, 21.0, 1e-3);
 
     // compute cvar for the combined response and make sure that it is the same
     numvec zcombined(3, 0.0);
@@ -1518,7 +1562,9 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_cvar_exp) {
     const prec_t alpha = 0.3;
     const prec_t beta = 0.0;
 
-    GRBEnv env = get_gurobi();
+    auto genv = get_gurobi();
+    GRBEnv& env = *genv;
+
     auto [obj, d, dist_lp] = srect_avar_exp(env, z, f, alpha, beta);
 
     BOOST_CHECK_CLOSE(d[0], 0.0, 1e-3);
@@ -1538,7 +1584,8 @@ BOOST_AUTO_TEST_CASE(test_responses) {
     const vector<numvec> wu{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
 
 #ifdef GUROBI_USE
-    GRBEnv env = get_gurobi();
+    auto genv = get_gurobi();
+    GRBEnv& env = *genv;
 #endif
 
     for (size_t i = 0; i < p.size(); i++) {
@@ -1615,7 +1662,8 @@ BOOST_AUTO_TEST_CASE(test_responses_ties) {
     const vector<numvec> wu{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
 
 #ifdef GUROBI_USE
-    GRBEnv env = get_gurobi();
+    auto genv = get_gurobi();
+    GRBEnv& env = *genv;
 #endif
 
     for (size_t i = 0; i < p.size(); i++) {
@@ -1790,7 +1838,9 @@ BOOST_AUTO_TEST_CASE(inventory_failure_bug) {
     double xi = 0.2;
     //cout << GradientsL1_w(z, w).to_string() << endl;
     auto sol_fast = worstcase_l1_w(z, pbar, w, xi);
-    auto sol_gurobi = worstcase_l1_w_gurobi(get_gurobi(), z, pbar, w, xi);
+    auto genv = get_gurobi();
+    GRBEnv& env = *genv;
+    auto sol_gurobi = worstcase_l1_w_gurobi(env, z, pbar, w, xi);
     BOOST_CHECK_CLOSE(sol_fast.second, sol_gurobi.second, 1e-3);
 }
 #endif
@@ -1824,7 +1874,8 @@ BOOST_AUTO_TEST_CASE(test_srect_evaluation) {
     const vector<numvec> wu{
         {1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
 
-    GRBEnv env = get_gurobi();
+    auto genv = get_gurobi();
+    GRBEnv& env = *genv;
 
     for (const auto& pi : pis) {
         //std::cout << pi << std::endl;

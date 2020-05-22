@@ -32,6 +32,7 @@
 #include "craam/algorithms/linprog.hpp"
 #include "craam/algorithms/nature_declarations.hpp"
 #include "craam/modeltools.hpp"
+#include "craam/optimization/gurobi.hpp"
 
 #include <cmath>
 
@@ -274,27 +275,7 @@ solve_pi(const MDP& mdp, prec_t discount, numvec valuefunction = numvec(0),
 
 #ifdef GUROBI_USE
 /**
- * @brief get_gurobi Constructs a static instance of the gurobi object.
- *          Probably should not be used concurrently!
- * @return
- */
-inline GRBEnv& get_gurobi() {
-    try {
-        static GRBEnv env = GRBEnv();
-        env.set(GRB_IntParam_OutputFlag, 0);
-        return env;
-    } catch (exception& e) {
-        cerr << "Problem constructing Gurobi object: " << endl << e.what() << endl;
-        throw e;
-    } catch (...) {
-        cerr << "Unknown exception while creating a gurobi object. Could be a "
-                "license problem."
-             << endl;
-        throw;
-    }
-}
-/**
- * @brief Solves the MDP using the primal formulation (using value functions)
+ * Solves the MDP using the primal formulation (using value functions)
  *
  * Solves the linear program
  * min_v  1^T v
@@ -307,7 +288,7 @@ inline GRBEnv& get_gurobi() {
  */
 inline DetermSolution solve_lp(const MDP& mdp, prec_t discount,
                                const indvec& policy = indvec(0),
-                               GRBEnv& env = get_gurobi()) {
+                               GRBEnv& env = *get_gurobi()) {
 
     // TODO add support for this, the parameter is here only for
     // future signature compatibility

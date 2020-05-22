@@ -488,6 +488,8 @@ srect_avar_exp(const GRBEnv& env, const numvecvec& zvalue, const numvec& nominal
     const prec_t obj_lp = model.get(GRB_DoubleAttr_ObjVal);
 
     // compute the distorted nominal distribution
+    // that is the distribution that corresponds to the avar robust
+    // formulation
     numvec zcombined(num_samples, 0.0); // z for every sample
     for (size_t i = 0; i < nactions; ++i) {
         for (size_t j = 0; j < num_samples; ++j) {
@@ -498,6 +500,17 @@ srect_avar_exp(const GRBEnv& env, const numvecvec& zvalue, const numvec& nominal
     // make sure that the objectives are equal
     assert(std::abs(obj_s - obj_lp) < 1e-10);
 
+    // in the debug mode, make sure that the
+    // distributions match the return
+#ifndef NDEBUG
+    prec_t obj_dist = 0.0;
+    for (size_t i = 0; i < nactions; ++i) {
+        for (size_t j = 0; j < num_samples; ++j) {
+            obj_dist += policy[i] * zvalue[i][j] * dist[j];
+        }
+    }
+    assert(std::abs(obj_dist - obj_lp) < 1e-10);
+#endif
     return {obj_lp, move(policy), move(dist)};
 }
 

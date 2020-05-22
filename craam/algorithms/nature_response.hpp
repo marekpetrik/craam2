@@ -26,6 +26,7 @@
 #include "craam/Transition.hpp"
 #include "craam/definitions.hpp"
 #include "craam/optimization/bisection.hpp"
+#include "craam/optimization/gurobi.hpp"
 #include "craam/optimization/optimization.hpp"
 #include "craam/optimization/srect_gurobi.hpp"
 #include <functional>
@@ -295,7 +296,7 @@ public:
    * @param budgets Budgets, with a single value for each MDP state and action
    */
     robust_l1w_gurobi(vector<numvec> budgets) : budgets(move(budgets)), weights(0) {
-        env = make_shared<GRBEnv>();
+        env = get_gurobi();
         // make sure it is run in a single thread so it can be parallelized
         env->set(GRB_IntParam_OutputFlag, 0);
         env->set(GRB_IntParam_Threads, 1);
@@ -310,7 +311,7 @@ public:
    */
     robust_l1w_gurobi(vector<numvec> budgets, vector<vector<numvec>> weights)
         : budgets(move(budgets)), weights(move(weights)) {
-        env = make_shared<GRBEnv>();
+        env = get_gurobi();
         // make sure it is run in a single thread so it can be parallelized
         env->set(GRB_IntParam_OutputFlag, 0);
         env->set(GRB_IntParam_Threads, 1);
@@ -427,8 +428,6 @@ protected:
 
 public:
     robust_s_l1(numvec budgets) : budgets(move(budgets)) {}
-
-    robust_s_l1(numvec budgets, vector<numvec> weights_a) : budgets(move(budgets)) {}
 
     /**
      * Implements SNature interface
@@ -574,7 +573,7 @@ public:
    * @param budgets Budgets, with a single value for each MDP state
    */
     robust_s_l1_gurobi(numvec budgets) : budgets(move(budgets)) {
-        env = make_shared<GRBEnv>();
+        env = get_gurobi();
         // make sure it is run in a single thread so it can be parallelized
         env->set(GRB_IntParam_OutputFlag, 0);
         env->set(GRB_IntParam_Threads, 1);
@@ -651,7 +650,7 @@ public:
 
         assert(this->weights.size() == this->budgets.size());
 
-        env = make_shared<GRBEnv>();
+        env = get_gurobi();
         // make sure it is run in a single thread so it can be parallelized
         env->set(GRB_IntParam_OutputFlag, 0);
         env->set(GRB_IntParam_Threads, 1);
@@ -730,7 +729,7 @@ public:
      * on expectation
      */
     robust_s_avar_exp_u_gurobi(prec_t alpha, prec_t beta) : alpha(alpha), beta(beta) {
-        env = make_shared<GRBEnv>();
+        env = get_gurobi();
         // make sure it is run in a single thread so it can be parallelized
         env->set(GRB_IntParam_OutputFlag, 0);
         env->set(GRB_IntParam_Threads, 1);
@@ -766,7 +765,7 @@ public:
      * @param budgets Budgets, with a single value for each MDP state
      */
     robust_s_linf_gurobi(numvec budgets) : budgets(move(budgets)) {
-        env = make_shared<GRBEnv>();
+        env = get_gurobi();
         // make sure it is run in a single thread so it can be parallelized
         env->set(GRB_IntParam_OutputFlag, 0);
         env->set(GRB_IntParam_Threads, 1);

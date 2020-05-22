@@ -153,8 +153,8 @@ template <class S> void report_solution_status(const S& solution) {
 //' @param budget Maximum L1 distance from the reference dst
 //'
 //' @returns A list with dst as the worstcase distribution,
-// '         and value as the objective
-// [[Rcpp::export]]
+//'         and value as the objective
+//[[Rcpp::export]]
 Rcpp::List worstcase_l1(Rcpp::NumericVector value, Rcpp::NumericVector reference_dst,
                         double budget) {
 
@@ -179,8 +179,8 @@ Rcpp::List worstcase_l1(Rcpp::NumericVector value, Rcpp::NumericVector reference
 //' @param alpha Confidence value. 0 is worst case, 1 is average
 //'
 //' @returns A list with dst as the distorted distribution,
-// '         and value as the avar value
-// [[Rcpp::export]]
+//'          and value as the avar value
+//[[Rcpp::export]]
 Rcpp::List avar(Rcpp::NumericVector value, Rcpp::NumericVector reference_dst,
                 double alpha) {
 
@@ -683,7 +683,7 @@ algorithms::SANature parse_nature_sa(const MDPO& mdpo, const string& nature,
 //'                 nature_par is a list with parameters (alpha, beta). The worst-case
 //'                 response is computed as:
 //'                 beta * var [z] + (1-beta) * E[z], where
-//'                 var is inf{x \in R : P[X <= x] >= alpha}, with alpha = 0 being the
+//'                 var is inf{x in R : P[X <= x] >= alpha}, with alpha = 0 being the
 //'                 worst-case.
 //'         \item "evaru" a convex combination of expectation and AV@R over
 //'                 transition probabilites. Uniform over states
@@ -692,7 +692,7 @@ algorithms::SANature parse_nature_sa(const MDPO& mdpo, const string& nature,
 //'                 beta * var [z] + (1-beta) * E[z], where
 //'                 var is AVaR(z,alpha) = 1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a])
 //'                 where I is the indicator function and
-//'                 x_a = inf{x \in R : P[X <= x] >= alpha} being the
+//'                 x_a = inf{x in R : P[X <= x] >= alpha} being the
 //'                 worst-case.
 //'    }
 // [[Rcpp::export]]

@@ -8,7 +8,10 @@
 #' @param budget Maximum L1 distance from the reference dst
 #'
 #' @returns A list with dst as the worstcase distribution,
-NULL
+#'         and value as the objective
+worstcase_l1 <- function(value, reference_dst, budget) {
+    .Call(`_rcraam_worstcase_l1`, value, reference_dst, budget)
+}
 
 #' Computes average value at risk
 #'
@@ -17,12 +20,7 @@ NULL
 #' @param alpha Confidence value. 0 is worst case, 1 is average
 #'
 #' @returns A list with dst as the distorted distribution,
-NULL
-
-worstcase_l1 <- function(value, reference_dst, budget) {
-    .Call(`_rcraam_worstcase_l1`, value, reference_dst, budget)
-}
-
+#'          and value as the avar value
 avar <- function(value, reference_dst, alpha) {
     .Call(`_rcraam_avar`, value, reference_dst, alpha)
 }
@@ -178,7 +176,7 @@ compute_qvalues <- function(mdp, discount, valuefunction) {
 #'                 nature_par is a list with parameters (alpha, beta). The worst-case
 #'                 response is computed as:
 #'                 beta * var [z] + (1-beta) * E[z], where
-#'                 var is inf{x \in R : P[X <= x] >= alpha}, with alpha = 0 being the
+#'                 var is inf{x in R : P[X <= x] >= alpha}, with alpha = 0 being the
 #'                 worst-case.
 #'         \item "evaru" a convex combination of expectation and AV@R over
 #'                 transition probabilites. Uniform over states
@@ -187,7 +185,7 @@ compute_qvalues <- function(mdp, discount, valuefunction) {
 #'                 beta * var [z] + (1-beta) * E[z], where
 #'                 var is AVaR(z,alpha) = 1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a])
 #'                 where I is the indicator function and
-#'                 x_a = inf{x \in R : P[X <= x] >= alpha} being the
+#'                 x_a = inf{x in R : P[X <= x] >= alpha} being the
 #'                 worst-case.
 #'    }
 rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, pack_actions = FALSE, output_tran = FALSE, show_progress = 1L) {
