@@ -430,7 +430,7 @@ srect_avar_exp(const GRBEnv& env, const numvecvec& zvalue, const numvec& nominal
         nullptr, nullptr, nullptr, std::vector<char>(num_samples, GRB_CONTINUOUS).data(),
         nullptr, int(num_samples)));
 
-    auto x = model.addVar(0, inf, 0, GRB_CONTINUOUS, "x");
+    auto x = model.addVar(-inf, inf, 0, GRB_CONTINUOUS, "x");
 
     auto d = std::unique_ptr<GRBVar[]>(model.addVars(
         numvec(nactions, 0).data(), nullptr, numvec(nactions, 0).data(),
@@ -498,7 +498,10 @@ srect_avar_exp(const GRBEnv& env, const numvecvec& zvalue, const numvec& nominal
     }
     auto [dist, obj_s] = avar_exp(zcombined, nominal, alpha, lambda);
     // make sure that the objectives are equal
-    assert(std::abs(obj_s - obj_lp) < 1e-10);
+    assert(std::abs(obj_s - obj_lp) < 1e-4);
+    if (std::abs(obj_s - obj_lp) > 1e-1) {
+        throw runtime_error("Inconsistent CVaR results in srect_avar_exp.");
+    }
 
     // in the debug mode, make sure that the
     // distributions match the return
@@ -509,7 +512,7 @@ srect_avar_exp(const GRBEnv& env, const numvecvec& zvalue, const numvec& nominal
             obj_dist += policy[i] * zvalue[i][j] * dist[j];
         }
     }
-    assert(std::abs(obj_dist - obj_lp) < 1e-10);
+    assert(std::abs(obj_dist - obj_lp) < 1e-4);
 #endif
     return {obj_lp, move(policy), move(dist)};
 }

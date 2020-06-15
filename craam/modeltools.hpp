@@ -148,8 +148,7 @@ commas, and rows by new lines.
 The file is formatted with the following columns:
 idstatefrom, idaction, idstateto, probability, reward
 The file must have a header.
-
- */
+*/
 inline MDP mdp_from_csv(io::CSVReader<5>& in) {
     long idstatefrom, idaction, idstateto;
     double probability, reward;

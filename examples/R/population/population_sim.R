@@ -43,21 +43,20 @@ pop.model.mdp <- rcraam::mdp_population(max.population, init.population,
 
 # solve for the optimal policy
 
-mdp_sol <- solve_mdp(pop.model.mdp, discount, list(algorithm = "pi", 
-                                                   output_tran = TRUE))
+mdp_sol <- solve_mdp(pop.model.mdp, discount, algorithm = "pi", output_tran = TRUE)
 #print(mdp_sol$valuefunction)
 cat("MDP policy:", mdp_sol$policy$idaction, "\n")
 
 # simulate the model
 rpolicy <- mutate(mdp_sol$policy, probability = 1.0) # needs a randomized policy for now
 
-sim.samples <- simulate_mdp(pop.model.mdp, init.population, rpolicy, 300, 1)
+sim.samples <- simulate_mdp(pop.model.mdp, init.population, rpolicy, 300, 1, -1)
 print(sim.samples$idstatefrom)
 print(discount^sim.samples$step %*% sim.samples$reward)
 
 ### ------ Fit a model to the solution ---------------------
 
-sim.samples <- simulate_mdp(pop.model.mdp, init.population, rpolicy, 300, 1)
+sim.samples <- simulate_mdp(pop.model.mdp, init.population, rpolicy, 300, 1, -1)
 print(sim.samples$idstatefrom)
 #print(discount^sim.samples$step %*% sim.samples$reward)
 

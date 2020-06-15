@@ -555,6 +555,7 @@ public:
     }
 };
 
+// --------------- GUROBI BEGIN ----------------------------
 #ifdef GUROBI_USE
 
 /**
@@ -725,7 +726,7 @@ public:
      * The objective is lambda * AVaR_alpha [Z] + (1 - lambda) Exp [Z]
      *
      * @param alpha Risk level of avar (0 = worst-case)
-     * @param lambda Weight on AVaR and the complement (1-lambda) is the weight
+     * @param beta Weight on AVaR and the complement (1-lambda) is the weight
      * on expectation
      */
     robust_s_avar_exp_u_gurobi(prec_t alpha, prec_t beta) : alpha(alpha), beta(beta) {
@@ -743,7 +744,8 @@ public:
                                              const numvecvec& zvalues) const {
         assert(zvalues.size() > 0);
         assert(zvalues[0].size() == nominalprobs.size());
-        assert(zvalues.size() == policy.size());
+        //std::cout << zvalues.size() << std::endl << policy.size() << std::endl;
+        assert(policy.empty() || zvalues.size() == policy.size());
 
         auto [objective, opt_policy, opt_nature] =
             srect_avar_exp(*env, zvalues, nominalprobs, alpha, beta, policy);
@@ -821,4 +823,6 @@ public:
     }
 };
 #endif // GUROBI_USE
-}}}    // namespace craam::algorithms::nats
+// --------------- GUROBI END ----------------------------
+
+}}} // namespace craam::algorithms::nats

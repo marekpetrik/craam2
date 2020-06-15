@@ -151,6 +151,7 @@ set (TSTS ${CMAKE_CURRENT_SOURCE_DIR}/test/test.cpp
            ${CMAKE_CURRENT_SOURCE_DIR}/test/core_tests.hpp 
            ${CMAKE_CURRENT_SOURCE_DIR}/test/implementable_tests.hpp
            ${CMAKE_CURRENT_SOURCE_DIR}/test/simulation_tests.hpp
+           ${CMAKE_CURRENT_SOURCE_DIR}/test/example_mdps.hpp
 )
 set (DEV ${CMAKE_CURRENT_SOURCE_DIR}/test/dev.cpp)
 set (BENCH ${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp)

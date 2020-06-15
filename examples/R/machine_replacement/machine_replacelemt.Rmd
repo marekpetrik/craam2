@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # MDP with gaussian rewards
 
-The following script constructs an instance of machien replacement problem as an MDP with guassian reward. 
+The following script constructs an instance of machine replacement problem as an MDP with guassian reward. 
 Find the graph in Figure 1. (Percentile Optimization for Markov Decision Processes with Parameter Uncertainty. Erick Delage, Shie Mannor). Actions: 0 = repair, 1 = not repair. The transition are deterministic. For all state other than last one the repair action cost is independently distributed according to N(130,1). In the last state not-repair action cost is distributed according to N(100,800), while repair is distributed according to N(130,20)
 
 
