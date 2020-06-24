@@ -173,7 +173,7 @@ void check_model(const MDP& mdp) {
 
             // check whether the probabilities sum to 1
             if (std::abs(1.0 - accumulate(probabilities.cbegin(), probabilities.cend(),
-                                          0.0)) > EPSILON) {
+                                          0.0)) > 1e-3) {
                 throw ModelError("Transition probabilities do not sum to 1.", idstate,
                                  idaction);
             }
