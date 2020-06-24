@@ -2,8 +2,18 @@ cmake_minimum_required (VERSION 3.1.0 FATAL_ERROR)
 
 project(RCRAAM)
 
+find_package(OpenMP)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED)
+
+
+# use OpenMP if possible and not debugging
+if (OPENMP_FOUND AND NOT (CMAKE_BUILD_TYPE STREQUAL "Debug") )
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+
 
 include_directories(../
                     ../include

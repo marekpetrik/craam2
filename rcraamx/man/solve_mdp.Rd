@@ -14,7 +14,6 @@ solve_mdp(
   timeout = 300,
   value_init = NULL,
   pack_actions = FALSE,
-  output_tran = FALSE,
   show_progress = 1L
 )
 }
@@ -48,9 +47,6 @@ Any states that are not provided are initialized to 0.}
 and rename others for the same state to prevent gaps. The policy
 for the original actions can be recovered using ``action_map'' frame
 in the result}
-
-\item{output_tran}{Whether to construct and return a matrix of transition
-probabilites and a vector of rewards}
 
 \item{show_progress}{Whether to show a progress bar during the computation.
 0 means no progress, 1 is progress bar, and 2 is a detailed report}

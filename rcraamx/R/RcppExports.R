@@ -59,13 +59,11 @@ mdp_clean <- function(mdp) {
 #'          and rename others for the same state to prevent gaps. The policy
 #'          for the original actions can be recovered using ``action_map'' frame
 #'          in the result
-#' @param output_tran Whether to construct and return a matrix of transition
-#'          probabilites and a vector of rewards
 #' @param show_progress Whether to show a progress bar during the computation.
 #'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 #' @return A list with value function policy and other values
-solve_mdp <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, pack_actions = FALSE, output_tran = FALSE, show_progress = 1L) {
-    .Call(`_rcraam_solve_mdp`, mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, pack_actions, output_tran, show_progress)
+solve_mdp <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, pack_actions = FALSE, show_progress = 1L) {
+    .Call(`_rcraam_solve_mdp`, mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, pack_actions, show_progress)
 }
 
 #' Solves a plain Markov decision process with randomized policies.
@@ -89,14 +87,12 @@ solve_mdp <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, max
 #' @param value_init A  dataframe that contains the initial value function used
 #'          to initialize the method. The columns should be idstate and value.
 #'          Any states that are not provided are initialized to 0.
-#' @param output_tran Whether to construct and return a matrix of transition
-#'          probabilites and a vector of rewards
 #' @param show_progress Whether to show a progress bar during the computation
 #'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 #'
 #' @return A list with value function policy and other values
-solve_mdp_rand <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, output_tran = FALSE, show_progress = 1L) {
-    .Call(`_rcraam_solve_mdp_rand`, mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, output_tran, show_progress)
+solve_mdp_rand <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, show_progress = 1L) {
+    .Call(`_rcraam_solve_mdp_rand`, mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, show_progress)
 }
 
 #' Computes the function for the MDP for the given value function and discount factor
@@ -366,6 +362,47 @@ set_rcraam_threads <- function(n) {
 #'
 mdp_from_samples <- function(samples_frame) {
     .Call(`_rcraam_mdp_from_samples`, samples_frame)
+}
+
+#' Constructs the linear programming matrix for the MDP
+#'
+#' The method can construct the LP matrix for the MDP, which is defined as
+#' follows:
+#' A = [I - gamma P_1; I - gamma P_2; ...] where P_a is the transition
+#' probability for action_a. It also constructs the corresponding vector of rewards
+#'
+#'
+#' @param mdp A dataframe representation of the MDP. Each row
+#'            represents a single transition from one state to another
+#'            after taking an action a. The columns are:
+#'            idstatefrom, idaction, idstateto, probability, reward
+#' @param discount Discount factor in [0,1]
+#'
+#' @return A list with entries A, b, and idstateaction which is a dataframe with
+#'         row_index (1-based), stateid (0-based), actionid (0-based) that
+#'         identifies the state and action for each row of the output
+matrix_mdp_lp <- function(mdp, discount) {
+    .Call(`_rcraam_matrix_mdp_lp`, mdp, discount)
+}
+
+#' Constructs transition probability matrix the MDP
+#'
+#' The method constructs the transition probability matrix (stochastic matrix)  P_pi
+#' and rewards r_pi for the MDP
+#'
+#'
+#' @param mdp A dataframe representation of the MDP. Each row
+#'            represents a single transition from one state to another
+#'            after taking an action a. The columns are:
+#'            idstatefrom, idaction, idstateto, probability, reward
+#' @param policy The policy used to construct the transition probabilities and rewards.
+#'            It can be a deterministic policy, in which case it should be a dataframe
+#'            with columns idstate and idaction. Both indices are 0-based.
+#'            It can also be a randomized policy, in which case it should be a dataframe with
+#'            columns idstate, idaction, probability.
+#' @return A list with P and r, the transition matrix and the reward vector
+matrix_mdp_transition <- function(mdp, policy) {
+    .Call(`_rcraam_matrix_mdp_transition`, mdp, policy)
 }
 
 mdp_example <- function(name) {

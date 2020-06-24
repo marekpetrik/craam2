@@ -24,6 +24,7 @@
 #pragma once
 
 #include "craam/GMDP.hpp"
+#include "craam/MDP.hpp"
 #include "craam/Transition.hpp"
 
 #include <eigen3/Eigen/Dense>
@@ -206,6 +207,69 @@ inline numvec valuefunction_mat(const BellmanResponse& response, prec_t discount
         HouseholderQR<MatrixXd>(t_mat).solve(rewards_vec);
 
     return result;
+}
+
+/**
+  * Constructs the LP matrix and a reward vector for an MDP.
+  *
+  * The output are a matrix A and a vector b such that
+  *
+  * A = [  I- gamma P_1 ; I - gamma P_2 ; .... ]
+  * and
+  * b = [ r_1 ; r_2 ; ...]
+  * where P_a and r_a are the tansition probabilities and rewards (respectively for each action).
+  * The vector of rewards r_1 is computed as an average over the target states. That is,
+  * r_a(s) = sum_s p(s,a,s') r(s,a,s')
+  * Note that this is not normalized, which matter when the transition probabilities do not
+  * sum to one
+  *
+  * @param mdp MDP definition
+  * @param discount The discount factor
+  * @returns A tuple with (A,b,stateactionids) where A, b are described as above and
+  *     stateactionsids represent which state and action each row
+  *     represents
+  */
+inline std::tuple<Eigen::MatrixXd, Eigen::VectorXd, vector<std::pair<long, long>>>
+lp_matrix(const MDP& mdp, prec_t discount) {
+
+    const auto nstates = mdp.size();
+
+    // count the number of state-action pairs (this is the number of rows)
+    size_t nstateactions = 0;
+    for (const auto& s : mdp)
+        nstateactions += s.size();
+
+    // Initialize output values
+    Eigen::MatrixXd A(nstateactions, nstates);
+    Eigen::VectorXd b(nstateactions);
+    std::vector<std::pair<long, long>> stateactionids(nstateactions, {-1, -1});
+
+    size_t row_index = 0;
+    // add objectives and constraints for each state
+    for (size_t si = 0; si < nstates; ++si) {
+        assert(row_index < nstateactions && row_index >= 0);
+        const State& s = mdp[si];
+
+        for (size_t ai = 0; ai < s.size(); ++ai) {
+            const Action& a = s[ai];
+            stateactionids[row_index] = {si, ai};
+
+            double reward_sa = 0; // use to aggregate rewards
+            for (size_t ti = 0; ti < a.size(); ++ti) {
+                const size_t to_si =
+                    a.get_indices()[ti]; // index of the destination state
+                const long prob = a.get_probabilities()[ti];
+                const prec_t rew = a.get_rewards()[ti];
+
+                reward_sa += rew * prob;
+                // compute I - gamma P
+                A(row_index, to_si) = (si == to_si ? 1.0 : 0.0) - discount * prob;
+            }
+            b(row_index) = reward_sa;
+            ++row_index;
+        }
+    }
+    return {move(A), move(b), move(stateactionids)};
 }
 
 }} // namespace craam::algorithms

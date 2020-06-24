@@ -325,8 +325,6 @@ Rcpp::DataFrame mdp_clean(Rcpp::DataFrame mdp) {
 //'          and rename others for the same state to prevent gaps. The policy
 //'          for the original actions can be recovered using ``action_map'' frame
 //'          in the result
-//' @param output_tran Whether to construct and return a matrix of transition
-//'          probabilites and a vector of rewards
 //' @param show_progress Whether to show a progress bar during the computation.
 //'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 //' @return A list with value function policy and other values
@@ -336,8 +334,7 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
                      double maxresidual = 10e-4, size_t iterations = 10000,
                      double timeout = 300,
                      Rcpp::Nullable<Rcpp::DataFrame> value_init = R_NilValue,
-                     bool pack_actions = false, bool output_tran = false,
-                     int show_progress = 1) {
+                     bool pack_actions = false, int show_progress = 1) {
     if (policy_fixed.isNotNull() && pack_actions) {
         Rcpp::warning(
             "Providing a policy_fixed and packing actions is a bad idea. When the "
@@ -376,14 +373,11 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
                         defaults::mpi_vi_count, 0.9, progress);
     } else if (algorithm == "vi_j" || algorithm == "vi") {
         // Jacobian value iteration
-
         sol = solve_mpi(m, discount, vf_init, policy, iterations, maxresidual, 1, 0.9,
                         progress);
     } else if (algorithm == "vi_g") {
         // Gauss-seidel value iteration
-
         sol = solve_vi(m, discount, vf_init, policy, iterations, maxresidual, progress);
-
     } else if (algorithm == "pi") {
         // Gauss-seidel value iteration
         sol = solve_pi(m, discount, vf_init, policy, iterations, maxresidual, progress);
@@ -399,15 +393,6 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
 #endif // GUROBI_USE
     else {
         Rcpp::stop("Unknown or unsupported algorithm type.");
-    }
-
-    if (output_tran) {
-
-        auto pb = craam::algorithms::PlainBellman(m);
-        auto tmat = craam::algorithms::transition_mat(pb, sol.policy);
-        auto rew = craam::algorithms::rewards_vec(pb, sol.policy);
-        result["transitions"] = as_matrix(tmat);
-        result["rewards"] = rew;
     }
 
     result["iters"] = sol.iterations;
@@ -441,8 +426,6 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
 //' @param value_init A  dataframe that contains the initial value function used
 //'          to initialize the method. The columns should be idstate and value.
 //'          Any states that are not provided are initialized to 0.
-//' @param output_tran Whether to construct and return a matrix of transition
-//'          probabilites and a vector of rewards
 //' @param show_progress Whether to show a progress bar during the computation
 //'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 //'
@@ -454,7 +437,7 @@ Rcpp::List solve_mdp_rand(Rcpp::DataFrame mdp, double discount,
                           double maxresidual = 10e-4, size_t iterations = 10000,
                           double timeout = 300,
                           Rcpp::Nullable<Rcpp::DataFrame> value_init = R_NilValue,
-                          bool output_tran = false, int show_progress = 1) {
+                          int show_progress = 1) {
     // Note: this method only makes sense to be called with a provided
     // fixed policy and in that case, packing the actions is quite nonsensical
 
@@ -499,17 +482,8 @@ Rcpp::List solve_mdp_rand(Rcpp::DataFrame mdp, double discount,
         // Policy iteration
         rsol =
             solve_pi_r(m, discount, vf_init, rpolicy, iterations, maxresidual, progress);
-    } else {
+    } else
         Rcpp::stop("Unknown algorithm type.");
-    }
-
-    if (output_tran) {
-        auto pb = craam::algorithms::PlainBellmanRand(m);
-        auto tmat = craam::algorithms::transition_mat(pb, rsol.policy);
-        auto rew = craam::algorithms::rewards_vec(pb, rsol.policy);
-        result["transitions"] = as_matrix(tmat);
-        result["rewards"] = rew;
-    }
 
     result["iters"] = rsol.iterations;
     result["residual"] = rsol.residual;
@@ -1306,10 +1280,6 @@ Rcpp::DataFrame mdp_from_samples(Rcpp::DataFrame samples_frame) {
 
     craam::msen::DiscreteSamples samples;
 
-    // values from the last sample
-    int last_step, last_state, last_action;
-    double last_reward;
-
     for (int i = 0; i < samples_frame.nrows(); ++i) {
         samples.add_sample(idstatefrom[i], idaction[i], idstateto[i], reward[i], 1.0, i,
                            0);
@@ -1319,4 +1289,94 @@ Rcpp::DataFrame mdp_from_samples(Rcpp::DataFrame samples_frame) {
     smdp.add_samples(samples);
 
     return mdp_to_dataframe(*smdp.get_mdp());
+}
+
+//' Constructs the linear programming matrix for the MDP
+//'
+//' The method can construct the LP matrix for the MDP, which is defined as
+//' follows:
+//' A = [I - gamma P_1; I - gamma P_2; ...] where P_a is the transition
+//' probability for action_a. It also constructs the corresponding vector of rewards
+//'
+//'
+//' @param mdp A dataframe representation of the MDP. Each row
+//'            represents a single transition from one state to another
+//'            after taking an action a. The columns are:
+//'            idstatefrom, idaction, idstateto, probability, reward
+//' @param discount Discount factor in [0,1]
+//'
+//' @return A list with entries A, b, and idstateaction which is a dataframe with
+//'         row_index (1-based), stateid (0-based), actionid (0-based) that
+//'         identifies the state and action for each row of the output
+// [[Rcpp::export]]
+Rcpp::List matrix_mdp_lp(Rcpp::DataFrame mdp, double discount) {
+
+    MDP m = mdp_from_dataframe(mdp);
+    if (m.size() == 0) return Rcpp::List();
+
+    auto [A, b, idstateaction] = craam::algorithms::lp_matrix(m, discount);
+
+    Rcpp::List result;
+    result["A"] = as_matrix(A);
+    result["b"] = as_vector(b);
+
+    auto [idstate, idaction] = unzip(idstateaction);
+    indvec row_index(idstate.size(), -1);
+    std::iota(row_index.begin(), row_index.end(), 1);
+
+    Rcpp::DataFrame df_idsa = Rcpp::DataFrame::create(Rcpp::_["row_index"] = row_index,
+                                                      Rcpp::_["idstate"] = idstate,
+                                                      Rcpp::_["idaction"] = idaction);
+    result["idstateaction"] = df_idsa;
+
+    return result;
+}
+
+//' Constructs transition probability matrix the MDP
+//'
+//' The method constructs the transition probability matrix (stochastic matrix)  P_pi
+//' and rewards r_pi for the MDP
+//'
+//'
+//' @param mdp A dataframe representation of the MDP. Each row
+//'            represents a single transition from one state to another
+//'            after taking an action a. The columns are:
+//'            idstatefrom, idaction, idstateto, probability, reward
+//' @param policy The policy used to construct the transition probabilities and rewards.
+//'            It can be a deterministic policy, in which case it should be a dataframe
+//'            with columns idstate and idaction. Both indices are 0-based.
+//'            It can also be a randomized policy, in which case it should be a dataframe with
+//'            columns idstate, idaction, probability.
+//' @return A list with P and r, the transition matrix and the reward vector
+// [[Rcpp::export]]
+Rcpp::List matrix_mdp_transition(Rcpp::DataFrame mdp, Rcpp::DataFrame policy) {
+
+    MDP m = mdp_from_dataframe(mdp);
+    if (m.size() == 0) return Rcpp::List();
+
+    Rcpp::List result;
+
+    if (policy.containsElementNamed("probability")) {
+        // randomized policy
+        numvecvec policy_rand = parse_sa_values(m, Rcpp::as<Rcpp::DataFrame>(policy), 0.0,
+                                                "probability", "policy");
+
+        auto pb = craam::algorithms::PlainBellmanRand(m);
+        auto tmat = craam::algorithms::transition_mat(pb, policy_rand);
+        auto rew = craam::algorithms::rewards_vec(pb, policy_rand);
+        result["P"] = as_matrix(tmat);
+        result["r"] = rew;
+
+    } else {
+        // deterministic policy
+        indvec policy_det =
+            parse_s_values<long>(m.size(), policy, -1, "idaction", "policy");
+
+        auto pb = craam::algorithms::PlainBellman(m);
+        auto tmat = craam::algorithms::transition_mat(pb, policy_det);
+        auto rew = craam::algorithms::rewards_vec(pb, policy_det);
+        result["P"] = as_matrix(tmat);
+        result["r"] = rew;
+    }
+    return result;
 }

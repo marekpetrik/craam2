@@ -13,7 +13,6 @@ solve_mdp_rand(
   iterations = 10000L,
   timeout = 300,
   value_init = NULL,
-  output_tran = FALSE,
   show_progress = 1L
 )
 }
@@ -41,9 +40,6 @@ should be a dataframe with columns idstate, idaction, probability.
 \item{value_init}{A  dataframe that contains the initial value function used
 to initialize the method. The columns should be idstate and value.
 Any states that are not provided are initialized to 0.}
-
-\item{output_tran}{Whether to construct and return a matrix of transition
-probabilites and a vector of rewards}
 
 \item{show_progress}{Whether to show a progress bar during the computation
 0 means no progress, 1 is progress bar, and 2 is a detailed report}

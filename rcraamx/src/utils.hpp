@@ -82,10 +82,22 @@ inline Rcpp::DataFrame mdp_to_dataframe(const craam::MDP& mdp) {
 inline Rcpp::NumericMatrix as_matrix(const Eigen::MatrixXd& matrix) {
     Rcpp::NumericMatrix result(matrix.rows(), matrix.cols());
 
-    for (size_t i = 0; i < matrix.rows(); i++) {
-        for (size_t j = 0; j < matrix.cols(); j++) {
+    for (long i = 0; i < matrix.rows(); i++) {
+        for (long j = 0; j < matrix.cols(); j++) {
             result(i, j) = matrix(i, j);
         }
+    }
+    return result;
+}
+
+/**
+ * Constructs an R vector from an Eigen vector.
+ */
+inline Rcpp::NumericVector as_vector(const Eigen::VectorXd& vector) {
+    Rcpp::NumericVector result(vector.size());
+
+    for (long i = 0; i < vector.size(); ++i) {
+        result(i) = vector(i);
     }
     return result;
 }
