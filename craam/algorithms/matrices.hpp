@@ -240,8 +240,8 @@ lp_matrix(const MDP& mdp, prec_t discount) {
         nstateactions += s.size();
 
     // Initialize output values
-    Eigen::MatrixXd A(nstateactions, nstates);
-    Eigen::VectorXd b(nstateactions);
+    Eigen::MatrixXd A = Eigen::MatrixXd::Zero(nstateactions, nstates);
+    Eigen::VectorXd b = Eigen::VectorXd::Zero(nstateactions);
     std::vector<std::pair<long, long>> stateactionids(nstateactions, {-1, -1});
 
     size_t row_index = 0;
@@ -263,9 +263,13 @@ lp_matrix(const MDP& mdp, prec_t discount) {
 
                 reward_sa += rew * prob;
                 // compute I - gamma P
-                A(row_index, to_si) = (si == to_si ? 1.0 : 0.0) - discount * prob;
+                A(row_index, to_si) = -discount * prob;
             }
+            // add the identity matrix
+            A(row_index, si) += 1.0;
+            // update the rewards
             b(row_index) = reward_sa;
+
             ++row_index;
         }
     }

@@ -159,6 +159,24 @@ void check_model(const MDP& mdp) {
                             probabilities.cbegin(), nfin_index)]),
                     idstate, idaction);
             }
+
+            // check that the probabilities are non-negative
+            nfin_index = std::find_if_not(probabilities.cbegin(), probabilities.cend(),
+                                          [](prec_t x) { return x >= 0; });
+            if (nfin_index != probabilities.cend()) {
+                throw ModelError("Transition probability to the following state is "
+                                 "not non-negative: " +
+                                     std::to_string(action.get_indices()[std::distance(
+                                         probabilities.cbegin(), nfin_index)]),
+                                 idstate, idaction);
+            }
+
+            // check whether the probabilities sum to 1
+            if (std::abs(1.0 - accumulate(probabilities.cbegin(), probabilities.cend(),
+                                          0.0)) > EPSILON) {
+                throw ModelError("Transition probabilities do not sum to 1.", idstate,
+                                 idaction);
+            }
         }
     }
 } // namespace craam
@@ -166,6 +184,8 @@ void check_model(const MDP& mdp) {
 /**
  * Checks whether the model is correct and throws ModelError
  * exception when it is incorrect.
+ *
+ * Checks for things like infinite values, probabilities not summing to 1, or being negative
  */
 void check_model(const MDPO& mdp) {
 
@@ -204,6 +224,26 @@ void check_model(const MDPO& mdp) {
                             std::to_string(outcome.get_indices()[std::distance(
                                 probabilities.cbegin(), nfin_index)]),
                         idstate, idaction, idoutcome);
+                }
+
+                // check that the probabilities are non-negative
+                nfin_index =
+                    std::find_if_not(probabilities.cbegin(), probabilities.cend(),
+                                     [](prec_t x) { return x >= 0; });
+                if (nfin_index != probabilities.cend()) {
+                    throw ModelError(
+                        "Transition probability to the following state is "
+                        "not non-negative: " +
+                            std::to_string(outcome.get_indices()[std::distance(
+                                probabilities.cbegin(), nfin_index)]),
+                        idstate, idaction, idoutcome);
+                }
+
+                // check whether the probabilities sum to 1
+                if (std::abs(1.0 - accumulate(probabilities.cbegin(),
+                                              probabilities.cend(), 0.0)) > EPSILON) {
+                    throw ModelError("Transition probabilities do not sum to 1.", idstate,
+                                     idaction, idoutcome);
                 }
             }
         }
