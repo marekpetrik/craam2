@@ -3,5 +3,5 @@
 PKG_CXXFLAGS = -I. -I../../ -I../../include -fopenmp -DNDEBUG -O3 -march=native
 PKG_LIBS= -fopenmp 
 
-#CXX_STD = CXX17
-CXX_STD = CXX14
+CXX_STD = CXX17
+#CXX_STD = CXX14
