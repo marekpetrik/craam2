@@ -252,17 +252,14 @@ lp_matrix(const MDP& mdp, prec_t discount) {
 
         for (size_t ai = 0; ai < s.size(); ++ai) {
             const Action& a = s[ai];
-            stateactionids[row_index] = {si, ai};
 
             double reward_sa = 0; // use to aggregate rewards
             for (size_t ti = 0; ti < a.size(); ++ti) {
-                const size_t to_si =
-                    a.get_indices()[ti]; // index of the destination state
-                const long prob = a.get_probabilities()[ti];
-                const prec_t rew = a.get_rewards()[ti];
+                const long to_si = a.get_indices()[ti]; // index of the destination state
+                const prec_t prob = a.get_probabilities()[ti];
 
-                reward_sa += rew * prob;
-                // compute I - gamma P
+                reward_sa += a.get_rewards()[ti] * prob;
+                // set: - gamma P
                 A(row_index, to_si) = -discount * prob;
             }
             // add the identity matrix
@@ -270,6 +267,7 @@ lp_matrix(const MDP& mdp, prec_t discount) {
             // update the rewards
             b(row_index) = reward_sa;
 
+            stateactionids[row_index] = {si, ai};
             ++row_index;
         }
     }
