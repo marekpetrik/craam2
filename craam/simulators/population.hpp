@@ -149,13 +149,16 @@ public:
     bool end_condition(State population) const { return false; }
 
     /**
-      * Returns a sample of the reward and a population level following an action & current population level
+      * Returns a sample of the reward and a population level following an action & current
+      * population level
       *
       * The actions represent different types of intensities of management.
       *
-      * The treatment action carries a fixed cost control_reward (or a negative reward of -4000) of applying the treatment.
+      * The treatment action carries a fixed cost control_reward (or a negative reward of -4000)
+      * of applying the treatment.
       * There is a variable population dependent
-      * cost invasive_reward (-1) that represents the economic (or ecological) damage of the invasive species.
+      * cost invasive_reward (-1) that represents the economic (or ecological) damage of the
+      * invasive species.
       *
       * The realized growth rate is a random variable with normal noise around the
       * true expected rate.
@@ -185,15 +188,17 @@ public:
         long next_population = 0;
 
         if (growth_model == Growth::Exponential) {
-            next_population = clamp(long(std::round(growth_rate * current_population)),
-                                    0l, carrying_capacity);
+            next_population =
+                std::clamp(long(std::round(growth_rate * current_population)), 0l,
+                           carrying_capacity);
         } else if (growth_model == Growth::Logistic) {
             // see https://en.wikipedia.org/wiki/Logistic_function#In_ecology:_modeling_population_growth
             auto pop_increase = (growth_rate - 1.0) * current_population *
                                 (carrying_capacity - current_population) /
                                 prec_t(carrying_capacity);
-            next_population = clamp(long(std::round(current_population + pop_increase)),
-                                    0l, carrying_capacity);
+            next_population =
+                std::clamp(long(std::round(current_population + pop_increase)), 0l,
+                           carrying_capacity);
         } else {
             throw invalid_argument("Unsupported population model.");
         }
@@ -212,7 +217,7 @@ public:
     void set_growth(Growth model) { growth_model = model; }
 
     size_t state_count() const { return carrying_capacity + 1; }
-    size_t action_count(State s) const { return actioncount; }
+    size_t action_count(State) const { return actioncount; }
 };
 
 /**

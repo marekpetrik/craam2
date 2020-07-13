@@ -36,15 +36,19 @@
 namespace craam { namespace algorithms {
 
 /**
- * @brief Solves the MDP using the primal formulation (using value functions)
+ * Solves the MDP using the primal formulation (using value functions)
  *
  * Solves the linear program
  * min_v  1^T v
  * s.t.   P_a v >= r_a  for all a
  *
+ * Note:
+ * The construction could be slow for large MDPs and could be sped up by
+ * by using GRBLinExpr::addTerms
+ *
  * @param mdp Markov decision process
  * @param discount Discount factor
- * @return Solution
+ * @return Solution that includes the policy, value function
  */
 inline DetermSolution solve_lp_primal(const GRBEnv& env, const MDP& mdp,
                                       prec_t discount) {
@@ -59,7 +63,7 @@ inline DetermSolution solve_lp_primal(const GRBEnv& env, const MDP& mdp,
     auto start = chrono::steady_clock::now();
 
     // construct the LP model
-    GRBModel model = GRBModel(env);
+    GRBModel model(env);
 
     // values v
     auto v = std::unique_ptr<GRBVar[]>(model.addVars(

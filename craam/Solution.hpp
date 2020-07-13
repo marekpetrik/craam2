@@ -51,7 +51,7 @@ template <class PolicyType> struct Solution {
     /// Status (0 means OK, 1 means timeout, 2 means internal error)
     int status;
 
-    /// Constructs an empty solution
+    /// Constructs an empty solution with an invalid return value.
     ///
     /// WARNING: The default status of the solution is that it is a result
     /// of an internal error

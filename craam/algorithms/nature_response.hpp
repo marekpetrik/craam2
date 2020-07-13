@@ -723,11 +723,11 @@ public:
     /**
      * Constructs the Gurobi enviroment and initializes variables.
      *
-     * The objective is lambda * AVaR_alpha [Z] + (1 - lambda) Exp [Z]
+     * The objective is beta * AVaR_alpha [Z] + (1 - beta) Exp [Z]
      *
      * @param alpha Risk level of avar (0 = worst-case)
-     * @param beta Weight on AVaR and the complement (1-lambda) is the weight
-     * on expectation
+     * @param beta Weight on AVaR and the complement (1-beta) is the weight
+     *                  on the expectation term
      */
     robust_s_avar_exp_u_gurobi(prec_t alpha, prec_t beta) : alpha(alpha), beta(beta) {
         env = get_gurobi();
