@@ -37,7 +37,7 @@
 
 #include <gurobi/gurobi_c++.h>
 
-namespace craam::algorithms {
+namespace craam::statalgs {
 
 /**
  * Solves a MDPO (uncertain MDP) with a AVaR soft-robust objective, assuming
@@ -48,7 +48,7 @@ namespace craam::algorithms {
  * The problem is formulated as a *non-convex* quadratic program and solved
  * using Gurobi. The objective to solve is:
  * max_pi lambda * CVaR_{P ~ f}^alpha [return(pi,P)] +
- *        (1-lambda) * E__{P ~ f}^alpha [return(pi,P)]
+ *        (1-lambda) * E_{P ~ f}^alpha [return(pi,P)]
  * where pi is a randomized policy. The formulation allows for uncertain rewards
  * jointly with uncertain transition probabilities.
  *
@@ -57,7 +57,7 @@ namespace craam::algorithms {
  *
  * The actual quadratic program formulation is as follows:
  * max_{pi, d} max_{z,y} z + sum_{omega} (
- *              (1-beta) * sum_{s,a} d(s,omega) pi(s,a) r^omega(s,a) +
+ *              (1-beta) * sum_{s,a} d(s,omega) pi(s,a) r^omega(s,a) -
  *                 beta  * y(omega) )
  * subject to:
  *      y(omega) >= z - sum_{s,a} d(s,omega) pi(s,a) r^omega(s,a) for each omega
@@ -81,11 +81,10 @@ namespace craam::algorithms {
  *                   to a uniform distribution.
  * @return Solution that includes the policy and the value function
  */
-inline RandStaticSolution
-srsolve_avar_static_mdpo_quad(const GRBEnv& env, const MDPO& mdpo, prec_t alpha,
-                              prec_t beta, prec_t gamma, const ProbDst& init_dist,
-                              const ProbDst& model_dist = ProbDst(0)) {
-
+inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
+                                            prec_t alpha, prec_t beta, prec_t gamma,
+                                            const ProbDst& init_dist,
+                                            const ProbDst& model_dist = ProbDst(0)) {
     const prec_t alpha_min = 1e-5;
 
     // general constants values
@@ -104,7 +103,7 @@ srsolve_avar_static_mdpo_quad(const GRBEnv& env, const MDPO& mdpo, prec_t alpha,
     const size_t noutcomes = [&] {
         // (find a non-terminal state first)
         auto ps = std::find_if_not(mdpo.begin(), mdpo.end(),
-                                   [&](const StateO& s) { s.is_terminal(); });
+                                   [&](const StateO& s) { return s.is_terminal(); });
         // not found: -1
         return ps == mdpo.end() ? -1ul : ps->get_action(0).outcome_count();
     }();
@@ -116,7 +115,7 @@ srsolve_avar_static_mdpo_quad(const GRBEnv& env, const MDPO& mdpo, prec_t alpha,
 
     // find a state with outcomes that do not match the expected number
     for (size_t is = 0; is < mdpo.size(); ++is)
-        for (size_t ia = 0; ia < mdpo[ia].size(); ++ia)
+        for (size_t ia = 0; ia < mdpo[is].size(); ++ia)
             if (mdpo[is][ia].size() != noutcomes)
                 throw ModelError(
                     "Number of outcomes is not uniform across all states and actions", is,
@@ -171,7 +170,7 @@ srsolve_avar_static_mdpo_quad(const GRBEnv& env, const MDPO& mdpo, prec_t alpha,
 
     auto d = std::unique_ptr<GRBVar[]>(
         model.addVars(numvec(nstateoutcomes, 0).data(), nullptr, nullptr,
-                      std::vector<char>(nstateactions, GRB_CONTINUOUS).data(), nullptr,
+                      std::vector<char>(nstateoutcomes, GRB_CONTINUOUS).data(), nullptr,
                       nstateoutcomes));
 
     auto y = std::unique_ptr<GRBVar[]>(model.addVars(
@@ -181,7 +180,7 @@ srsolve_avar_static_mdpo_quad(const GRBEnv& env, const MDPO& mdpo, prec_t alpha,
     auto z = model.addVar(-inf, +inf, 0, GRB_CONTINUOUS, "");
 
     // objective: z + sum_{omega} (
-    //              (1-beta) * sum_{s,a} d(s,omega) pi(s,a) r^omega(s,a) +
+    //              (1-beta) * sum_{s,a} d(s,omega) pi(s,a) r^omega(s,a) -
     //                beta * y(omega) )
     GRBQuadExpr objective = z;
     // TODO: could be faster using GRBQuadExpr::addTerms
@@ -197,7 +196,7 @@ srsolve_avar_static_mdpo_quad(const GRBEnv& env, const MDPO& mdpo, prec_t alpha,
         objective -= beta / (1.0 - alpha) * y[iw];
     }
     model.setObjective(objective, GRB_MAXIMIZE);
-
+    /*
     // constraint:
     // y(omega) - z + sum_{s,a} d(s,omega) pi(s,a) r^omega(s,a) >= 0 for each omega
     for (size_t iw = 0; iw < noutcomes; ++iw) {
@@ -217,33 +216,27 @@ srsolve_avar_static_mdpo_quad(const GRBEnv& env, const MDPO& mdpo, prec_t alpha,
     //                      f(omega) p_0(s), for each omega and s
     for (size_t iw = 0; iw < noutcomes; ++iw) {   // omega
         for (size_t is = 0; is < nstates; ++is) { // state s
-
-            const StateO& s = mdpo[is];
+            // d(s,omega)
             GRBQuadExpr constraint_d = d[index_sw(is, iw)];
 
-            for (size_t isp = 0; isp <= nstates; ++isp) { //state s'
+            for (size_t isp = 0; isp < nstates; ++isp) { //state s'
                 const StateO& sp = mdpo[isp];
                 for (size_t iap = 0; iap < sp.size(); ++iap) { // action a'
                     const prec_t probability = sp[iap][iw].probability_to(is);
                     // skip of the probability is 0
                     if (probability > 0)
-                        constraint_d -= gamma * probability * d[index_sw(isp, iw)] *
-                                        pi[index_sa(isp, iap)];
+                        //- gamma * sum_{s',a'} d(s',omega) * pi(s',a') * P^omega(s',a',s)
+                        constraint_d -= gamma * d[index_sw(isp, iw)] *
+                                        pi[index_sa(isp, iap)] * probability;
                 }
             }
-
-            for (size_t ia = 0; ia < s.size(); ia++) {
-                const auto reward = s[ia][iw].mean_reward();
-                constraint_d += reward * d[index_sw(is, iw)] * pi[index_sa(is, ia)];
-            }
-            // assume a uniform distribution over models
             model.addQConstr(
                 constraint_d ==
                 init_dist[is] * (model_dist.empty() ? model_dist_const : model_dist[iw]));
         }
-    }
+    }*/
 
-    // contraint:
+    // constraint:
     // sum_a pi(s,a) = 1  for each s
     for (size_t is = 0; is < nstates; ++is) {
         GRBLinExpr constraint_pi;
@@ -255,13 +248,36 @@ srsolve_avar_static_mdpo_quad(const GRBEnv& env, const MDPO& mdpo, prec_t alpha,
         model.addConstr(constraint_pi == 1.0);
     }
 
+#ifndef NDEBUG
+    // Use to determine whether the solution is unbounded or infeasible
+    // enabled when debugging but disabled
+    model.set(GRB_IntParam_DualReductions, 0);
+#endif
+
     // solve the optimization problem
     model.optimize();
 
     int status = model.get(GRB_IntAttr_Status);
 
-    if ((status == GRB_INF_OR_UNBD) || (status == GRB_INFEASIBLE) ||
-        (status == GRB_UNBOUNDED)) {
+    /*
+     * LOADED       1 	Model is loaded, but no solution information is available.
+     * OPTIMAL      2 	Model was solved to optimality (subject to tolerances),
+     *                  and an optimal solution is available.
+     * INFEASIBLE 	3 	Model was proven to be infeasible.
+     * INF_OR_UNBD 	4 	Model was proven to be either infeasible or unbounded.
+     *                  To obtain a more definitive conclusion, set
+     *                  the DualReductions parameter to 0 and reoptimize.
+     * UNBOUNDED 	5 	Model was proven to be unbounded. Important note:
+     *                  an unbounded status indicates the presence of an unbounded ray
+     *                  that allows the objective to improve without limit.
+     *                  It says nothing about whether the model has a feasible solution.
+     *                  If you require information on feasibility, you should set the
+     *                  objective to zero and reoptimize.
+     * CUTOFF       6 	Optimal objective for model was proven to be worse than
+     *                  the value specified in the Cutoff parameter.
+     *                  No solution information is available.
+     */
+    if (status != GRB_OPTIMAL) {
         return {.message = "Solution infeasible or unbounded."};
         //throw runtime_error("Failed to solve the optimization problem.");
     }
@@ -283,6 +299,6 @@ srsolve_avar_static_mdpo_quad(const GRBEnv& env, const MDPO& mdpo, prec_t alpha,
             .status = 0};
 }
 
-} // namespace craam::algorithms
+} // namespace craam::statalgs
 
 #endif

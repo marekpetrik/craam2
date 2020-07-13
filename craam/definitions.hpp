@@ -332,14 +332,17 @@ public:
     template <class... Args>
     ProbDst(Args&&... args) : content(std::forward<Args>(args)...) {
         // check whether the values sum to 1 and are non-negative
-        prec_t sum = 0.0;
-        for (prec_t n : content) {
-            if (n < 0)
-                throw std::invalid_argument("Probability elements must be non-negative.");
-            sum += n;
+        if (!content.empty()) {
+            prec_t sum = 0.0;
+            for (prec_t n : content) {
+                if (n < 0)
+                    throw std::invalid_argument(
+                        "Probability elements must be non-negative.");
+                sum += n;
+            }
+            if (std::abs(sum - 1.0) > EPSILON)
+                throw std::invalid_argument("Probability distribution must sum to 1.");
         }
-        if (std::abs(sum - 1.0) > EPSILON)
-            throw std::invalid_argument("Probability distribution must sum to 1.");
     }
 
     const numvec& vector() const { return content; }
