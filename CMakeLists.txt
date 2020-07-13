@@ -8,7 +8,7 @@ cmake_minimum_required (VERSION 3.17.3 FATAL_ERROR) # Required for modern C++
 
 set(CRAAMVERSION "3.0.0")
 project (CRAAM)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 

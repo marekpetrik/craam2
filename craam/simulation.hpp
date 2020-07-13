@@ -242,7 +242,6 @@ object that supports indexing and size.
             Must implement an instance method actions(State).
  */
 template <class Sim> class RandomPolicy {
-
 public:
     using State = typename Sim::State;
     using Action = typename Sim::Action;
@@ -254,7 +253,7 @@ public:
         The action may be copied. */
     Action operator()(const State& state) {
         // the rvalue here should be able to bind to a const reference
-        const auto&& valid_actions = sim.get_valid_actions(state);
+        const auto& valid_actions = sim.get_valid_actions(state);
         if (valid_actions.size() < 1) {
             throw invalid_argument("No actions available in a non-terminal state");
         }
@@ -475,10 +474,16 @@ public:
      */
     ModelSimulator(const shared_ptr<const MDP>& mdp, const Transition& initial,
                    random_device::result_type seed = random_device{}())
-        : gen(seed), mdp(mdp), initial(initial) {
+        : gen{seed}, mdp{mdp}, available_actions{mdp->size()}, initial{initial} {
 
         if (abs(initial.sum_probabilities() - 1) > SOLPREC)
             throw invalid_argument("Initial transition probabilities must sum to 1");
+
+        // initialize action count
+        for (size_t is = 0; is < mdp->size(); ++is) {
+            available_actions[is].resize((*mdp)[is].size());
+            std::iota(available_actions[is].begin(), available_actions[is].end(), 0);
+        }
     }
 
     /**
@@ -522,6 +527,10 @@ public:
         const numvec& rews = tran.get_rewards();
         const indvec& inds = tran.get_indices();
 
+        if (probs.empty())
+            throw ModelError("No transitions associated with the state and action pair",
+                             state, action);
+
         // check if the transition sums to 1, if not use the remainder
         // as a probability of terminating
         prec_t prob_termination = 1 - tran.sum_probabilities();
@@ -551,26 +560,20 @@ public:
 
     /**
      * Checks whether the decision state is terminal. A state is
-     * assumed to be terminal when its index is too large.
-     * That is, the index is equal or greater
-     * than the number of states is considered to be terminal
+     * assumed to be terminal if there are no actions associated with it.
+     * Returns true if the state is terminal.
      */
-    bool end_condition(State s) const { return (size_t(s) >= mdp->size()); };
+    bool end_condition(State s) const { return (*mdp)[s].is_terminal(); };
+
+    /**
+     * Returns available actions for the state.
+     */
+    const vector<Action>& get_valid_actions(State state) const {
+        return available_actions[state];
+    }
 
     /// State dependent action list
     size_t action_count(State state) const { return (*mdp)[state].size(); };
-
-    /**
-     * Returns actions that have some transitions associated with them
-     */
-    vector<Action> get_valid_actions(State state) const {
-        vector<Action> valid_actions;
-        const auto& mdpstate = (*mdp)[state];
-        for (Action a = 0l; a < Action(mdpstate.size()); ++a)
-            if (!mdpstate[a].empty()) { valid_actions.push_back(a); }
-
-        return valid_actions;
-    }
 
     /// Returns an action with the given index
     Action action(State, long index) const { return index; }
@@ -581,6 +584,9 @@ protected:
 
     /** MDP used for the simulation */
     shared_ptr<const MDP> mdp;
+
+    /** Available actions for each state */
+    vector<indvec> available_actions;
 
     /** Initial distribution */
     Transition initial;

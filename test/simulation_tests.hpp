@@ -347,6 +347,7 @@ template <class Model> Model create_test_mdp_sim() {
     add_transition(rmdp, 2, 0, 1, 1.0, 1.0);
 
     add_transition(rmdp, 1, 2, 1, 0.5, 0.5);
+    add_transition(rmdp, 1, 2, 3, 0.5, 0.0);
 
     return rmdp;
 }

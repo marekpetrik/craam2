@@ -221,7 +221,9 @@ mpi_jac(const ResponseType& response, prec_t discount,
         if (openmp_error)
             throw runtime_error("Failed with an exception in OPENMP block.");
 
+#ifndef NDEBUG
         const prec_t old_residual_pi = residual_pi;
+#endif
         residual_pi = *max_element(residuals.cbegin(), residuals.cend());
 
         // the residual is sufficiently small
