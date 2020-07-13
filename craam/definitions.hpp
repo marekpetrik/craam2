@@ -324,6 +324,33 @@ inline void multiply_inplace(numvec& vct, prec_t value) {
         vct[i] *= value;
 }
 
+class ProbDst {
+protected:
+    numvec content;
+
+public:
+    template <class... Args>
+    ProbDst(Args&&... args) : content(std::forward<Args>(args)...) {
+        // check whether the values sum to 1 and are non-negative
+        prec_t sum = 0.0;
+        for (prec_t n : content) {
+            if (n < 0)
+                throw std::invalid_argument("Probability elements must be non-negative.");
+            sum += n;
+        }
+        if (std::abs(sum - 1.0) > EPSILON)
+            throw std::invalid_argument("Probability distribution must sum to 1.");
+    }
+
+    const numvec& vector() const { return content; }
+
+    size_t size() const { return content.size(); }
+    const prec_t& operator[](size_t index) const { return content[index]; }
+    bool empty() const { return content.empty(); }
+    auto cbegin() const { return content.cbegin(); }
+    auto cend() const { return content.cend(); }
+};
+
 namespace internal {
 /// Reports the exception that cannot be passed up from an openmp block
 /// @param e The exception caught

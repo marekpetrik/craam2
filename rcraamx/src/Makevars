@@ -11,5 +11,6 @@ PKG_CXXFLAGS = -I. -I../../ -I../../include -fopenmp -DNDEBUG -O3 -march=native
 # libraries
 PKG_LIBS= -fopenmp -L../../lib/gurobi -lgurobi_g++5.2 -lgurobi90
 
-CXX_STD = CXX17
+CXX_STD = CXX20
+#CXX_STD = CXX17
 #CXX_STD = CXX14

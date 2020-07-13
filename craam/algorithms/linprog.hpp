@@ -85,7 +85,7 @@ inline DetermSolution solve_lp_primal(const GRBEnv& env, const MDP& mdp,
         const State& s = mdp[si];
         constraints[si].resize(s.size());
         for (size_t ai = 0; ai < s.size(); ++ai) {
-
+            // TODO: could be faster using GRBLinExpr::addTerms
             GRBLinExpr constraint;
 
             // v[s] - discount * sum_{s'} p[s'] v[s'] >= r[s,a]
@@ -110,7 +110,8 @@ inline DetermSolution solve_lp_primal(const GRBEnv& env, const MDP& mdp,
     int status = model.get(GRB_IntAttr_Status);
     if ((status == GRB_INF_OR_UNBD) || (status == GRB_INFEASIBLE) ||
         (status == GRB_UNBOUNDED)) {
-        throw runtime_error("Failed to solve the LP.");
+        return DetermSolution{0, 2};
+        //throw runtime_error("Failed to solve the LP.");
     }
 
     // retrieve policy and action values

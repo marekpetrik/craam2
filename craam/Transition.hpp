@@ -252,6 +252,17 @@ public:
     }
 
     /**
+     * Returns the probability of transitioning to state idstate
+     */
+    prec_t probability_to(const long idstate) const {
+        auto pointer = std::lower_bound(indices.cbegin(), indices.cend(), idstate);
+        if (*pointer == idstate) // found the transition to this state
+            return probabilities[std::distance(indices.cbegin(), pointer)];
+        else
+            return 0;
+    }
+
+    /**
      * Computes value for the transition and a value function.
      *
      * When there are no target states, the function terminates with an error.

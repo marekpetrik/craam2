@@ -31,7 +31,8 @@
 namespace craam {
 
 /**
- * A set of values that represent a solution to a plain MDP.
+ * A set of values that represent a solution to various types of MDPs
+ * based generally on value iteration methods.
  *
  * @tparam PolicyType Type of the policy used (int deterministic, numvec
  * stochastic, but could also have multiple components (such as an action and
@@ -118,5 +119,33 @@ using SRobustSolution = Solution<pair<numvec, numvecvec>>;
 ///  1) distribution over actions
 ///  2) distribution over outcomes
 using SRobustOutcomeSolution = Solution<pair<numvec, numvec>>;
+
+/**
+ * Represents a solution to a problem with a static uncertainty. Unlike
+ * the solution method, this structure contains no value function or Bellman
+ * residual.
+ *
+ * @tparam PolicyType Type of the policy used (int deterministic, numvec
+ * stochastic)
+ */
+template <class PolicyType> struct StaticSolution {
+    /// Policy of the decision maker (and nature if applicable) for each state
+    vector<PolicyType> policy{0};
+    /// Objective: this is the objective computed and generally represents some kind of
+    /// risk-averse metric
+    prec_t objective{std::nan("")};
+    /// Time taken to solve the problem
+    prec_t time{std::nan("")};
+    /// Status (0 means OK, 1 means timeout, 2 means internal error)
+    int status{2};
+    /// Optional message providing diagnostics
+    string message{};
+};
+
+/// Static solution to MDPO with a randomized policy
+using RandStaticSolution = StaticSolution<numvec>;
+
+/// Static solution to MDPO with a deterministic policy
+using DetStaticSolution = StaticSolution<long>;
 
 } // namespace craam

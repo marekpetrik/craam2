@@ -4,13 +4,13 @@
 # Release:
 # cmake -DCMAKE_BUILD_TYPE=Release .
 
-cmake_minimum_required (VERSION 3.4.0 FATAL_ERROR) # Required for modern C++
+cmake_minimum_required (VERSION 3.17.3 FATAL_ERROR) # Required for modern C++
 
 set(CRAAMVERSION "3.0.0")
 project (CRAAM)
 set(CMAKE_CXX_STANDARD 17)
-#set(CMAKE_CXX_STANDARD 14) # partially supported, not all tests run
-set(CMAKE_CXX_STANDARD_REQUIRED)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Whether to use gurobi or not (disabled if files are missing)
 set (GUROBI_USE TRUE)
