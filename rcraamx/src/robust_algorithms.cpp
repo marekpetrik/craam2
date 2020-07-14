@@ -938,8 +938,7 @@ Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String na
 //' Solves an MDPO with static uncertainty using a non-convex global optimization method.
 //'
 //' The objective is:
-//'  \eqn{\max_{\pi} \beta * CVaR_{P \sim f}^\alpha [return(\pi,P)] +
-//'        (1-\beta) * E_{P \sim f}^\alpha [return(\pi,P)]}
+//'  \deqn{\max_{\pi} \beta * CVaR_{P \sim f}^\alpha [return(\pi,P)] + (1-\beta) * E_{P \sim f}^\alpha [return(\pi,P)]}
 //'
 //' @param mdpo Uncertain MDP. The outcomes are assumed to represent the uncertainty over MDPs.
 //'              The number of outcomes must be uniform for all states and actions
@@ -972,10 +971,13 @@ Rcpp::List srsolve_mdpo(Rcpp::DataFrame mdpo, Rcpp::DataFrame init_distribution,
     MDPO m = mdpo_from_dataframe(mdpo, true);
 
     const craam::RandStaticSolution sol = [&]() {
-        const ProbDst init_dst = parse_s_values(m.size(), "probability", 0.0);
-        const ProbDst model_dst = model_distribution.isNotNull()
-                                      ? parse_s_values(m.size(), "probability", 0.0)
-                                      : ProbDst(0);
+        const ProbDst init_dst = parse_s_values(m.size(), init_distribution, 0.0,
+                                                "probability", "init_distribution");
+        const ProbDst model_dst =
+            model_distribution.isNotNull()
+                ? parse_s_values(m.size(), model_distribution, 0.0, "probability",
+                                 "model_distribution")
+                : ProbDst(0);
 
         auto grb = craam::get_gurobi();
         if (algorithm == "quadratic") {
@@ -1351,6 +1353,21 @@ void set_rcraam_threads(int n) {
     Rcpp::stop("Compiled without OPENMP support, cannot set the number of threads.");
 #endif
 }
+
+#ifdef GUROBI_USE
+//' Sets a gurobi parameter. Even numeric values may be provided as strings
+//'
+//' See https://www.gurobi.com/wp-content/plugins/hd_documentations/documentation/9.0/refman.pdf
+//' for examples
+//'
+//' @examples
+//' gurobi_set_param("TimeLimit", "100.0")
+//'
+// [[Rcpp::export]]
+void gurobi_set_param(Rcpp::String param, Rcpp::String value) {
+    get_gurobi()->set(param, value);
+}
+#endif
 
 //'  Builds an MDP from samples
 //'

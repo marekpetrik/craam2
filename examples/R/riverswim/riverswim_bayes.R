@@ -14,7 +14,7 @@ description <- "riverswim_mdp2.csv"
 init.dist <- c(1,0,0,0,0,0)# rep(1/6,6)
 discount <- 0.99
 confidence <- 0.95
-bayes.samples <- 1000
+bayes.samples <- 3
 
 samples <- 500
 sample.seed <- 2011
@@ -311,3 +311,12 @@ sol.norbu.w <- rsolve_mdpo_sa(mdp.bayesian, discount, "evaru",
                             list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
 report_solution("NORBU-v: ", mdp.bayesian, sol.norbu.w)
 
+## ---- TORBU-q ------------
+
+gurobi_set_param("LogFile", "/tmp/gurobi.log")
+
+init.dist.df <- data.frame(idstate = seq(0, length(init.dist) -1), 
+                           probability = init.dist)
+
+sol.torbu.q <- srsolve_mdpo(mdp.bayesian, init.dist.df, discount, 
+                            alpha = 1-confidence, beta = 1.0)

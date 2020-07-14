@@ -251,8 +251,7 @@ rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi
 #' Solves an MDPO with static uncertainty using a non-convex global optimization method.
 #'
 #' The objective is:
-#'  \eqn{\max_{\pi} \beta * CVaR_{P \sim f}^\alpha [return(\pi,P)] +
-#'        (1-\beta) * E_{P \sim f}^\alpha [return(\pi,P)]}
+#'  \deqn{\max_{\pi} \beta * CVaR_{P \sim f}^\alpha [return(\pi,P)] + (1-\beta) * E_{P \sim f}^\alpha [return(\pi,P)]}
 #'
 #' @param mdpo Uncertain MDP. The outcomes are assumed to represent the uncertainty over MDPs.
 #'              The number of outcomes must be uniform for all states and actions
@@ -381,6 +380,18 @@ rsolve_mdpo_s <- function(mdpo, discount, nature, nature_par, algorithm = "mppi"
 
 set_rcraam_threads <- function(n) {
     invisible(.Call(`_rcraam_set_rcraam_threads`, n))
+}
+
+#' Sets a gurobi parameter. Even numeric values may be provided as strings
+#'
+#' See https://www.gurobi.com/wp-content/plugins/hd_documentations/documentation/9.0/refman.pdf
+#' for examples
+#'
+#' @examples
+#' gurobi_set_param("TimeLimit", "100.0")
+#'
+gurobi_set_param <- function(param, value) {
+    invisible(.Call(`_rcraam_gurobi_set_param`, param, value))
 }
 
 #'  Builds an MDP from samples

@@ -40,6 +40,5 @@ If it is an empty string, then it does not write the file.}
 }
 \description{
 The objective is:
- \eqn{\max_{\pi} \beta * CVaR_{P \sim f}^\alpha [return(\pi,P)] +
-       (1-\beta) * E_{P \sim f}^\alpha [return(\pi,P)]}
+ \deqn{\max_{\pi} \beta * CVaR_{P \sim f}^\alpha [return(\pi,P)] + (1-\beta) * E_{P \sim f}^\alpha [return(\pi,P)]}
 }
