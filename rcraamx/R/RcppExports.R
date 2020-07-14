@@ -248,6 +248,31 @@ rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi
     .Call(`_rcraam_rsolve_mdpo_sa`, mdpo, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, pack_actions, output_tran, show_progress)
 }
 
+#' Solves an MDPO with static uncertainty using a non-convex global optimization method.
+#'
+#' The objective is:
+#'  \eqn{\max_{\pi} \beta * CVaR_{P \sim f}^\alpha [return(\pi,P)] +
+#'        (1-\beta) * E_{P \sim f}^\alpha [return(\pi,P)]}
+#'
+#' @param mdpo Uncertain MDP. The outcomes are assumed to represent the uncertainty over MDPs.
+#'              The number of outcomes must be uniform for all states and actions
+#'              (except for terminal states which have no actions).
+#' @param alpha Risk level of avar (0 = worst-case). The minimum value is 1e-5, the maximum
+#'              value is 1.
+#' @param beta Weight on AVaR and the complement (1-beta) is the weight
+#'              on the expectation term. The value must be between 0 and 1.
+#' @param gamma Discount factor. Clamped to be in [0,1]
+#' @param init_distribution Initial distribution over states. The columns should be
+#'                             are idstate, and probability.
+#' @param model_distribution Distribution over the models. The default is empty, which translates
+#'                   to a uniform distribution. The columns should be idstate, and probablity.
+#' @param output_filename Name of the file to save the model output. Valid suffixes are
+#'                          .mps, .rew, .lp, or .rlp for writing the model itself.
+#'                        If it is an empty string, then it does not write the file.
+srsolve_mdpo <- function(mdpo, init_distribution, discount, alpha, beta, algorithm = "quadratic", model_distribution = NULL, output_filename = "") {
+    .Call(`_rcraam_srsolve_mdpo`, mdpo, init_distribution, discount, alpha, beta, algorithm, model_distribution, output_filename)
+}
+
 #' Solves a robust Markov decision process with state rectangular
 #' ambiguity sets. The worst-case is computed with the MDP transition
 #' probabilities treated as nominal values.

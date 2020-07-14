@@ -21,7 +21,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-// The file includes methods to solve MDPO with a soft-robust objective
+// This file includes methods to solve MDPO with a soft-robust objective
 
 #pragma once
 
@@ -48,8 +48,8 @@ namespace craam::statalgs {
  *
  * The problem is formulated as a *non-convex* quadratic program and solved
  * using Gurobi. The objective to solve is:
- * max_pi lambda * CVaR_{P ~ f}^alpha [return(pi,P)] +
- *        (1-lambda) * E_{P ~ f}^alpha [return(pi,P)]
+ * max_pi beta * CVaR_{P ~ f}^alpha [return(pi,P)] +
+ *        (1-beta) * E_{P ~ f}^alpha [return(pi,P)]
  * where pi is a randomized policy. The formulation allows for uncertain rewards
  * jointly with uncertain transition probabilities.
  *
@@ -100,8 +100,8 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
         return {.objective = 0, .time = 0, .status = 0, .message = "Empty MDPO"};
 
     if (init_dist.size() != nstates)
-        throw std::invalid_argument("The initial distribution init_dist must have the "
-                                    "same length as the number of states.");
+        throw ModelError("The initial distribution init_dist must have the "
+                         "same length as the number of states.");
     // check if the number of outcomes is the same for all states and actions
     // TODO: move this functionality to the MDPO definition?
     // count the number of outcomes
@@ -127,8 +127,8 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
                     ia);
 
     if (!model_dist.empty() && model_dist.size())
-        throw std::invalid_argument("Model distribution must either be empty or have the "
-                                    "same length as the number of outcomes.");
+        throw ModelError("Model distribution must either be empty or have the "
+                         "same length as the number of outcomes.");
     // assume a uniform distribution if not provided
     const prec_t model_dist_const = 1.0 / prec_t(noutcomes);
 
@@ -214,6 +214,12 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
         for (size_t is = 0; is < nstates; ++is) {
             const StateO& s = mdpo[is];
             for (size_t ia = 0; ia < s.size(); ia++) {
+                // check that there are no empty transitions, which could mess up the
+                // optimization formulation
+                if (s[ia][iw].empty())
+                    throw ModelError("Cannot have a state, action, outcome combination "
+                                     "with no transitions",
+                                     is, ia, iw);
                 const auto reward = s[ia][iw].mean_reward();
                 objective +=
                     (1 - beta) * reward * d[index_sw(is, iw)] * pi[index_sa(is, ia)];

@@ -27,6 +27,7 @@
 #include "craam/Solution.hpp"
 #include "craam/algorithms/nature_declarations.hpp"
 #include "craam/algorithms/nature_response.hpp"
+#include "craam/algorithms/soft_robust.hpp"
 #include "craam/definitions.hpp"
 #include "craam/optimization/optimization.hpp"
 #include "craam/solvers.hpp"
@@ -130,7 +131,7 @@ public:
 /// Report the status of the solution, and stops if the solution is incorrect
 /// @param solution Could be any of the (deterministic or randomized) solutions from craam
 /// @tparam S solution class, must support status, iterations, and time
-template <class S> void report_solution_status(const S& solution) {
+template <class S> void report_solution_status(const craam::Solution<S>& solution) {
     if (solution.status != 0) {
         if (solution.status == 1) {
             Rcpp::warning("Ran out of time or iterations. The solution may be "
@@ -138,6 +139,23 @@ template <class S> void report_solution_status(const S& solution) {
                           to_string(solution.residual) +
                           ", Time: " + to_string(solution.time) +
                           ", Iterations: " + to_string(solution.iterations));
+        } else if (solution.status == 2) {
+            Rcpp::stop("Internal error, could not compute a solution.");
+        } else {
+            Rcpp::stop("Unknown error, solution not computed.");
+        }
+    }
+}
+
+/// Report the status of the solution, and stops if the solution is incorrect
+/// @param solution Could be any of the (deterministic or randomized) solutions from craam
+/// @tparam S solution class, must support status, iterations, and time
+template <class S> void report_solution_status(const craam::StaticSolution<S>& solution) {
+    if (solution.status != 0) {
+        if (solution.status == 1) {
+            Rcpp::warning("Ran out of time or iterations. The solution may be "
+                          "suboptimal. Time: " +
+                          to_string(solution.time));
         } else if (solution.status == 2) {
             Rcpp::stop("Internal error, could not compute a solution.");
         } else {
@@ -915,6 +933,71 @@ Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String na
     return result;
 }
 
+#ifdef GUROBI_USE
+
+//' Solves an MDPO with static uncertainty using a non-convex global optimization method.
+//'
+//' The objective is:
+//'  \eqn{\max_{\pi} \beta * CVaR_{P \sim f}^\alpha [return(\pi,P)] +
+//'        (1-\beta) * E_{P \sim f}^\alpha [return(\pi,P)]}
+//'
+//' @param mdpo Uncertain MDP. The outcomes are assumed to represent the uncertainty over MDPs.
+//'              The number of outcomes must be uniform for all states and actions
+//'              (except for terminal states which have no actions).
+//' @param alpha Risk level of avar (0 = worst-case). The minimum value is 1e-5, the maximum
+//'              value is 1.
+//' @param beta Weight on AVaR and the complement (1-beta) is the weight
+//'              on the expectation term. The value must be between 0 and 1.
+//' @param gamma Discount factor. Clamped to be in [0,1]
+//' @param init_distribution Initial distribution over states. The columns should be
+//'                             are idstate, and probability.
+//' @param model_distribution Distribution over the models. The default is empty, which translates
+//'                   to a uniform distribution. The columns should be idstate, and probablity.
+//' @param output_filename Name of the file to save the model output. Valid suffixes are
+//'                          .mps, .rew, .lp, or .rlp for writing the model itself.
+//'                        If it is an empty string, then it does not write the file.
+// [[Rcpp::export]]
+Rcpp::List srsolve_mdpo(Rcpp::DataFrame mdpo, Rcpp::DataFrame init_distribution,
+                        double discount, double alpha, double beta,
+                        Rcpp::String algorithm = "quadratic",
+                        Rcpp::Nullable<Rcpp::DataFrame> model_distribution = R_NilValue,
+                        Rcpp::String output_filename = "") {
+    Rcpp::List result;
+
+    // What would be the point of forcing to add transitions even if
+    // the  probabilities are 0?
+    // perhaps only if the RMDP is transformed to an MDP
+    // that is why this is set to true for now .... it is also easy to remove the 0s from
+    // the dataframe
+    MDPO m = mdpo_from_dataframe(mdpo, true);
+
+    const craam::RandStaticSolution sol = [&]() {
+        const ProbDst init_dst = parse_s_values(m.size(), "probability", 0.0);
+        const ProbDst model_dst = model_distribution.isNotNull()
+                                      ? parse_s_values(m.size(), "probability", 0.0)
+                                      : ProbDst(0);
+
+        auto grb = craam::get_gurobi();
+        if (algorithm == "quadratic") {
+            return craam::statalgs::srsolve_avar_quad(
+                *grb, m, alpha, beta, discount, init_dst, model_dst, output_filename);
+        } else {
+            Rcpp::stop("Unknown algorithm");
+        }
+    }();
+
+    result["policy_rand"] = output_policy(sol.policy);
+    result["objective"] = sol.objective;
+    result["time"] = sol.time;
+    result["status"] = sol.status;
+
+    report_solution_status(sol);
+
+    return result;
+}
+
+#endif
+
 /**
  * Parses the name and the parameter of the provided nature
  */
@@ -1199,11 +1282,11 @@ Rcpp::List rsolve_mdpo_s(Rcpp::DataFrame mdpo, double discount, Rcpp::String nat
             ? parse_s_values<prec_t>(m.size(), value_init.get(), 0, "value", "value_init")
             : numvec(0);
 
-    SRobustOutcomeSolution sol;
     algorithms::SNatureOutcome natparsed = parse_nature_s(m, nature, nature_par);
 
     ComputeProgress progress(iterations, maxresidual, show_progress, timeout);
 
+    SRobustOutcomeSolution sol;
     if (algorithm == "mppi") {
         sol = rsolve_s_mppi(m, discount, std::move(natparsed), vf_init, rpolicy,
                             iterations, maxresidual, progress);

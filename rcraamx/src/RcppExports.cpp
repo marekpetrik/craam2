@@ -152,6 +152,24 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// srsolve_mdpo
+Rcpp::List srsolve_mdpo(Rcpp::DataFrame mdpo, Rcpp::DataFrame init_distribution, double discount, double alpha, double beta, Rcpp::String algorithm, Rcpp::Nullable<Rcpp::DataFrame> model_distribution, Rcpp::String output_filename);
+RcppExport SEXP _rcraam_srsolve_mdpo(SEXP mdpoSEXP, SEXP init_distributionSEXP, SEXP discountSEXP, SEXP alphaSEXP, SEXP betaSEXP, SEXP algorithmSEXP, SEXP model_distributionSEXP, SEXP output_filenameSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type mdpo(mdpoSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type init_distribution(init_distributionSEXP);
+    Rcpp::traits::input_parameter< double >::type discount(discountSEXP);
+    Rcpp::traits::input_parameter< double >::type alpha(alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< Rcpp::String >::type algorithm(algorithmSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::DataFrame> >::type model_distribution(model_distributionSEXP);
+    Rcpp::traits::input_parameter< Rcpp::String >::type output_filename(output_filenameSEXP);
+    rcpp_result_gen = Rcpp::wrap(srsolve_mdpo(mdpo, init_distribution, discount, alpha, beta, algorithm, model_distribution, output_filename));
+    return rcpp_result_gen;
+END_RCPP
+}
 // rsolve_mdp_s
 Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String nature, SEXP nature_par, Rcpp::String algorithm, Rcpp::Nullable<Rcpp::DataFrame> policy_fixed, double maxresidual, size_t iterations, double timeout, Rcpp::Nullable<Rcpp::DataFrame> value_init, bool pack_actions, bool output_tran, int show_progress);
 RcppExport SEXP _rcraam_rsolve_mdp_s(SEXP mdpSEXP, SEXP discountSEXP, SEXP natureSEXP, SEXP nature_parSEXP, SEXP algorithmSEXP, SEXP policy_fixedSEXP, SEXP maxresidualSEXP, SEXP iterationsSEXP, SEXP timeoutSEXP, SEXP value_initSEXP, SEXP pack_actionsSEXP, SEXP output_tranSEXP, SEXP show_progressSEXP) {
@@ -310,6 +328,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_rcraam_compute_qvalues", (DL_FUNC) &_rcraam_compute_qvalues, 3},
     {"_rcraam_rsolve_mdp_sa", (DL_FUNC) &_rcraam_rsolve_mdp_sa, 13},
     {"_rcraam_rsolve_mdpo_sa", (DL_FUNC) &_rcraam_rsolve_mdpo_sa, 13},
+    {"_rcraam_srsolve_mdpo", (DL_FUNC) &_rcraam_srsolve_mdpo, 8},
     {"_rcraam_rsolve_mdp_s", (DL_FUNC) &_rcraam_rsolve_mdp_s, 13},
     {"_rcraam_rsolve_mdpo_s", (DL_FUNC) &_rcraam_rsolve_mdpo_s, 13},
     {"_rcraam_set_rcraam_threads", (DL_FUNC) &_rcraam_set_rcraam_threads, 1},
