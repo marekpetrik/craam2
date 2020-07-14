@@ -426,7 +426,7 @@ BOOST_AUTO_TEST_CASE(small_rmdp_portfolio_nonconvex) {
 
     auto genv = get_gurobi();
 
-    auto sol = craam::statalgs::srsolve_avar_quad(*genv, mdpo, 0.5, 0.0, 0.0, initdist);
+    auto sol = craam::statalgs::srsolve_avar_quad(*genv, mdpo, 0.5, 0.5, 0.9, initdist);
     BOOST_CHECK(sol.status == 0);
 }
 

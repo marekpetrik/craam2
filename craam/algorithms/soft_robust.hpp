@@ -34,6 +34,7 @@
 
 #include <chrono>
 #include <memory>
+#include <string>
 
 #include <gurobi/gurobi_c++.h>
 
@@ -79,12 +80,16 @@ namespace craam::statalgs {
  * @param init_distribution Initial distribution over states
  * @param model_dist Distribution over the models. The default is empty, which translates
  *                   to a uniform distribution.
+ * @param output_filename Name of the file to save the model output. Valid suffixes are
+ *                          .mps, .rew, .lp, or .rlp for writing the model itself.
+ *                        If it is an empty string, then it does not write the file.
  * @return Solution that includes the policy and the value function
  */
 inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
                                             prec_t alpha, prec_t beta, prec_t gamma,
                                             const ProbDst& init_dist,
-                                            const ProbDst& model_dist = ProbDst(0)) {
+                                            const ProbDst& model_dist = ProbDst(0),
+                                            const std::string& output_filename = "") {
     const prec_t alpha_min = 1e-5;
 
     // general constants values
@@ -164,26 +169,47 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
     };
     const size_t nstateoutcomes = nstates * noutcomes;
 
-    auto pi = std::unique_ptr<GRBVar[]>(model.addVars(
-        numvec(nstateactions, 0).data(), nullptr, nullptr,
-        std::vector<char>(nstateactions, GRB_CONTINUOUS).data(), nullptr, nstateactions));
+    const auto pi = [&]() {
+        std::vector<std::string> pi_names(nstateactions);
+        for (size_t is = 0; is < nstates; ++is)
+            for (size_t ia = 0; ia < mdpo[is].size(); ++ia)
+                pi_names[index_sa(is, ia)] =
+                    "pi[" + std::to_string(is) + "," + std::to_string(ia) + "]";
+        return std::unique_ptr<GRBVar[]>(
+            model.addVars(numvec(nstateactions, 0).data(), nullptr, nullptr,
+                          std::vector<char>(nstateactions, GRB_CONTINUOUS).data(),
+                          pi_names.data(), nstateactions));
+    }();
 
-    auto d = std::unique_ptr<GRBVar[]>(
-        model.addVars(numvec(nstateoutcomes, 0).data(), nullptr, nullptr,
-                      std::vector<char>(nstateoutcomes, GRB_CONTINUOUS).data(), nullptr,
-                      nstateoutcomes));
+    const auto d = [&]() {
+        std::vector<std::string> d_names(nstateoutcomes, "");
+        for (size_t is = 0; is < nstates; is++)
+            for (size_t iw = 0; iw < noutcomes; ++iw)
+                d_names[index_sw(is, iw)] =
+                    "d[" + std::to_string(is) + "," + std::to_string(iw) + "]";
+        return std::unique_ptr<GRBVar[]>(
+            model.addVars(numvec(nstateoutcomes, 0).data(), nullptr, nullptr,
+                          std::vector<char>(nstateoutcomes, GRB_CONTINUOUS).data(),
+                          d_names.data(), nstateoutcomes));
+    }();
 
-    auto y = std::unique_ptr<GRBVar[]>(model.addVars(
-        numvec(noutcomes, 0).data(), nullptr, nullptr,
-        std::vector<char>(noutcomes, GRB_CONTINUOUS).data(), nullptr, noutcomes));
+    const auto y = [&]() {
+        std::vector<std::string> y_names(noutcomes, "");
+        for (size_t iw = 0; iw < noutcomes; ++iw)
+            y_names[iw] = "y[" + std::to_string(iw) + "]";
 
-    auto z = model.addVar(-inf, +inf, 0, GRB_CONTINUOUS, "");
+        return std::unique_ptr<GRBVar[]>(
+            model.addVars(numvec(noutcomes, 0).data(), nullptr, nullptr,
+                          std::vector<char>(noutcomes, GRB_CONTINUOUS).data(),
+                          y_names.data(), noutcomes));
+    }();
+
+    const auto z = model.addVar(-inf, +inf, 0, GRB_CONTINUOUS, "z");
 
     // objective: z + sum_{omega} (
     //              (1-beta) * sum_{s,a} d(s,omega) pi(s,a) r^omega(s,a) -
     //                beta * y(omega) )
-    GRBQuadExpr objective = z;
-    // TODO: could be faster using GRBQuadExpr::addTerms
+    GRBQuadExpr objective = beta * z;
     for (size_t iw = 0; iw < noutcomes; ++iw) {
         for (size_t is = 0; is < nstates; ++is) {
             const StateO& s = mdpo[is];
@@ -196,7 +222,7 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
         objective -= beta / (1.0 - alpha) * y[iw];
     }
     model.setObjective(objective, GRB_MAXIMIZE);
-    /*
+
     // constraint:
     // y(omega) - z + sum_{s,a} d(s,omega) pi(s,a) r^omega(s,a) >= 0 for each omega
     for (size_t iw = 0; iw < noutcomes; ++iw) {
@@ -234,7 +260,7 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
                 constraint_d ==
                 init_dist[is] * (model_dist.empty() ? model_dist_const : model_dist[iw]));
         }
-    }*/
+    }
 
     // constraint:
     // sum_a pi(s,a) = 1  for each s
@@ -245,14 +271,22 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
         for (size_t ia = 0; ia < s.size(); ia++) {
             constraint_pi += pi[index_sa(is, ia)];
         }
-        model.addConstr(constraint_pi == 1.0);
+        // only add the constraint when there are some actions in the state
+        if (constraint_pi.size() > 0) model.addConstr(constraint_pi == 1.0);
     }
+
+    // Sets the strategy for handling non-convex quadratic objectives or non-convex quadratic constraints.
+    // With setting 2, non-convex quadratic problems are solved by means of translating them into
+    // bilinear form and applying spatial branching.
+    model.set(GRB_IntParam_NonConvex, 2);
 
 #ifndef NDEBUG
     // Use to determine whether the solution is unbounded or infeasible
     // enabled when debugging but disabled
     model.set(GRB_IntParam_DualReductions, 0);
 #endif
+
+    if (!output_filename.empty()) model.write(output_filename);
 
     // solve the optimization problem
     model.optimize();
@@ -287,7 +321,8 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
         const StateO& s = mdpo[is];
         policy[is].resize(s.size());
         for (size_t ia = 0; ia < s.size(); ++ia) {
-            policy[is][ia] = pi[index_sa(is, ia)].get(GRB_DoubleAttr_X);
+            //xxx
+            policy[is][ia] = 0; //pi[index_sa(is, ia)].get(GRB_DoubleAttr_X);
         }
     }
 
@@ -297,7 +332,7 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
             .objective = objective.getValue(),
             .time = duration.count(),
             .status = 0};
-}
+} // namespace craam::statalgs
 
 } // namespace craam::statalgs
 
