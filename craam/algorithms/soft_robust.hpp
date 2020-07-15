@@ -55,11 +55,11 @@ namespace craam::statalgs {
  * is the set of all possible outcomes.) The states are s, and actions are a.
  *
  * The actual quadratic program formulation is as follows:
- * max_{pi, d} max_{z,y} z + sum_{omega} (
+ * max_{pi, d} max_{z,y} beta * z + sum_{omega} (
  *              (1-beta) * sum_{s,a} d(s,omega) pi(s,a) r^omega(s,a) -
- *                 beta  * y(omega) )
+ *         beta / alpha  * y(omega) )
  * subject to:
- *      y(omega) >= z - sum_{s,a} d(s,omega) pi(s,a) r^omega(s,a) for each omega
+ *      y(omega) >= f(omega) * z - sum_{s,a} d(s,omega) pi(s,a) r^omega(s,a) for each omega
  *      d(s,omega) = gamma * sum_{s',a'} d(s',omega) * pi(s',a') * P^omega(s',a',s) +
  *                      f(omega) p_0(s), for each omega and s
  *      sum_a pi(s,a) = 1  for each s
@@ -70,8 +70,8 @@ namespace craam::statalgs {
  * @param mdpo Uncertain MDP. The outcomes are assumed to represent the uncertainty over MDPs.
  *             The number of outcomes must be uniform for all states and actions
  *             (except for terminal states which have no actions).
- * @param alpha Risk level of avar (0 = worst-case). The minimum value is 1e-5, the maximum
- *              value is 1.
+ * @param alpha Risk level of avar (0 = worst-case). The minimum value is 1e-3, the maximum
+ *              value is 1.0.
  * @param beta Weight on AVaR and the complement (1-beta) is the weight
  *             on the expectation term. The value must be between 0 and 1.
  * @param gamma Discount factor. Clamped to be in [0,1]
@@ -89,7 +89,6 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
                                             const ProbDst& model_dist = ProbDst(0),
                                             const std::string& output_filename = "") {
     // general constants values
-    const prec_t alpha_min = 1e-5;
     const double inf = std::numeric_limits<prec_t>::infinity();
     const size_t nstates = mdpo.size();
 
@@ -127,13 +126,16 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
         throw ModelError("Model distribution must either be empty or have the "
                          "same length as the number of outcomes.");
     // assume a uniform distribution if not provided
-    const prec_t model_dist_const = 1.0 / prec_t(noutcomes);
+
+    const auto model_dist_aug = [&](int iw) {
+        return (model_dist.empty() ? 1.0 / prec_t(noutcomes) : model_dist[iw]);
+    };
 
     // time the computation
     auto start = chrono::steady_clock::now();
 
     // --- clamp input values to between 0 and 1
-    alpha = std::clamp(alpha, alpha_min, alpha);
+    alpha = std::clamp(alpha, 1e-3, 1.0);
     beta = std::clamp(beta, 0.0, 1.0);
     gamma = std::clamp(gamma, 0.0, 1.0);
 
@@ -205,7 +207,7 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
 
     // objective: z + sum_{omega} (
     //              (1-beta) * sum_{s,a} d(s,omega) pi(s,a) r^omega(s,a) -
-    //                beta * y(omega) )
+    //                beta  / alpha * y(omega) )
     GRBQuadExpr objective = beta * z;
     for (size_t iw = 0; iw < noutcomes; ++iw) {
         for (size_t is = 0; is < nstates; ++is) {
@@ -222,14 +224,14 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
                     (1 - beta) * reward * d[index_sw(is, iw)] * pi[index_sa(is, ia)];
             }
         }
-        objective -= beta / (1.0 - alpha) * y[iw];
+        objective -= beta / alpha * y[iw];
     }
     model.setObjective(objective, GRB_MAXIMIZE);
 
     // constraint:
     // y(omega) - z + sum_{s,a} d(s,omega) pi(s,a) r^omega(s,a) >= 0 for each omega
     for (size_t iw = 0; iw < noutcomes; ++iw) {
-        GRBQuadExpr constraint_y = -z + y[iw];
+        GRBQuadExpr constraint_y = -model_dist_aug(iw) * z + y[iw];
         for (size_t is = 0; is < nstates; ++is) {
             const StateO& s = mdpo[is];
             for (size_t ia = 0; ia < s.size(); ia++) {
@@ -259,9 +261,7 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
                                         pi[index_sa(isp, iap)] * probability;
                 }
             }
-            model.addQConstr(
-                constraint_d ==
-                init_dist[is] * (model_dist.empty() ? model_dist_const : model_dist[iw]));
+            model.addQConstr(constraint_d == init_dist[is] * model_dist_aug(iw));
         }
     }
 
@@ -350,25 +350,27 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
  * The outcomes in the MDPO are represented by the value omega below (Omega
  * is the set of all possible outcomes.) The states are s, and actions are a.
  *
- * The actual quadratic program formulation is as follows:
- * max_{pi, u} max_{z,y} z + sum_{omega} (
+ * The actual mixed integer linear program formulation is as follows:
+ * max_{pi, u} max_{z,y} beta * z + sum_{omega} (
  *              (1-beta) * sum_{s,a} u(s,a,omega) r^omega(s,a) -
- *                 beta  * y(omega) )
+ *         beta / alpha  * y(omega) )
  * subject to:
- *      y(omega) >= z - sum_{s,a} d(s,omega) pi(s,a) r^omega(s,a) for each omega
+ *      y(omega) >= f(omega) * z - sum_{s,a} d(s,omega) pi(s,a) r^omega(s,a) for each omega
  *      sum_a u(s,a,omega) = gamma * sum_{s',a'} u(s',a',omega) * P^omega(s',a',s) +
- *                      f(omega) p_0(s), for each omega and s
+ *                      f(omega) p_0(s), for each omega and NONTERMINAL s
  *      sum_a pi(s,a) = 1  for each s
  *      u(s,a,omega) <= pi(s,a) * 1/(1-gamma)  for each s and a
  *      pi(s,a) >= 0 for each s and a
  *      d(s,omega) >= 0 for each s and omega
  * Here, p0 is the initial distribution and f is the nominal distribution over the models
  *
+ * Terminal states are ones that have no actions defined (and hence no u(s,a,omega) variables).
+ *
  * @param mdpo Uncertain MDP. The outcomes are assumed to represent the uncertainty over MDPs.
  *              The number of outcomes must be uniform for all states and actions
  *              (except for terminal states which have no actions).
- * @param alpha Risk level of avar (0 = worst-case). The minimum value is 1e-5, the maximum
- *              value is 1.
+ * @param alpha Risk level of avar (0 = worst-case). The minimum value is 1e-3, the maximum
+ *              value is 1.0.
  * @param beta Weight on AVaR and the complement (1-beta) is the weight
  *              on the expectation term. The value must be between 0 and 1.
  * @param gamma Discount factor. Clamped to be in [0,0.99]
@@ -385,10 +387,7 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
                                            const ProbDst& init_dist,
                                            const ProbDst& model_dist = ProbDst(0),
                                            const std::string& output_filename = "") {
-
-    //std::cout << "start... " << std::endl;
     // general constants values
-    const prec_t alpha_min = 1e-5;
     const double inf = std::numeric_limits<prec_t>::infinity();
     const size_t nstates = mdpo.size();
 
@@ -414,25 +413,26 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
         return {
             .objective = 0, .time = 0, .status = 0, .message = "All states are terminal"};
 
-    //std::cout << "outcomes... " << std::endl;
     // find a state with outcomes that do not match the expected number
     for (size_t is = 0; is < mdpo.size(); ++is)
         for (size_t ia = 0; ia < mdpo[is].size(); ++ia)
             if (mdpo[is][ia].size() != noutcomes)
                 throw ModelError(
-                    "Number of outcomes is not uniform across all states and actions", is,
-                    ia);
+                    "Number of outcomes must be uniform across all states and actions",
+                    is, ia);
 
     if (!model_dist.empty() && model_dist.size())
         throw ModelError("Model distribution must either be empty or have the "
                          "same length as the number of outcomes.");
     // assume a uniform distribution if not provided
-    const prec_t model_dist_const = 1.0 / prec_t(noutcomes);
+    const auto model_dist_aug = [&](int iw) {
+        return (model_dist.empty() ? 1.0 / prec_t(noutcomes) : model_dist[iw]);
+    };
     // time the computation
     auto start = chrono::steady_clock::now();
 
     // --- clamp input values to between 0 and 1
-    alpha = std::clamp(alpha, alpha_min, alpha);
+    alpha = std::clamp(alpha, 1e-3, 1.0);
     beta = std::clamp(beta, 0.0, 1.0);
     gamma = std::clamp(gamma, 0.0, 0.99);
 
@@ -453,6 +453,7 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
         }
         return std::make_pair(move(index_sa), count_sa);
     }();
+
     // used to index pi
     const auto index_sa = [&](size_t s, size_t a) {
         assert(s >= 0 && s < nstates && a >= 0 && a < mdpo[s].size());
@@ -466,7 +467,6 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
     };
     const size_t nstateactionoutcomes = nstateactions * noutcomes;
 
-    //std::cout << "pi... " << std::endl;
     const auto pi = [&]() {
         std::vector<std::string> pi_names(nstateactions);
         for (size_t is = 0; is < nstates; ++is)
@@ -479,7 +479,6 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
                           pi_names.data(), nstateactions));
     }();
 
-    //std::cout << "u... " << std::endl;
     const auto u = [&]() {
         std::vector<std::string> u_names(nstateactionoutcomes, "");
         for (size_t is = 0; is < nstates; ++is)
@@ -494,7 +493,6 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
                           u_names.data(), nstateactionoutcomes));
     }();
 
-    //std::cout << "y... " << std::endl;
     const auto y = [&]() {
         std::vector<std::string> y_names(noutcomes, "");
         for (size_t iw = 0; iw < noutcomes; ++iw)
@@ -508,14 +506,10 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
 
     const auto z = model.addVar(-inf, +inf, 0, GRB_CONTINUOUS, "z");
 
-    // occupancy frequency for all terminal states
-    const auto d = model.addVar(0, +inf, 0, GRB_CONTINUOUS, "d");
-
-    //std::cout << "obj... " << std::endl;
     // objective:
     //  z + sum_{omega} (
-    //     (1-beta) * sum_{s,a} u(s,a,omega) r^omega(s,a) -
-    //         beta * y(omega) )
+    //     (1-beta)           * sum_{s,a} u(s,a,omega) r^omega(s,a) -
+    //     beta / alpha * y(omega) )
     GRBLinExpr objective = beta * z;
     for (size_t iw = 0; iw < noutcomes; ++iw) {
         for (size_t is = 0; is < nstates; ++is) {
@@ -531,15 +525,14 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
                 objective += (1.0 - beta) * reward * u[index_saw(is, ia, iw)];
             }
         }
-        objective -= beta / (1.0 - alpha) * y[iw];
+        objective -= beta / alpha * y[iw];
     }
     model.setObjective(objective, GRB_MAXIMIZE);
 
-    //std::cout << "cnst-y... " << std::endl;
     // constraint:
     // y(omega) - z + sum_{s,a} u(s,a,omega) r^omega(s,a) >= 0 for each omega
     for (size_t iw = 0; iw < noutcomes; ++iw) {
-        GRBQuadExpr constraint_y = -z + y[iw];
+        GRBLinExpr constraint_y = -model_dist_aug(iw) * z + y[iw];
         for (size_t is = 0; is < nstates; ++is) {
             const StateO& s = mdpo[is];
             for (size_t ia = 0; ia < s.size(); ia++) {
@@ -550,11 +543,10 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
         model.addConstr(constraint_y >= 0);
     }
 
-    //std::cout << "cnst-u... " << std::endl;
     // constraint:
     // sum_a u(s,a,omega) - gamma * sum_{s',a'} u(s',a',omega) * pi(s',a') * P^omega(s',a',s) =
     //                      f(omega) p_0(s), for each omega and s
-    // aggregate all the terminal states to a single constraint on d
+    // and just ignore the constraints for all terminal states
     for (size_t iw = 0; iw < noutcomes; ++iw) {   // omega
         for (size_t is = 0; is < nstates; ++is) { // state s
             // d(s,omega)
@@ -568,19 +560,15 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
                 for (size_t iap = 0; iap < sp.size(); ++iap) { // action a'
                     const prec_t probability = sp[iap][iw].probability_to(is);
                     // skip of the probability is 0
-                    if (probability > 0) {
+                    if (probability > 0)
                         //- gamma * sum_{s',a'} u(s',a',omega) * P^omega(s',a',s)
                         constraint_u -= gamma * u[index_saw(isp, iap, iw)] * probability;
-                    }
                 }
             }
-            const prec_t model_dist_v =
-                (model_dist.empty() ? model_dist_const : model_dist[iw]);
-            model.addConstr(constraint_u == init_dist[is] * model_dist_v);
+            model.addConstr(constraint_u == init_dist[is] * model_dist_aug(iw));
         }
     }
 
-    //std::cout << "cnst-pi... " << std::endl;
     // constraint:
     // sum_a pi(s,a) = 1  for each s
     for (size_t is = 0; is < nstates; ++is) {
@@ -592,7 +580,6 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
         if (constraint_pi.size() > 0) model.addConstr(constraint_pi == 1.0);
     }
 
-    //std::cout << "cnst-pi2... " << std::endl;
     // constraint:
     //  pi(s,a) * 1/(1-gamma) - u(s,a,omega) >= 0
     for (size_t iw = 0; iw < noutcomes; ++iw)                 // omega
@@ -611,11 +598,8 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
 
     if (!output_filename.empty()) model.write(output_filename);
 
-    //std::cout << "optimization... " << std::endl;
     // solve the optimization problem
     model.optimize();
-
-    int status = model.get(GRB_IntAttr_Status);
 
     /*
      * LOADED       1 	Model is loaded, but no solution information is available.
@@ -635,10 +619,8 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
      *                  the value specified in the Cutoff parameter.
      *                  No solution information is available.
      */
-    if (status != GRB_OPTIMAL) {
-        return {.message = "Solution infeasible or unbounded."};
-        //throw runtime_error("Failed to solve the optimization problem.");
-    }
+    const int status = model.get(GRB_IntAttr_Status);
+    if (status != GRB_OPTIMAL) return {.message = "Solution infeasible or unbounded."};
 
     indvec policy(nstates);
     for (size_t is = 0; is < nstates; ++is) {

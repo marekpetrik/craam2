@@ -979,7 +979,6 @@ Rcpp::List srsolve_mdpo(Rcpp::DataFrame mdpo, Rcpp::DataFrame init_distribution,
 
     auto grb = craam::get_gurobi();
     if (algorithm == "milp") {
-        //std::cout << "starting optimization ... " << std::endl;
         const craam::DetStaticSolution sol = craam::statalgs::srsolve_avar_milp(
             *grb, m, alpha, beta, discount, init_dst, model_dst, output_filename);
 

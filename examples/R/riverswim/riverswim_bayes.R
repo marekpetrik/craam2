@@ -9,16 +9,16 @@ loadNamespace("stringr")
 
 ## ----- Parameters --------
 
-description <- "riverswim_mdp2.csv"
+description <- "riverswim3_mdp.csv"
 
-init.dist <- c(1,0,0,0,0,0)# rep(1/6,6)
+init.dist <- rep(1/6,6)
 discount <- 0.99
 confidence <- 0.95
-bayes.samples <- 3
+bayes.samples <- 1000
 
-samples <- 500
+samples <- 50
 sample.seed <- 2011
-episodes <- 1
+episodes <- 10
 
 ## ----- Initialization ------
 
@@ -320,5 +320,5 @@ init.dist.df <- data.frame(idstate = seq(0, length(init.dist) -1),
                            probability = init.dist)
 
 sol.torbu.milp <- srsolve_mdpo(mdp.bayesian, init.dist.df, discount, 
-                            alpha = 1-confidence, beta = 1.0, output_filename = "")
+                            alpha = 1-confidence, beta = 0.9, output_filename = "/tmp/torbu.lp")
 report_solution("TORBU-m: ", mdp.bayesian, sol.torbu.milp)
