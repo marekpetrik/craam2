@@ -268,7 +268,7 @@ rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi
 #' @param output_filename Name of the file to save the model output. Valid suffixes are
 #'                          .mps, .rew, .lp, or .rlp for writing the model itself.
 #'                        If it is an empty string, then it does not write the file.
-srsolve_mdpo <- function(mdpo, init_distribution, discount, alpha, beta, algorithm = "quadratic", model_distribution = NULL, output_filename = "") {
+srsolve_mdpo <- function(mdpo, init_distribution, discount, alpha, beta, algorithm = "milp", model_distribution = NULL, output_filename = "") {
     .Call(`_rcraam_srsolve_mdpo`, mdpo, init_distribution, discount, alpha, beta, algorithm, model_distribution, output_filename)
 }
 

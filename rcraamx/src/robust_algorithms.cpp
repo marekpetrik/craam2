@@ -958,7 +958,7 @@ Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String na
 // [[Rcpp::export]]
 Rcpp::List srsolve_mdpo(Rcpp::DataFrame mdpo, Rcpp::DataFrame init_distribution,
                         double discount, double alpha, double beta,
-                        Rcpp::String algorithm = "quadratic",
+                        Rcpp::String algorithm = "milp",
                         Rcpp::Nullable<Rcpp::DataFrame> model_distribution = R_NilValue,
                         Rcpp::String output_filename = "") {
     Rcpp::List result;
@@ -970,30 +970,38 @@ Rcpp::List srsolve_mdpo(Rcpp::DataFrame mdpo, Rcpp::DataFrame init_distribution,
     // the dataframe
     MDPO m = mdpo_from_dataframe(mdpo, true);
 
-    const craam::RandStaticSolution sol = [&]() {
-        const ProbDst init_dst = parse_s_values(m.size(), init_distribution, 0.0,
-                                                "probability", "init_distribution");
-        const ProbDst model_dst =
-            model_distribution.isNotNull()
-                ? parse_s_values(m.size(), model_distribution, 0.0, "probability",
-                                 "model_distribution")
-                : ProbDst(0);
+    const ProbDst init_dst = parse_s_values(m.size(), init_distribution, 0.0,
+                                            "probability", "init_distribution");
+    const ProbDst model_dst = model_distribution.isNotNull()
+                                  ? parse_s_values(m.size(), model_distribution, 0.0,
+                                                   "probability", "model_distribution")
+                                  : ProbDst(0);
 
-        auto grb = craam::get_gurobi();
-        if (algorithm == "quadratic") {
-            return craam::statalgs::srsolve_avar_quad(
-                *grb, m, alpha, beta, discount, init_dst, model_dst, output_filename);
-        } else {
-            Rcpp::stop("Unknown algorithm");
-        }
-    }();
+    auto grb = craam::get_gurobi();
+    if (algorithm == "milp") {
+        //std::cout << "starting optimization ... " << std::endl;
+        const craam::DetStaticSolution sol = craam::statalgs::srsolve_avar_milp(
+            *grb, m, alpha, beta, discount, init_dst, model_dst, output_filename);
 
-    result["policy_rand"] = output_policy(sol.policy);
-    result["objective"] = sol.objective;
-    result["time"] = sol.time;
-    result["status"] = sol.status;
+        result["policy"] = output_policy(sol.policy);
+        result["objective"] = sol.objective;
+        result["time"] = sol.time;
+        result["status"] = sol.status;
 
-    report_solution_status(sol);
+        report_solution_status(sol);
+    } else if (algorithm == "quadratic") {
+        const craam::RandStaticSolution sol = craam::statalgs::srsolve_avar_quad(
+            *grb, m, alpha, beta, discount, init_dst, model_dst, output_filename);
+
+        result["policy_rand"] = output_policy(sol.policy);
+        result["objective"] = sol.objective;
+        result["time"] = sol.time;
+        result["status"] = sol.status;
+
+        report_solution_status(sol);
+    } else {
+        Rcpp::stop("Unknown algorithm");
+    }
 
     return result;
 }

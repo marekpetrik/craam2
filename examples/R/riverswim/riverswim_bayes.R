@@ -123,11 +123,12 @@ bayes.returns <- function(mdp.bayesian, policy, maxcount = 100){
 #' @param mdp.bayesian MDP with outcomes representing bayesian samples
 #' @param solution Output from the algorithm's solution
 report_solution <- function(name, mdp.bayesian, solution){
-  cat("**", stringr::str_pad(name, 15, 'right'), 
-      solution$valuefunction$value %*% init.dist, "****\n")
+  predicted <- ifelse("valuefunction" %in% ls(solution), 
+                      solution$valuefunction$value %*% init.dist,
+                      solution$objective)
+  cat("**", stringr::str_pad(name, 15, 'right'), predicted, "****\n")
   cat("    Policy", solution$policy$idaction,"\n")
-  
-  cat("    Return predicted:", solution$valuefunction$value %*% init.dist)
+  cat("    Return predicted:", predicted)
   sol.tr <- solve_mdp(mdp.truth, discount, 
                       policy_fixed = solution$policy,
                       show_progress = FALSE)
@@ -318,5 +319,6 @@ gurobi_set_param("LogFile", "/tmp/gurobi.log")
 init.dist.df <- data.frame(idstate = seq(0, length(init.dist) -1), 
                            probability = init.dist)
 
-sol.torbu.q <- srsolve_mdpo(mdp.bayesian, init.dist.df, discount, 
-                            alpha = 1-confidence, beta = 1.0)
+sol.torbu.milp <- srsolve_mdpo(mdp.bayesian, init.dist.df, discount, 
+                            alpha = 1-confidence, beta = 1.0, output_filename = "")
+report_solution("TORBU-m: ", mdp.bayesian, sol.torbu.milp)
