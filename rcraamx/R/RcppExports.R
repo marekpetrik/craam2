@@ -260,7 +260,7 @@ rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi
 #'              value is 1.
 #' @param beta Weight on AVaR and the complement (1-beta) is the weight
 #'              on the expectation term. The value must be between 0 and 1.
-#' @param gamma Discount factor. Clamped to be in [0,1]
+#' @param discount Discount factor. Clamped to be in [0,1]
 #' @param init_distribution Initial distribution over states. The columns should be
 #'                             are idstate, and probability.
 #' @param model_distribution Distribution over the models. The default is empty, which translates

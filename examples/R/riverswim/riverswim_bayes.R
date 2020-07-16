@@ -312,7 +312,7 @@ sol.norbu.w <- rsolve_mdpo_sa(mdp.bayesian, discount, "evaru",
                             list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
 report_solution("NORBU-v: ", mdp.bayesian, sol.norbu.w)
 
-## ---- TORBU-q ------------
+## ---- TORBU-milp ------------
 
 gurobi_set_param("LogFile", "/tmp/gurobi.log")
 

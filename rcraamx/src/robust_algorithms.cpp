@@ -933,8 +933,6 @@ Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String na
     return result;
 }
 
-#ifdef GUROBI_USE
-
 //' Solves an MDPO with static uncertainty using a non-convex global optimization method.
 //'
 //' The objective is:
@@ -947,7 +945,7 @@ Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String na
 //'              value is 1.
 //' @param beta Weight on AVaR and the complement (1-beta) is the weight
 //'              on the expectation term. The value must be between 0 and 1.
-//' @param gamma Discount factor. Clamped to be in [0,1]
+//' @param discount Discount factor. Clamped to be in [0,1]
 //' @param init_distribution Initial distribution over states. The columns should be
 //'                             are idstate, and probability.
 //' @param model_distribution Distribution over the models. The default is empty, which translates
@@ -961,6 +959,7 @@ Rcpp::List srsolve_mdpo(Rcpp::DataFrame mdpo, Rcpp::DataFrame init_distribution,
                         Rcpp::String algorithm = "milp",
                         Rcpp::Nullable<Rcpp::DataFrame> model_distribution = R_NilValue,
                         Rcpp::String output_filename = "") {
+#ifdef GUROBI_USE
     Rcpp::List result;
 
     // What would be the point of forcing to add transitions even if
@@ -1003,9 +1002,10 @@ Rcpp::List srsolve_mdpo(Rcpp::DataFrame mdpo, Rcpp::DataFrame init_distribution,
     }
 
     return result;
-}
-
+#else
+    Rcpp::stop("Not supported without gurobi support");
 #endif
+}
 
 /**
  * Parses the name and the parameter of the provided nature
@@ -1193,19 +1193,18 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
 /// Parses the name and the parameter of the provided nature
 algorithms::SNatureOutcome parse_nature_s(const MDPO& mdpo, const string& nature,
                                           SEXP nature_par) {
-    //if (nature == "exp") {
-    //    return algorithms::nats::robust_exp();
-    //} else
+#ifdef GUROBI_USE
     if (nature == "eavaru") {
         Rcpp::List par = Rcpp::as<Rcpp::List>(nature_par);
         return algorithms::nats::robust_s_avar_exp_u_gurobi(
             Rcpp::as<double>(par["alpha"]), Rcpp::as<double>(par["beta"]));
     } else {
-        Rcpp::stop("unknown nature");
+        Rcpp::stop("unknown nature.");
     }
+#else
+    Rcpp::stop("unknown nature.");
+#endif
 }
-
-#ifdef GUROBI_USE // all srectangular MDPO methods require gurobi so far
 
 //' Solves a robust Markov decision process with state-action rectangular
 //' ambiguity sets.
@@ -1265,6 +1264,7 @@ Rcpp::List rsolve_mdpo_s(Rcpp::DataFrame mdpo, double discount, Rcpp::String nat
                          Rcpp::Nullable<Rcpp::DataFrame> value_init = R_NilValue,
                          bool pack_actions = false, bool output_tran = false,
                          int show_progress = 1) {
+#ifdef GUROBI_USE // all srectangular MDPO methods require gurobi so far
     Rcpp::List result;
 
     // What would be the point of forcing to add transitions even if
@@ -1345,9 +1345,10 @@ Rcpp::List rsolve_mdpo_s(Rcpp::DataFrame mdpo, double discount, Rcpp::String nat
     report_solution_status(sol);
 
     return result;
-}
-
+#else
+    Rcpp::stop("Not supported without gurobi.");
 #endif
+}
 
 /**
  * Sets the number of threads for parallelization.
@@ -1361,7 +1362,6 @@ void set_rcraam_threads(int n) {
 #endif
 }
 
-#ifdef GUROBI_USE
 //' Sets a gurobi parameter. Even numeric values may be provided as strings
 //'
 //' See https://www.gurobi.com/wp-content/plugins/hd_documentations/documentation/9.0/refman.pdf
@@ -1372,9 +1372,12 @@ void set_rcraam_threads(int n) {
 //'
 // [[Rcpp::export]]
 void gurobi_set_param(Rcpp::String param, Rcpp::String value) {
+#ifdef GUROBI_USE
     get_gurobi()->set(param, value);
-}
+#else
+    Rcpp::stop("Gurobi not supported.");
 #endif
+}
 
 //'  Builds an MDP from samples
 //'
