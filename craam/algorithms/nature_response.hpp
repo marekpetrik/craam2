@@ -297,9 +297,9 @@ public:
    */
     robust_l1w_gurobi(vector<numvec> budgets) : budgets(move(budgets)), weights(0) {
         env = get_gurobi();
-        // make sure it is run in a single thread so it can be parallelized
-        env->set(GRB_IntParam_OutputFlag, 0);
-        env->set(GRB_IntParam_Threads, 1);
+        // possibly? make sure it is run in a single thread so it can be parallelized
+        // but this interferes with other use of the environment
+        // env->set(GRB_IntParam_Threads, 1);
     };
 
     /**
@@ -313,8 +313,7 @@ public:
         : budgets(move(budgets)), weights(move(weights)) {
         env = get_gurobi();
         // make sure it is run in a single thread so it can be parallelized
-        env->set(GRB_IntParam_OutputFlag, 0);
-        env->set(GRB_IntParam_Threads, 1);
+        // env->set(GRB_IntParam_Threads, 1);
     };
 
     /**
@@ -576,8 +575,7 @@ public:
     robust_s_l1_gurobi(numvec budgets) : budgets(move(budgets)) {
         env = get_gurobi();
         // make sure it is run in a single thread so it can be parallelized
-        env->set(GRB_IntParam_OutputFlag, 0);
-        env->set(GRB_IntParam_Threads, 1);
+        //env->set(GRB_IntParam_Threads, 1);
     };
 
     /**
@@ -653,8 +651,7 @@ public:
 
         env = get_gurobi();
         // make sure it is run in a single thread so it can be parallelized
-        env->set(GRB_IntParam_OutputFlag, 0);
-        env->set(GRB_IntParam_Threads, 1);
+        //env->set(GRB_IntParam_Threads, 1);
     };
 
     /**
@@ -732,8 +729,7 @@ public:
     robust_s_avar_exp_u_gurobi(prec_t alpha, prec_t beta) : alpha(alpha), beta(beta) {
         env = get_gurobi();
         // make sure it is run in a single thread so it can be parallelized
-        env->set(GRB_IntParam_OutputFlag, 0);
-        env->set(GRB_IntParam_Threads, 1);
+        //env->set(GRB_IntParam_Threads, 1);
     }
 
     /**
@@ -769,8 +765,7 @@ public:
     robust_s_linf_gurobi(numvec budgets) : budgets(move(budgets)) {
         env = get_gurobi();
         // make sure it is run in a single thread so it can be parallelized
-        env->set(GRB_IntParam_OutputFlag, 0);
-        env->set(GRB_IntParam_Threads, 1);
+        //env->set(GRB_IntParam_Threads, 1);
     };
 
     /**
