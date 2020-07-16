@@ -88,6 +88,9 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
                                             const ProbDst& init_dist,
                                             const ProbDst& model_dist = ProbDst(0),
                                             const std::string& output_filename = "") {
+
+    check_model(mdpo);
+
     // general constants values
     const double inf = std::numeric_limits<prec_t>::infinity();
     const size_t nstates = mdpo.size();
@@ -387,6 +390,9 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
                                            const ProbDst& init_dist,
                                            const ProbDst& model_dist = ProbDst(0),
                                            const std::string& output_filename = "") {
+
+    check_model(mdpo);
+
     // general constants values
     const double inf = std::numeric_limits<prec_t>::infinity();
     const size_t nstates = mdpo.size();
@@ -457,15 +463,21 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
     // used to index pi
     const auto index_sa = [&](size_t s, size_t a) {
         assert(s >= 0 && s < nstates && a >= 0 && a < mdpo[s].size());
-        return array_index_sa[s][a];
+        const auto r = array_index_sa[s][a];
+        if (r < 0 || r >= nstateactions)
+            throw std::runtime_error("Invalid output index in index_sa.");
+        return r;
     };
-    // used to index d, w is omega (first loop over s and then omega/w)
+    // used to index u, w is omega (first loop over s and then omega/w)
+    const size_t nstateactionoutcomes = nstateactions * noutcomes;
     const auto index_saw = [&](size_t s, size_t a, size_t w) {
         assert(s >= 0 && s < nstates && w >= 0 && w < noutcomes && a >= 0 &&
                a < mdpo[s].size());
-        return index_sa(s, a) * noutcomes + w;
+        const auto r = index_sa(s, a) * noutcomes + w;
+        if (r < 0 || r >= nstateactionoutcomes)
+            throw std::runtime_error("Invalid output index in index_saw.");
+        return r;
     };
-    const size_t nstateactionoutcomes = nstateactions * noutcomes;
 
     const auto pi = [&]() {
         std::vector<std::string> pi_names(nstateactions);
@@ -540,12 +552,12 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
                 constraint_y += reward * u[index_saw(is, ia, iw)];
             }
         }
-        model.addConstr(constraint_y >= 0);
+        model.addConstr(constraint_y >= 0, "c-y[" + std::to_string(iw) + "]");
     }
 
     // constraint:
-    // sum_a u(s,a,omega) - gamma * sum_{s',a'} u(s',a',omega) * pi(s',a') * P^omega(s',a',s) =
-    //                      f(omega) p_0(s), for each omega and s
+    // sum_a u(s,a,omega) - gamma * sum_{s',a'} u(s',a',omega) * P^omega(s',a',s) =
+    //                      f(omega) * p_0(s), for each omega and s
     // and just ignore the constraints for all terminal states
     for (size_t iw = 0; iw < noutcomes; ++iw) {   // omega
         for (size_t is = 0; is < nstates; ++is) { // state s
@@ -565,7 +577,8 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
                         constraint_u -= gamma * u[index_saw(isp, iap, iw)] * probability;
                 }
             }
-            model.addConstr(constraint_u == init_dist[is] * model_dist_aug(iw));
+            model.addConstr(constraint_u == init_dist[is] * model_dist_aug(iw),
+                            "c-u[" + std::to_string(is) + "," + std::to_string(iw) + "]");
         }
     }
 
@@ -577,7 +590,8 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
         for (size_t ia = 0; ia < s.size(); ia++)
             constraint_pi += pi[index_sa(is, ia)];
         // only add the constraint when there are some actions in the state
-        if (constraint_pi.size() > 0) model.addConstr(constraint_pi == 1.0);
+        if (constraint_pi.size() > 0)
+            model.addConstr(constraint_pi == 1.0, "c-pi[" + std::to_string(is) + "]");
     }
 
     // constraint:
@@ -587,7 +601,9 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
             for (size_t ia = 0; ia < mdpo[is].size(); ++ia) { // action a
                 const prec_t upper_bound = (1.0 / (1.0 - gamma));
                 model.addConstr(
-                    pi[index_sa(is, ia)] * upper_bound - u[index_saw(is, ia, iw)] >= 0);
+                    pi[index_sa(is, ia)] * upper_bound - u[index_saw(is, ia, iw)] >= 0,
+                    "c-y-pi[" + std::to_string(is) + "," + std::to_string(ia) + "," +
+                        std::to_string(iw) + "]");
             }
 
 #ifndef NDEBUG
@@ -626,7 +642,7 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
     for (size_t is = 0; is < nstates; ++is) {
         const StateO& s = mdpo[is];
         for (size_t ia = 0; ia < s.size(); ++ia)
-            if (pi[index_sa(is, ia)].get(GRB_DoubleAttr_X) > 0) {
+            if (pi[index_sa(is, ia)].get(GRB_DoubleAttr_X) > 0.1) {
                 policy[is] = ia;
                 continue;
             }

@@ -256,8 +256,9 @@ public:
      */
     prec_t probability_to(const long idstate) const {
         auto pointer = std::lower_bound(indices.cbegin(), indices.cend(), idstate);
-        if (*pointer == idstate) // found the transition to this state
-            return probabilities[std::distance(indices.cbegin(), pointer)];
+        if (pointer != indices.cend() &&
+            *pointer == idstate) // found the transition to this state
+            return probabilities.at(std::distance(indices.cbegin(), pointer));
         else
             return 0;
     }

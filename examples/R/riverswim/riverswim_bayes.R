@@ -320,5 +320,5 @@ init.dist.df <- data.frame(idstate = seq(0, length(init.dist) -1),
                            probability = init.dist)
 
 sol.torbu.milp <- srsolve_mdpo(mdp.bayesian, init.dist.df, discount, 
-                            alpha = 1-confidence, beta = 0.9, output_filename = "/tmp/torbu.lp")
+                            alpha = 1-confidence, beta = 1.0, output_filename = "/tmp/torbu.lp")
 report_solution("TORBU-m: ", mdp.bayesian, sol.torbu.milp)

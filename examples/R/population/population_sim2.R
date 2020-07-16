@@ -3,9 +3,11 @@ library(dplyr)
 library(ggplot2)
 theme_set(theme_light())
 library(setRNG)
+library(readr)
 
 error_size <- 0.1
 error_type <- "l1u"
+extra=FALSE
 
 ### ----- Problem definition -------------
 max.population <- 50
@@ -15,10 +17,12 @@ discount <- 0.9
 plot.breaks <- seq(0,0.4,by=0.005)
 show.plots <- FALSE
 external.pop <- 3
+init.dist <- c(1,rep(0, 50))
+confidence <- 0.7
 
+risk_weights <- seq(0, 1, length.out = 5)
 seed=1
 set.seed(seed)
-#setRNG(kind="Wichmann-Hill", seed=c(979,1479,1542), normal.kind="Box-Muller")
 
 corr <- (seq(0,max.population) - (max.population/2))^2 
 growth.app <- 0.2 + corr / max(corr) 
@@ -95,22 +99,10 @@ if(class(post_samples) == "try-error"){
   }
   "
   set.seed(1)
-  #jags.seed=1
-  model_spec <- textConnection(model_str)
-  set.seed(1)
-  inits1 <- list(m=1, c=1, precision=1,
-  .RNG.name="base::Super-Duper", .RNG.seed=1)
-  inits2 <- list(m=1, c=1, precision=1,
-  .RNG.name="base::Wichmann-Hill", .RNG.seed=2)
-  inits3 <- list(m=1, c=1, precision=1,
-  .RNG.name="base::Marsaglia-Multicarry", .RNG.seed=3)
-  inits4 <- list(m=1, c=1, precision=1,
-  .RNG.name="base::Mersenne-Twister", .RNG.seed=4)
   jags <- jags.model(model_spec,
                      data = list(pop = pop,
                                  pop_next = pop.next,
                                  act = act,
-  			       #inits = list(inits1,inits2,inits3,inits4),
                                  N = length(pop),
                                  M = length(unique(act))),
                      n.chains=4,
@@ -139,80 +131,57 @@ efficiency_true <- data.frame(population = population_range, type = "true",
 # after action1 is applied
 efficiency_sampled <- matrix(0, nrow = dim(post_samples$mu0)[2] * dim(post_samples$mu0)[3],
                                 ncol = length(population_range))
-#k <- 1
-#for(i in 1:dim(post_samples$mu0)[2]){
-set.seed(1)
-#  for(j in 1:dim(post_samples$mu0)[3]){
-#    efficiency_sampled[k,] <- post_samples$mu0[1,i,j] + 
-#            post_samples$mu1[1,i,j] * population_range   + 
-#            post_samples$mu2[1,i,j] * population_range^2
-#    k <- k + 1
-#  }
-#}
-
-#efficiency_sampled.df <- reshape2::melt(efficiency_sampled, value.name = "Rate")
-#colnames(efficiency_sampled.df) <- c("Sample", "Population", "Rate")
-#efficiency_sampled.df$Population <- efficiency_sampled.df$Population - 1
-
-
-
 
 ### ------ Solve nominal problem ---------------------
 
-# this is very much a model-based solution
+mdp.bayesian <- try({read_csv("population_bayes_model.csv")})
 
-# fist action: no control, second action: pesticide
-exp.growth.rate <- rbind(rep(2.0, max.population+1), growth.app,
-                         growth.app, growth.app, growth.app)
-sd.growth.rate <- rbind(rep(0.6, max.population+1), rep(0.6, max.population+1), 
-                        rep(0.5, max.population+1), rep(0.4, max.population+1),
-                        rep(0.3, max.population+1))
-
-
-mdp.bayesian <- rcraam::mdp_population(max.population, init.population,
-                                        exp.growth.rate, sd.growth.rate,
-                                        rewards, external.pop, external.pop/2, "logistic")
-warnings()
-mdp.bayesian['idoutcome']=0
-for( model in 1:dim(post_samples$mu)[2]) {
-      rates <- matrix(0,ncol=dim(exp.growth.rate)[2],nrow=dim(exp.growth.rate)[1])
-      #ext_pop = rnorm(1,post_samples$ext_mu[1,model,1],post_samples$ext_std[model])
-      for(i in 1:dim(exp.growth.rate)[1]){
-            
-	   for(j in 1:dim(exp.growth.rate)[2]){
-		if(i==1){
-                     rates[i,j] <- post_samples$mu[1,model,i]
-		} else {
-		     rates[i,j] <- post_samples$mu0[1,model,i-1] * j + post_samples$mu1[1,model,i-1] * j^2 + post_samples$mu2[1,model,i-1] * j^3;
-		}
-	}
-
-   }
-
-   pop.model.mdp <- rcraam::mdp_population(max.population, init.population,
-                                        rates, sd.growth.rate,
-                                        rewards, external.pop, external.pop/2, "logistic")
-   pop.model.mdp['idoutcome']=model
-   mdp.bayesian <- rbind(mdp.bayesian,pop.model.mdp)
+if(class(mdp.bayesian) == "try-error"){
+    # fist action: no control, second action: pesticide
+    exp.growth.rate <- rbind(rep(2.0, max.population+1), growth.app,
+                             growth.app, growth.app, growth.app)
+    sd.growth.rate <- rbind(rep(0.6, max.population+1), rep(0.6, max.population+1), 
+                            rep(0.5, max.population+1), rep(0.4, max.population+1),
+                            rep(0.3, max.population+1))
+    
+    
+    mdp.bayesian <- rcraam::mdp_population(max.population, init.population,
+                                            exp.growth.rate, sd.growth.rate,
+                                            rewards, external.pop, external.pop/2, "logistic")
+    
+    mdp.bayesian['idoutcome'] <- 0
+    
+    #TODO: This code assumes that the variance of the different actions is the same
+    # which is a limitation, since that is the only/main difference between the different
+    # control actions
+    for(model in 1:dim(post_samples$mu)[2]) {
+        rates <- matrix(0,ncol=dim(exp.growth.rate)[2],nrow=dim(exp.growth.rate)[1])
+        for(i in 1:dim(exp.growth.rate)[1]){
+      	    for(j in 1:dim(exp.growth.rate)[2]){
+            		if(i==1){
+                    rates[i,j] <- post_samples$mu[1,model,i]
+            		} else {
+            		    rates[i,j] <- post_samples$mu0[1,model,i-1] * j + post_samples$mu1[1,model,i-1] * j^2 + post_samples$mu2[1,model,i-1] * j^3;
+            		}
+    	      }
+       }
+    
+       pop.model.mdp <- rcraam::mdp_population(max.population, init.population,
+                                            rates, sd.growth.rate, rewards, 
+                                            external.pop, external.pop/2, "logistic")
+       pop.model.mdp['idoutcome']=model
+       mdp.bayesian <- rbind(mdp.bayesian,pop.model.mdp)
+    }
+    
+    write_csv(mdp.bayesian, "population_bayes_model.csv")
 }
 
-extra=FALSE
 
-init.dist <- rep(0, 51)
-init.dist[1] <- 1
-confidence=0.7
-
-
-risk_weights <- seq(0, 1, length.out = 5)
-
+### ------ Helper functions ---------------------
 results <- list(
   method = c(), risk_weight = c(), predicted = c(),
   expected = c(), var = c(), avar = c()
 )
-
-#sol.norbu.s <- rsolve_mdpo_s(k, discount, "eavaru",
-#    list(alpha = 1 - confidence, beta = 1), show_progress = 0, algorithm = "vi")
-  #report_solution("s-NORBU", risk_weight, mdp.bayesian, sol.norbu.s)
 
 rmdp.bayesian <- function(mdp.bayesian, confidence) {
   # adjust the confidence level
@@ -320,7 +289,6 @@ normalize_transition_probs <- function(mdp){
     mutate(probability = probability / psum) %>% select(-psum)
 }
 
-
 ## ---- Bayesian Credible Region -----
 
 cat("BCR\n")
@@ -342,7 +310,6 @@ sol.rsvf <- rsolve_mdpo_sa(mdp.bayesian, discount, "evaru",
   show_progress = FALSE
 )
 report_solution("RSVF", 1.0, mdp.bayesian, sol.rsvf)
-
 
 ## ---- NORBU ----------
 
@@ -380,15 +347,25 @@ if(FALSE){
 ## ------ TORBU MILP version ----------
 
 # debugging: output_filename = "/tmp/torbu.lp"
+# or output_filename = "/tmp/torbu.mps"
 
 gurobi_set_param("OutputFlag", "1")
 gurobi_set_param("LogFile", "/tmp/gurobi.log")
 gurobi_set_param("LogToConsole", "1");
+gurobi_set_param("ConcurrentMIP", "3");
+gurobi_set_param("TimeLimit", "500")
 
-risk_weight = 0.8
-sol.torbu.milp <- srsolve_mdpo(mdp.bayesian, init.dist.df, discount, 
+init.dist.df <- data.frame(idstate = seq(0,length(init.dist)-1),
+                           probability = init.dist)
+
+risk_weight = 1.0
+sol.torbu.milp <- srsolve_mdpo(mdp.bayesian, 
+                               init.dist.df ,
+                               discount, 
                                alpha = 1-confidence, beta = risk_weight)
-report_solution("TORBU-m: ", mdp.bayesian, sol.torbu.milp)
+
+print(sol.torbu.milp$policy)
+#report_solution("TORBU-m: ", risk_weight, mdp.bayesian, sol.torbu.milp)
 
 
 ## -------- Report results ------------
@@ -406,20 +383,7 @@ plot <-
     geom_text(aes(label=risk_weight), position="jitter")
     labs(x = paste0("AVaR(",confidence,")"), y = "Expected")
 
-print(plot)
-#x <- paste("","test_population.pdf",sep="")
-#ggsave(x, plot, width = 5, height = 3)
+#print(plot)
 
-#results$method <- factor(results$method, levels=c("s-NORBU", "NORBU"))
-# plot <-
-#     ggplot(results,
-#            aes(x = risk_weight, y = valuefunction, color = method)) +
-#     geom_point() +
-#     geom_path(linetype="dashed") +
-#     labs(x = "Lambda", y = "Soft Robust Value Function")
-
-# print(plot)
-
-# ggsave("exanmple_value_function.pdf", plot, width = 5, height = 3)
 
 

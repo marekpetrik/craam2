@@ -72,8 +72,10 @@ public:
      * @param policy policy[s] = -1 means that the action should be optimized in
      * the state policy of length 0 means that all actions will be optimized
      */
-    PlainBellman(const MDP& mdp, indvec policy)
-        : mdp(mdp), initial_policy(move(policy)) {}
+    PlainBellman(const MDP& mdp, indvec policy) : mdp(mdp), initial_policy(move(policy)) {
+        if (!initial_policy.empty() && initial_policy.size() != mdp.size())
+            throw std::invalid_argument("Policy length must match the number of states.");
+    }
 
     /// Number of MDP states
     size_t state_count() const { return mdp.size(); }
@@ -86,16 +88,17 @@ public:
                                             prec_t discount) const {
         try {
             // check whether this state should only be evaluated
-            if (initial_policy.empty() || initial_policy[stateid] < 0) { // optimizing
+            assert(initial_policy.empty() || stateid < initial_policy.size());
+            if (initial_policy.empty() || initial_policy.at(stateid) < 0) { // optimizing
                 prec_t newvalue;
                 policy_type action;
 
                 tie(action, newvalue) =
-                    value_max_state(mdp[stateid], valuefunction, discount);
+                    value_max_state(mdp.at(stateid), valuefunction, discount);
                 return make_pair(newvalue, action);
             } else { // fixed-action, do not copy
-                return {value_fix_state(mdp[stateid], valuefunction, discount,
-                                        initial_policy[stateid]),
+                return {value_fix_state(mdp.at(stateid), valuefunction, discount,
+                                        initial_policy.at(stateid)),
                         initial_policy[stateid]};
             }
         } catch (ModelError& e) {
@@ -178,7 +181,11 @@ public:
      *               value functions
      */
     PlainBellmanRand(const MDP& mdp, numvecvec policy)
-        : mdp(mdp), initial_policy(move(policy)) {}
+        : mdp(mdp), initial_policy(move(policy)) {
+
+        if (!initial_policy.empty() && initial_policy.size() != mdp.size())
+            throw std::invalid_argument("Policy length must match the number of states.");
+    }
 
     /// Number of MDP states
     size_t state_count() const { return mdp.size(); }
@@ -317,7 +324,11 @@ public:
     SARobustBellman(const MDP& mdp, const SANature& nature,
                     vector<dec_policy_type> policy = indvec(0))
         : mdp(mdp), nature(nature), decision_policy(move(policy)),
-          initial_policy(decision_policy) {}
+          initial_policy(decision_policy) {
+
+        if (!initial_policy.empty() && initial_policy.size() != mdp.size())
+            throw std::invalid_argument("Policy length must match the number of states.");
+    }
 
     size_t state_count() const { return mdp.size(); }
 
@@ -491,7 +502,11 @@ public:
     SRobustBellman(const MDP& mdp, const SNature& nature,
                    vector<dec_policy_type> policy = vector<dec_policy_type>(0))
         : mdp(mdp), nature(nature), decision_policy(move(policy)),
-          initial_policy(decision_policy) {}
+          initial_policy(decision_policy) {
+
+        if (!initial_policy.empty() && initial_policy.size() != mdp.size())
+            throw std::invalid_argument("Policy length must match the number of states.");
+    }
 
     // **** BEGIN: Bellman Interface Methods  ********
 

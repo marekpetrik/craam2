@@ -294,6 +294,12 @@ public:
     /** Retrieves an existing state */
     SType& operator[](long stateid) { return get_state(stateid); };
 
+    /** Retrieves an existing state and performs a range check */
+    const SType& at(long stateid) const { return states.at(stateid); };
+
+    /** Retrieves an existing state and performs a range check */
+    SType& at(long stateid) { return states.at(stateid); };
+
     /**
       Check if all transitions in the process sum to one.
       Note that if there are no actions, or no outcomes for a state,
