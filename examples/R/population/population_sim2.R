@@ -21,6 +21,7 @@ show.plots <- FALSE
 external.pop <- 3
 init.dist <- c(1,rep(0, 50))
 confidence <- 0.7
+post_sample_count <- 100
 
 risk_weights <- seq(0, 1, length.out = 5)
 seed=1
@@ -107,11 +108,11 @@ if(class(post_samples) == "try-error"){
                        n.adapt=5000)
     
     # warmup
-    update(jags, 20000)
+    update(pop.jags, 20000)
     set.seed(seed)
     # QUESTION: Is thinning helpful here? This is different from 
     # uses in which we only care about the statistics
-    post_samples <- jags.samples(jags, c('mu', 'mu0',  'mu1', 'mu2'), 5000, 100)
+    post_samples <- jags.samples(pop.jags, c('mu', 'mu0',  'mu1', 'mu2'), round(100/8*post_sample_count), 100)
     #post_samples <- autorun.jags(jags)
     #set.seed(seed)
     saveRDS(post_samples, file="postsamples.rds")
@@ -169,9 +170,9 @@ efficiency_sampled <- matrix(0, nrow = dim(post_samples$mu0)[2] * dim(post_sampl
 
 ### ------ Formulate Bayesian MDP ---------------------
 
-mdp.bayesian <- try({read_csv("population_bayes_model.csv")})
+mdp.bayesian <- try(read_csv("population_bayes_model.csv"))
 
-if (class(mdp.bayesian) == "try-error") {
+if ("try-error" %in% class(mdp.bayesian)) {
     # TODO: This is wrong: this is the true model, which should not be here
     #mdp.bayesian <- rcraam::mdp_population(max.population, init.population,
     #                                        exp.growth.rate, sd.growth.rate,
@@ -179,7 +180,6 @@ if (class(mdp.bayesian) == "try-error") {
     #mdp.bayesian['idoutcome'] <- 0
     
     
-    mdp.bayesian.list <- null
     mdp.bayesian <- NULL
     idoutcome <- 0
     #TODO: This code assumes that the variance of the different actions is the same
@@ -319,7 +319,7 @@ normalize_transition_probs <- function(mdp){
 
 cat("BCR\n")
 model.bayes.loc <- rmdp.bayesian(mdp.bayesian, confidence) 
-#TODO: Whys is this even needed?
+#TODO: Why is the normalization even needed?
 model.bayes.loc$mdp.mean <- normalize_transition_probs(model.bayes.loc$mdp.mean)
 sol.bcr <- rsolve_mdp_sa(model.bayes.loc$mdp.mean, discount, "l1",
   model.bayes.loc$budgets,
@@ -379,12 +379,12 @@ gurobi_set_param("OutputFlag", "1")
 gurobi_set_param("LogFile", "/tmp/gurobi.log")
 gurobi_set_param("LogToConsole", "1");
 gurobi_set_param("ConcurrentMIP", "2");
-gurobi_set_param("TimeLimit", "5000")
+gurobi_set_param("TimeLimit", "1000")
 
 init.dist.df <- data.frame(idstate = seq(0,length(init.dist)-1),
                            probability = init.dist)
 
-risk_weight = 1.0
+risk_weight = 0.0
 sol.torbu.milp <- srsolve_mdpo(mdp.bayesian , 
                                init.dist.df, discount, 
                                alpha = 1-confidence, beta = risk_weight)
