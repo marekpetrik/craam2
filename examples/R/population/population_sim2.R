@@ -77,48 +77,84 @@ act <- sim.samples$idaction
 post_samples <- try({readRDS("postsamples.rds")})
 # construct the posterior samples if there is no cache
 if(class(post_samples) == "try-error"){
-  cat("Unable to load JAGS samples, sampling ... \n")
-  model_str <-"
-  model {
-    for (i in 1:N){
-      ext[i] ~ dnorm(ext_mu, ext_std)
-      next_mean[i] <- ifelse(act[i] == 0, 
-                    mu * pop[i],
-                    mu0 * pop[i] + mu1 * pop[i]^2 + mu2 * pop[i]^3)
-      pop_next[i] ~ dnorm(next_mean[i] + ext[i], sigma[act[i] + 1])
+    cat("Unable to load JAGS samples, sampling ... \n")
+    model_str <-"
+    model {
+      for (i in 1:N){
+        ext[i] ~ dnorm(ext_mu, ext_std)
+        next_mean[i] <- ifelse(act[i] == 0, 
+                      mu * pop[i],
+                      mu0 * pop[i] + mu1 * pop[i]^2 + mu2 * pop[i]^3)
+        pop_next[i] ~ dnorm(next_mean[i] + ext[i], sigma[act[i] + 1])
+      }
+      for (j in 1:M){
+        sigma[j] ~ dunif(0,5)
+      }
+      mu ~ dunif(0.5, 3)
+      mu0 ~ dnorm(1.0, 1)
+      mu1 ~ dnorm(0.0, 10)
+      mu2 ~ dnorm(0.0, 10)
+      ext_mu ~ dunif(0, 20)
+      ext_std ~ dunif(0, 5) 
     }
-    for (j in 1:M){
-      sigma[j] ~ dunif(0,5)
+    "
+    model_spec <- textConnection(model_str)
+    jags <- jags.model(model_spec,
+                       data = list(pop = pop,
+                                   pop_next = pop.next,
+                                   act = act,
+                                   N = length(pop),
+                                   M = length(unique(act))),
+                       n.chains=8,
+                       n.adapt=5000)
+    
+    # warmup
+    update(jags, 10000)
+    set.seed(seed)
+    post_samples <- jags.samples(jags,
+                 c('mu', 'mu0',  'mu1', 'mu2', 'sigma', 'ext_mu'),
+                 250)
+    #set.seed(seed)
+    saveRDS(post_samples, file="postsamples.rds")
+    
+    ### ------ Plot the true vs estimated effectiveness --------
+    
+    population_range <- seq(0,max.population)
+    efficiency_true <- data.frame(population = population_range, type = "true", 
+                           rate = growth.app)
+    
+    # returns the function that estimates the pest growth 
+    # after action1 is applied
+    efficiency_sampled <- matrix(0, nrow = dim(post_samples$mu0)[2] * dim(post_samples$mu0)[3],
+                                    ncol = length(population_range))
+    k <- 1
+    for(i in 1:dim(post_samples$mu0)[2]){
+      for(j in 1:dim(post_samples$mu0)[3]){
+        efficiency_sampled[k,] <- post_samples$mu0[1,i,j] + 
+                post_samples$mu1[1,i,j] * population_range   + 
+                post_samples$mu2[1,i,j] * population_range^2
+        k <- k + 1
+      }
     }
-    mu ~ dunif(0.5, 3)
-    mu0 ~ dnorm(1.0, 1)
-    mu1 ~ dnorm(0.0, 10)
-    mu2 ~ dnorm(0.0, 10)
-    ext_mu ~ dunif(0, 20)
-    ext_std ~ dunif(0, 5) 
-  }
-  "
-  set.seed(1)
-  jags <- jags.model(model_spec,
-                     data = list(pop = pop,
-                                 pop_next = pop.next,
-                                 act = act,
-                                 N = length(pop),
-                                 M = length(unique(act))),
-                     n.chains=4,
-                     n.adapt=100)
-  
-  # warmup
-  #set.seed(seed)
-  update(jags, 1000)
-  set.seed(seed)
-  post_samples <- jags.samples(jags,
-               c('mu', 'mu0',  'mu1', 'mu2', 'sigma', 'ext_mu'),
-               250)
-  #set.seed(seed)
-  saveRDS(post_samples, file="postsamples.rds")
+    
+    efficiency_sampled.df <- reshape2::melt(efficiency_sampled, value.name = "Rate")
+    colnames(efficiency_sampled.df) <- c("Sample", "Population", "Rate")
+    efficiency_sampled.df$Population <- efficiency_sampled.df$Population - 1
+    
+    # density plot
+    ggplot(efficiency_sampled.df, aes(x = Population, y = Rate)) + 
+            geom_hex() + 
+            geom_line(mapping=aes(x=population, y=rate), data=efficiency_true, color = "red")
+    
+    # plot example responses
+    ggplot(efficiency_sampled.df %>% filter(Sample %% 10 == 0), 
+                   aes(x = Population, y = Rate, group = Sample)) + 
+      geom_line(linetype = 3) +
+      geom_line(mapping=aes(x=population, y=rate), 
+                data=efficiency_true, color = "red", 
+                inherit.aes = FALSE)
 } else {
-  cat("Posterior samples loaded from a file. ")
+    cat("Posterior samples loaded from a file. ")
 }
 
 ### ------ Plot the true vs estimated effectiveness --------
@@ -132,47 +168,38 @@ efficiency_true <- data.frame(population = population_range, type = "true",
 efficiency_sampled <- matrix(0, nrow = dim(post_samples$mu0)[2] * dim(post_samples$mu0)[3],
                                 ncol = length(population_range))
 
-### ------ Solve nominal problem ---------------------
+### ------ Formulate Bayesian MDP ---------------------
 
 mdp.bayesian <- try({read_csv("population_bayes_model.csv")})
 
 if(class(mdp.bayesian) == "try-error"){
-    # fist action: no control, second action: pesticide
-    exp.growth.rate <- rbind(rep(2.0, max.population+1), growth.app,
-                             growth.app, growth.app, growth.app)
-    sd.growth.rate <- rbind(rep(0.6, max.population+1), rep(0.6, max.population+1), 
-                            rep(0.5, max.population+1), rep(0.4, max.population+1),
-                            rep(0.3, max.population+1))
-    
-    
+    # TODO: This is wrong: this is the true model, which should not be here
     mdp.bayesian <- rcraam::mdp_population(max.population, init.population,
                                             exp.growth.rate, sd.growth.rate,
                                             rewards, external.pop, external.pop/2, "logistic")
-    
     mdp.bayesian['idoutcome'] <- 0
     
     #TODO: This code assumes that the variance of the different actions is the same
     # which is a limitation, since that is the only/main difference between the different
     # control actions
-    for(model in 1:dim(post_samples$mu)[2]) {
+    for(model in 1:dim(post_samples$mu)[2]) { 
         rates <- matrix(0,ncol=dim(exp.growth.rate)[2],nrow=dim(exp.growth.rate)[1])
-        for(i in 1:dim(exp.growth.rate)[1]){
+        # TODO: enable this one
+        #for(i in 2:dim(exp.growth.rate)[1]){     # loop over chains 
+            i <- 1  # just use the first chain for now
+            rates[1,j] <- post_samples$mu[1,model,i]
       	    for(j in 1:dim(exp.growth.rate)[2]){
-            		if(i==1){
-                    rates[i,j] <- post_samples$mu[1,model,i]
-            		} else {
-            		    rates[i,j] <- post_samples$mu0[1,model,i-1] * j + post_samples$mu1[1,model,i-1] * j^2 + post_samples$mu2[1,model,i-1] * j^3;
-            		}
+        		    rates[,j] <- post_samples$mu0[1,model,i] * j + 
+                    		      post_samples$mu1[1,model,i] * j^2 + 
+                    		      post_samples$mu2[1,model,i] * j^3;
     	      }
-       }
-    
+       #}
        pop.model.mdp <- rcraam::mdp_population(max.population, init.population,
                                             rates, sd.growth.rate, rewards, 
                                             external.pop, external.pop/2, "logistic")
        pop.model.mdp['idoutcome']=model
        mdp.bayesian <- rbind(mdp.bayesian,pop.model.mdp)
     }
-    
     write_csv(mdp.bayesian, "population_bayes_model.csv")
 }
 
@@ -217,7 +244,7 @@ rmdp.bayesian <- function(mdp.bayesian, confidence) {
   ))
 }
 
-bayes.returns <- function(mdp.bayesian, policy, maxcount = 100,flag=0) {
+bayes.returns <- function(mdp.bayesian, policy, maxcount = 100) {
   outcomes.unique <- head(unique(mdp.bayesian$idoutcome), maxcount)
   sapply(
     outcomes.unique,
@@ -238,15 +265,7 @@ bayes.returns <- function(mdp.bayesian, policy, maxcount = 100,flag=0) {
             show_progress = FALSE, algorithm = "pi"
           )
       }
-      k <- init.dist
-      if (flag==0){
-          k <- state0_dist
-      }
-      else if(flag==1){
-        k <- state1_dist
-      }
-      sol$valuefunction$value %*% k
-
+      sol$valuefunction$value %*% init.dist
     }
   )
 }
@@ -257,25 +276,25 @@ bayes.returns <- function(mdp.bayesian, policy, maxcount = 100,flag=0) {
 #' posterior expectation of how well it is likely to work
 #'
 #' @param name Name of the algorithm that produced the results
-#' @param mdp.bayesian MDP with outcomes representing bayesian samples
+#' @param mdp.bayesian MDP with outcomes representing Bayesian samples
 #' @param solution Output from the algorithm's solution
 report_solution <- function(name, risk_weight, mdp.bayesian, solution) {
   results$method <<- c(results$method, name)
   results$risk_weight <<- c(results$risk_weight, risk_weight)
-  results$predicted <<- c(results$predicted, solution$valuefunction$value %*% init.dist)
 
-  posterior.returns <- bayes.returns(mdp.bayesian, solution$policy,flag=2)
-  posterior.returns0 <- bayes.returns(mdp.bayesian, solution$policy,flag=2)
-  posterior.returns1 <- bayes.returns(mdp.bayesian, solution$policy,flag=2)
+  # this is to handle solutions that do not have value functions
+  predicted <- ifelse("valuefunction" %in% ls(solution), 
+                      solution$valuefunction$value %*% init.dist,
+                      solution$objective)
+  results$predicted <<- c(results$predicted, predicted)
+  
+  posterior.returns <- bayes.returns(mdp.bayesian, solution$policy)
   dst <- rep(1 / length(posterior.returns), length(posterior.returns))
   results$expected <<- c(results$expected, mean(posterior.returns))
 
   results$var <<- c(results$var, quantile(posterior.returns, 1 - confidence))
   results$avar <<- c(results$avar, avar(posterior.returns, dst, 1 - confidence)$value)
-  results$policy <<- c(results$policy, toString(solution$policy))
-  results$returns0 <<- c(results$returns0, mean(posterior.returns0))
-  results$returns1 <<- c(results$returns1, mean(posterior.returns1))
-  results$valuefunction <<- c(results$valuefunction, toString(solution$valuefunction.value))
+  results$policy <- c(results$policy, toString(solution$policy))
 
   cat("*****", name, "*****", "\n")
   cat("Mean:", mean(posterior.returns), "\n")
@@ -288,6 +307,9 @@ normalize_transition_probs <- function(mdp){
     inner_join(mdp, by = c('idstatefrom', 'idaction')) %>% 
     mutate(probability = probability / psum) %>% select(-psum)
 }
+
+
+  
 
 ## ---- Bayesian Credible Region -----
 
@@ -359,24 +381,24 @@ init.dist.df <- data.frame(idstate = seq(0,length(init.dist)-1),
                            probability = init.dist)
 
 risk_weight = 1.0
-sol.torbu.milp <- srsolve_mdpo(mdp.bayesian, 
-                               init.dist.df ,
+sol.torbu.milp <- srsolve_mdpo(mdp.bayesian %>% filter(idoutcome == 10) %>% mutate(idoutcome = 0), 
+                               init.dist.df,
                                discount, 
                                alpha = 1-confidence, beta = risk_weight)
 
 print(sol.torbu.milp$policy)
-#report_solution("TORBU-m: ", risk_weight, mdp.bayesian, sol.torbu.milp)
+report_solution("TORBU-m: ", risk_weight, mdp.bayesian, sol.torbu.milp)
 
 
 ## -------- Report results ------------
 
 #x <- "test_population.csv"
 #write.csv2(results,x)
-results <- as.data.frame(results)
-results$method <- factor(results$method, levels=c("s-NORBU", "sa-NORBU", "BCR-l", "RSVF"))
-results$risk_weight <- round(results$risk_weight,2)
+results.df <- as.data.frame(results)
+results.df$method <- factor(results$method, levels=c("s-NORBU", "sa-NORBU", "BCR-l", "RSVF"))
+results.df$risk_weight <- round(results$risk_weight,2)
 plot <-
-    ggplot(results,
+    ggplot(results.df,
            aes(x = avar, y = expected, color = method)) +
     geom_point() +
     geom_path(linetype="dashed") +
