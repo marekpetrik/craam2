@@ -4,6 +4,8 @@ library(ggplot2)
 theme_set(theme_light())
 library(setRNG)
 library(readr)
+library(rjags)
+library(runjags)
 
 error_size <- 0.1
 error_type <- "l1u"
@@ -47,15 +49,10 @@ rewards[5,] <- rewards[5,] - spray.cost * 1.15
 pop.model.mdp <- rcraam::mdp_population(max.population, init.population, 
                                         exp.growth.rate, sd.growth.rate, 
                                         rewards, external.pop, external.pop/2, "logistic")
-
-### ----- Nominal Solution -------------
-
+### ----- Sample from an optimal policy -------------
 
 # solve for the optimal policy
-config <- list(iterations = 50000, progress = FALSE, timeout = 300, precision = 0.1)
-#solmdp <- solve_mdp(mdp, discount,append(config, list(algorithm="pi")))
 mdp_sol <- solve_mdp(pop.model.mdp, discount,show_progress=FALSE)
-cat("done")
 cat("MDP policy:", mdp_sol$policy$idaction, "\n")
 
 # simulate the model
@@ -65,13 +62,17 @@ set.seed(1)
 sim.samples <- simulate_mdp(pop.model.mdp,0,rpolicy,100,5,seed=seed)
 
 ### ------ Fit a model to the solution ---------------------
+
+# IMPORTANT: This fits an exponential model, while 
+#  the baseline model is logistic
+
 set.seed(1)
 sim.samples <- simulate_mdp(pop.model.mdp, init.population, rpolicy, 300, 1,seed=seed)
-library(rjags)
 
 pop <- sim.samples$idstatefrom
 pop.next <- sim.samples$idstateto
 act <- sim.samples$idaction
+
 
 # check if there is a cached posterior dataset
 post_samples <- try({readRDS("postsamples.rds")})
@@ -99,21 +100,19 @@ if(class(post_samples) == "try-error"){
     }
     "
     model_spec <- textConnection(model_str)
-    jags <- jags.model(model_spec,
-                       data = list(pop = pop,
-                                   pop_next = pop.next,
-                                   act = act,
-                                   N = length(pop),
-                                   M = length(unique(act))),
+    pop.jags <- jags.model(model_spec,
+                       data = list(pop = pop, pop_next = pop.next, act = act,
+                                   N = length(pop), M = dim(exp.growth.rate)[1]),
                        n.chains=8,
                        n.adapt=5000)
     
     # warmup
-    update(jags, 10000)
+    update(jags, 20000)
     set.seed(seed)
-    post_samples <- jags.samples(jags,
-                 c('mu', 'mu0',  'mu1', 'mu2', 'sigma', 'ext_mu'),
-                 250)
+    # QUESTION: Is thinning helpful here? This is different from 
+    # uses in which we only care about the statistics
+    post_samples <- jags.samples(jags, c('mu', 'mu0',  'mu1', 'mu2'), 5000, 100)
+    #post_samples <- autorun.jags(jags)
     #set.seed(seed)
     saveRDS(post_samples, file="postsamples.rds")
     
@@ -172,34 +171,42 @@ efficiency_sampled <- matrix(0, nrow = dim(post_samples$mu0)[2] * dim(post_sampl
 
 mdp.bayesian <- try({read_csv("population_bayes_model.csv")})
 
-if(class(mdp.bayesian) == "try-error"){
+if (class(mdp.bayesian) == "try-error") {
     # TODO: This is wrong: this is the true model, which should not be here
-    mdp.bayesian <- rcraam::mdp_population(max.population, init.population,
-                                            exp.growth.rate, sd.growth.rate,
-                                            rewards, external.pop, external.pop/2, "logistic")
-    mdp.bayesian['idoutcome'] <- 0
+    #mdp.bayesian <- rcraam::mdp_population(max.population, init.population,
+    #                                        exp.growth.rate, sd.growth.rate,
+    #                                        rewards, external.pop, external.pop/2, "logistic")
+    #mdp.bayesian['idoutcome'] <- 0
     
+    
+    mdp.bayesian.list <- null
+    mdp.bayesian <- NULL
+    idoutcome <- 0
     #TODO: This code assumes that the variance of the different actions is the same
     # which is a limitation, since that is the only/main difference between the different
     # control actions
-    for(model in 1:dim(post_samples$mu)[2]) { 
-        rates <- matrix(0,ncol=dim(exp.growth.rate)[2],nrow=dim(exp.growth.rate)[1])
+    for (iteration in 1:dim(post_samples$mu)[2]) { 
+        cat(".")
+        # create an empty matrix of rates
+        rates <- matrix(0, ncol = dim(exp.growth.rate)[2],
+                           nrow = dim(exp.growth.rate)[1])
         # TODO: enable this one
-        #for(i in 2:dim(exp.growth.rate)[1]){     # loop over chains 
-            i <- 1  # just use the first chain for now
-            rates[1,j] <- post_samples$mu[1,model,i]
-      	    for(j in 1:dim(exp.growth.rate)[2]){
-        		    rates[,j] <- post_samples$mu0[1,model,i] * j + 
-                    		      post_samples$mu1[1,model,i] * j^2 + 
-                    		      post_samples$mu2[1,model,i] * j^3;
-    	      }
-       #}
-       pop.model.mdp <- rcraam::mdp_population(max.population, init.population,
-                                            rates, sd.growth.rate, rewards, 
-                                            external.pop, external.pop/2, "logistic")
-       pop.model.mdp['idoutcome']=model
-       mdp.bayesian <- rbind(mdp.bayesian,pop.model.mdp)
+        for (chain in 1:dim(post_samples$mu)[3]) {     # loop over chains 
+            rates[1,] <- post_samples$mu[1,iteration,chain]
+    		    rates[2:dim(rates)[1],] <-
+    		                 post_samples$mu0[1,iteration,chain] + 
+                		     post_samples$mu1[1,iteration,chain] * population_range + 
+                		     post_samples$mu2[1,iteration,chain] * population_range^2;
+    		    
+            pop.model.mdp <- rcraam::mdp_population(max.population, init.population,
+                                                  rates, sd.growth.rate, rewards, 
+                                                  external.pop, external.pop/2, "exponential")
+            pop.model.mdp['idoutcome'] <- idoutcome
+            mdp.bayesian <- rbind(mdp.bayesian,pop.model.mdp)
+            idoutcome <- idoutcome + 1
+        }
     }
+    cat("\n")
     write_csv(mdp.bayesian, "population_bayes_model.csv")
 }
 
@@ -308,9 +315,6 @@ normalize_transition_probs <- function(mdp){
     mutate(probability = probability / psum) %>% select(-psum)
 }
 
-
-  
-
 ## ---- Bayesian Credible Region -----
 
 cat("BCR\n")
@@ -374,21 +378,19 @@ if(FALSE){
 gurobi_set_param("OutputFlag", "1")
 gurobi_set_param("LogFile", "/tmp/gurobi.log")
 gurobi_set_param("LogToConsole", "1");
-gurobi_set_param("ConcurrentMIP", "3");
-gurobi_set_param("TimeLimit", "500")
+gurobi_set_param("ConcurrentMIP", "2");
+gurobi_set_param("TimeLimit", "5000")
 
 init.dist.df <- data.frame(idstate = seq(0,length(init.dist)-1),
                            probability = init.dist)
 
 risk_weight = 1.0
-sol.torbu.milp <- srsolve_mdpo(mdp.bayesian %>% filter(idoutcome == 10) %>% mutate(idoutcome = 0), 
-                               init.dist.df,
-                               discount, 
+sol.torbu.milp <- srsolve_mdpo(mdp.bayesian , 
+                               init.dist.df, discount, 
                                alpha = 1-confidence, beta = risk_weight)
 
 print(sol.torbu.milp$policy)
 report_solution("TORBU-m: ", risk_weight, mdp.bayesian, sol.torbu.milp)
-
 
 ## -------- Report results ------------
 
@@ -402,10 +404,13 @@ plot <-
            aes(x = avar, y = expected, color = method)) +
     geom_point() +
     geom_path(linetype="dashed") +
-    geom_text(aes(label=risk_weight), position="jitter")
+    geom_text(aes(label=risk_weight), position="jitter") +
     labs(x = paste0("AVaR(",confidence,")"), y = "Expected")
 
-#print(plot)
+print(plot)
+
+write_csv(results.df, "results_df.csv")
+
 
 
 
