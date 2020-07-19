@@ -189,13 +189,13 @@ public:
     auto begin() const { return actions.cbegin(); }
     auto end() const { return actions.cend(); }
 
-protected:
     /** Returns an existing action */
     const AType& get_action(long actionid) const {
         assert(actionid >= 0 && size_t(actionid) < size());
         return actions[actionid];
     };
 
+protected:
     /** Returns an existing action */
     AType& get_action(long actionid) {
         assert(actionid >= 0 && size_t(actionid) < size());

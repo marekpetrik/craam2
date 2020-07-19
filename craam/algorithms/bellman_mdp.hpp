@@ -193,12 +193,14 @@ public:
             // check whether this state should only be evaluated
             if (initial_policy.empty() || initial_policy[stateid].empty()) { // optimizing
 
-                auto output = value_max_state(mdp[stateid], valuefunction, discount);
-                prec_t newvalue = output.first;
+                auto [newaction, newvalue] =
+                    value_max_state(mdp[stateid], valuefunction, discount);
                 // create the distribution of the appropriate size
                 policy_type action = numvec(mdp[stateid].size());
-                // assign a deterministic policy
-                action[output.second] = 1.0;
+                // assign a deterministic policy (newaction == -1 means the
+                // state is terminal)
+                assert((!action.empty()) ^ (newaction < 0));
+                if (newaction >= 0) action[newaction] = 1.0;
 
                 return make_pair(newvalue, action);
             } else { // fixed-action, do not copy
@@ -497,8 +499,8 @@ public:
     size_t state_count() const { return mdp.size(); }
 
     /**
-     * Computes the Bellman update. If an action is not taken then the transitions for the corresponding
-     * action will have length 0.
+     * Computes the Bellman update. If an action is not taken then the transitions for the
+     * corresponding action will have length 0.
      *
      * @param solution Solution to update
      * @param state State for which to compute the Bellman update
@@ -517,7 +519,7 @@ public:
 
         const State& state = mdp[stateid];
 
-        if (state.is_terminal()) return make_pair(-1, make_pair(numvec(0), numvecvec(0)));
+        if (state.is_terminal()) return make_pair(0, make_pair(numvec(0), numvecvec(0)));
 
         // check whether this state should only be evaluated or also optimized
         numvec init_policy =
@@ -625,4 +627,5 @@ public:
 
     // **** END: Bellman Interface Methods  ********
 };
+
 }} // namespace craam::algorithms

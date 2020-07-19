@@ -26,6 +26,7 @@
 #include "craam/Transition.hpp"
 #include "craam/definitions.hpp"
 #include "craam/optimization/bisection.hpp"
+#include "craam/optimization/gurobi.hpp"
 #include "craam/optimization/optimization.hpp"
 #include "craam/optimization/srect_gurobi.hpp"
 #include <functional>
@@ -143,8 +144,6 @@ public:
  *
  *  beta * var_alpha[X] + (1-beta) * E[x]
  *
- * NOTE: this method does not guarantee convergence when var is not
- * convex (usually not convex)!
  */
 class robust_var_exp_u {
 protected:
@@ -297,7 +296,7 @@ public:
    * @param budgets Budgets, with a single value for each MDP state and action
    */
     robust_l1w_gurobi(vector<numvec> budgets) : budgets(move(budgets)), weights(0) {
-        env = make_shared<GRBEnv>();
+        env = get_gurobi();
         // make sure it is run in a single thread so it can be parallelized
         env->set(GRB_IntParam_OutputFlag, 0);
         env->set(GRB_IntParam_Threads, 1);
@@ -312,7 +311,7 @@ public:
    */
     robust_l1w_gurobi(vector<numvec> budgets, vector<vector<numvec>> weights)
         : budgets(move(budgets)), weights(move(weights)) {
-        env = make_shared<GRBEnv>();
+        env = get_gurobi();
         // make sure it is run in a single thread so it can be parallelized
         env->set(GRB_IntParam_OutputFlag, 0);
         env->set(GRB_IntParam_Threads, 1);
@@ -429,8 +428,6 @@ protected:
 
 public:
     robust_s_l1(numvec budgets) : budgets(move(budgets)) {}
-
-    robust_s_l1(numvec budgets, vector<numvec> weights_a) : budgets(move(budgets)) {}
 
     /**
      * Implements SNature interface
@@ -558,6 +555,7 @@ public:
     }
 };
 
+// --------------- GUROBI BEGIN ----------------------------
 #ifdef GUROBI_USE
 
 /**
@@ -576,7 +574,7 @@ public:
    * @param budgets Budgets, with a single value for each MDP state
    */
     robust_s_l1_gurobi(numvec budgets) : budgets(move(budgets)) {
-        env = make_shared<GRBEnv>();
+        env = get_gurobi();
         // make sure it is run in a single thread so it can be parallelized
         env->set(GRB_IntParam_OutputFlag, 0);
         env->set(GRB_IntParam_Threads, 1);
@@ -622,7 +620,7 @@ public:
 
         // make sure that the states and nature have the same number of elements
         assert(actiondist.size() == new_probability.size());
-        return make_tuple(move(actiondist), move(new_probability), outcome);
+        return {move(actiondist), move(new_probability), outcome};
     }
 };
 
@@ -653,7 +651,7 @@ public:
 
         assert(this->weights.size() == this->budgets.size());
 
-        env = make_shared<GRBEnv>();
+        env = get_gurobi();
         // make sure it is run in a single thread so it can be parallelized
         env->set(GRB_IntParam_OutputFlag, 0);
         env->set(GRB_IntParam_Threads, 1);
@@ -694,6 +692,8 @@ public:
 
         assert(actiondist.size() == zvalues.size());
 
+        // use the fast method once the budgets have been calculated (avoids
+        // having to solve the gurobi dual)
         vector<numvec> new_probability;
         new_probability.reserve(actiondist.size());
         for (size_t a = 0; a < nominalprobs.size(); a++) {
@@ -710,6 +710,50 @@ public:
     };
 };
 
+class robust_s_avar_exp_u_gurobi {
+protected:
+    /// a single risk-level for all states, must be in [0,1)
+    prec_t alpha;
+    /// a single beta for all states, must be in [0,1]
+    prec_t beta;
+
+    shared_ptr<GRBEnv> env;
+
+public:
+    /**
+     * Constructs the Gurobi enviroment and initializes variables.
+     *
+     * The objective is lambda * AVaR_alpha [Z] + (1 - lambda) Exp [Z]
+     *
+     * @param alpha Risk level of avar (0 = worst-case)
+     * @param beta Weight on AVaR and the complement (1-lambda) is the weight
+     * on expectation
+     */
+    robust_s_avar_exp_u_gurobi(prec_t alpha, prec_t beta) : alpha(alpha), beta(beta) {
+        env = get_gurobi();
+        // make sure it is run in a single thread so it can be parallelized
+        env->set(GRB_IntParam_OutputFlag, 0);
+        env->set(GRB_IntParam_Threads, 1);
+    }
+
+    /**
+     * Implements SNatureOutcome interface
+     */
+    tuple<numvec, numvec, prec_t> operator()(long stateid, const numvec& policy,
+                                             const numvec& nominalprobs,
+                                             const numvecvec& zvalues) const {
+        assert(zvalues.size() > 0);
+        assert(zvalues[0].size() == nominalprobs.size());
+        //std::cout << zvalues.size() << std::endl << policy.size() << std::endl;
+        assert(policy.empty() || zvalues.size() == policy.size());
+
+        auto [objective, opt_policy, opt_nature] =
+            srect_avar_exp(*env, zvalues, nominalprobs, alpha, beta, policy);
+
+        return {move(opt_policy), move(opt_nature), objective};
+    }
+};
+
 class robust_s_linf_gurobi {
 protected:
     // a budget for every state
@@ -718,12 +762,12 @@ protected:
 
 public:
     /**
-       * Automatically constructs a gurobi environment object. Weights are uniform
-       * when not provided
-       * @param budgets Budgets, with a single value for each MDP state
-       */
+     * Automatically constructs a gurobi environment object. Weights are uniform
+     * when not provided
+     * @param budgets Budgets, with a single value for each MDP state
+     */
     robust_s_linf_gurobi(numvec budgets) : budgets(move(budgets)) {
-        env = make_shared<GRBEnv>();
+        env = get_gurobi();
         // make sure it is run in a single thread so it can be parallelized
         env->set(GRB_IntParam_OutputFlag, 0);
         env->set(GRB_IntParam_Threads, 1);
@@ -779,4 +823,6 @@ public:
     }
 };
 #endif // GUROBI_USE
-}}}    // namespace craam::algorithms::nats
+// --------------- GUROBI END ----------------------------
+
+}}} // namespace craam::algorithms::nats

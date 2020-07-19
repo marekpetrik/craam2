@@ -53,7 +53,7 @@ inline DetermSolution solve_lp_primal(const GRBEnv& env, const MDP& mdp,
     const double inf = std::numeric_limits<prec_t>::infinity();
     const auto nstates = mdp.size();
 
-    // just quit if there are no states
+    // just quit when there are no states
     if (nstates == 0) { return DetermSolution(0, 0); }
     // time the computation
     auto start = chrono::steady_clock::now();

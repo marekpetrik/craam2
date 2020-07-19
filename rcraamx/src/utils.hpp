@@ -45,8 +45,8 @@ inline Rcpp::IntegerVector as_intvec(const craam::indvec& intvector) {
  * Constructs a data frame from the MDP definition
  */
 inline Rcpp::DataFrame mdp_to_dataframe(const craam::MDP& mdp) {
-    Rcpp::IntegerVector idstatefrom, idaction, idstateto;
-    Rcpp::NumericVector probability, reward;
+    craam::indvec idstatefrom, idaction, idstateto;
+    craam::numvec probability, reward;
 
     for (size_t i = 0; i < mdp.size(); i++) {
         const auto& state = mdp[i];
@@ -59,6 +59,8 @@ inline Rcpp::DataFrame mdp_to_dataframe(const craam::MDP& mdp) {
             const auto& probabilities = tran.get_probabilities();
             //idstateto
             for (size_t l = 0; l < tran.size(); l++) {
+                //std::cout << "processing " << i << ", " << j << ", " << l << std::endl;
+
                 idstatefrom.push_back(i);
                 idaction.push_back(j);
                 idstateto.push_back(indices[l]);
@@ -67,7 +69,6 @@ inline Rcpp::DataFrame mdp_to_dataframe(const craam::MDP& mdp) {
             }
         }
     }
-
     return Rcpp::DataFrame::create(
         Rcpp::Named("idstatefrom") = idstatefrom, Rcpp::Named("idaction") = idaction,
         Rcpp::Named("idstateto") = idstateto, Rcpp::Named("probability") = probability,
@@ -81,10 +82,22 @@ inline Rcpp::DataFrame mdp_to_dataframe(const craam::MDP& mdp) {
 inline Rcpp::NumericMatrix as_matrix(const Eigen::MatrixXd& matrix) {
     Rcpp::NumericMatrix result(matrix.rows(), matrix.cols());
 
-    for (size_t i = 0; i < matrix.rows(); i++) {
-        for (size_t j = 0; j < matrix.cols(); j++) {
+    for (long i = 0; i < matrix.rows(); i++) {
+        for (long j = 0; j < matrix.cols(); j++) {
             result(i, j) = matrix(i, j);
         }
+    }
+    return result;
+}
+
+/**
+ * Constructs an R vector from an Eigen vector.
+ */
+inline Rcpp::NumericVector as_vector(const Eigen::VectorXd& vector) {
+    Rcpp::NumericVector result(vector.size());
+
+    for (long i = 0; i < vector.size(); ++i) {
+        result(i) = vector(i);
     }
     return result;
 }
@@ -195,6 +208,8 @@ inline craam::numvecvec frame2matrix(const Rcpp::DataFrame& frame, uint dim1, ui
  * @param def_value The default value for when frame does not
  *                  specify anything for the state action pair
  * @param value_column Name of the column with the value
+ * @param param_name The name of the parameter which is being parsed.
+ *                  This is used for error reporting.
  *
  * @tparam T Type of the value to parse
  *
@@ -203,16 +218,25 @@ inline craam::numvecvec frame2matrix(const Rcpp::DataFrame& frame, uint dim1, ui
 template <class T>
 inline std::vector<T> parse_s_values(size_t statecount, const Rcpp::DataFrame& frame,
                                      T def_value = 0,
-                                     const std::string& value_column = "value") {
+                                     const std::string& value_column = "value",
+                                     const std::string& param_name = "") {
     std::vector<T> result(statecount);
     Rcpp::IntegerVector idstates = frame["idstate"];
     Rcpp::NumericVector values = frame[value_column];
     for (long i = 0; i < idstates.size(); i++) {
         long idstate = idstates[i];
 
-        if (idstate < 0) Rcpp::stop("idstate must be non-negative");
-        if (idstate > statecount)
-            Rcpp::stop("idstate must be smaller than the number of MDP states");
+        if (idstate < 0) {
+            Rcpp::stop(
+                "idstate must be non-negative" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
+        }
+
+        if (idstate >= statecount) {
+            Rcpp::stop(
+                "idstate must be smaller than the number of MDP states" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
+        }
 
         result[idstate] = values[i];
     }
@@ -220,24 +244,29 @@ inline std::vector<T> parse_s_values(size_t statecount, const Rcpp::DataFrame& f
 }
 
 /**
-* Parses a data frame definition of values that correspond to states and
-* actions.
-*
-* Also checks whether the values passed are consistent with the MDP definition.
-*
-* @param mdp The definition of the MDP to know how many states and actions there are.
-* @param frame Dataframe with 3 comlumns, idstate, idaction, value. Here, idstate and idaction
-*              determine which value should be set.
-*              Only the last value is used if multiple rows are present.
-* @param def_value The default value for when frame does not specify anything for the state action pair
-* @param val_name Name of the value column
-*
-* @returns A vector over states with an inner vector of actions
-*/
-inline craam::numvecvec parse_sa_values(const craam::MDP& mdp,
-                                        const Rcpp::DataFrame& frame,
+ * Parses a data frame definition of values that correspond to states and
+ * actions.
+ *
+ * Also checks whether the values passed are consistent with the MDP definition.
+ *
+ * @param mdp The definition of the MDP to know how many states and actions there are.
+ * @param frame Dataframe with 3 comlumns, idstate, idaction, value. Here, idstate and idaction
+ *              determine which value should be set.
+ *              Only the last value is used if multiple rows are present.
+ * @param def_value The default value for when frame does not specify anything for the state action pair
+ * @param val_name Name of the value column
+ * @param param_name The name of the parameter which is being parsed.
+ *                  This is used for error reporting.
+ *
+ * @tparam M It is either and MDP or MDPO
+ *
+ * @returns A vector over states with an inner vector of actions
+ */
+template <typename M>
+inline craam::numvecvec parse_sa_values(const M& mdp, const Rcpp::DataFrame& frame,
                                         double def_value = 0,
-                                        const std::string val_name = "value") {
+                                        const std::string& val_name = "value",
+                                        const std::string& param_name = "") {
 
     craam::numvecvec result(mdp.size());
     for (long i = 0; i < mdp.size(); i++) {
@@ -250,13 +279,23 @@ inline craam::numvecvec parse_sa_values(const craam::MDP& mdp,
     for (long i = 0; i < idstates.size(); i++) {
         long idstate = idstates[i], idaction = idactions[i];
 
-        if (idstate < 0) Rcpp::stop("idstate must be non-negative");
-        if (idstate > mdp.size())
-            Rcpp::stop("idstate must be smaller than the number of MDP states");
-        if (idaction < 0) Rcpp::stop("idaction must be non-negative");
-        if (idaction > mdp[idstate].size())
-            Rcpp::stop("idaction must be smaller than the number of actions for the "
-                       "corresponding state");
+        if (idstate < 0)
+            Rcpp::stop(
+                "idstate must be non-negative" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
+        if (idstate >= mdp.size())
+            Rcpp::stop(
+                "idstate must be smaller than the number of MDP states" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
+        if (idaction < 0)
+            Rcpp::stop(
+                "idaction must be non-negative" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
+        if (idaction >= mdp[idstate].size())
+            Rcpp::stop(
+                "idaction must be smaller than the number of actions for the "
+                "corresponding state" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
 
         double value = values[i];
         result[idstate][idaction] = value;
@@ -278,12 +317,15 @@ inline craam::numvecvec parse_sa_values(const craam::MDP& mdp,
  * @param def_value The default value for when frame does not specify anything for
  *              the state action pair
  * @param val_name Name of the value column
+ * @param param_name The name of the parameter which is being parsed.
+ *                  This is used for error reporting.
  *
  * @return A vector over states, action, with an inner vector of actions
  */
 inline std::vector<craam::numvecvec>
 parse_sas_values(const craam::MDP& mdp, const Rcpp::DataFrame& frame,
-                 double def_value = 0, const std::string val_name = "value") {
+                 double def_value = 0, const std::string& val_name = "value",
+                 const std::string& param_name = "") {
 
     std::vector<craam::numvecvec> result(mdp.size());
     for (long i = 0; i < mdp.size(); i++) {
@@ -294,33 +336,43 @@ parse_sas_values(const craam::MDP& mdp, const Rcpp::DataFrame& frame,
         }
     }
 
-    Rcpp::IntegerVector idstatesfrom = frame["idstatefrom"],
-                        idactions = frame["idaction"], idstatesto = frame["idstateto"];
-    Rcpp::NumericVector values = frame[val_name];
+    craam::indvec idstatesfrom = frame["idstatefrom"], idactions = frame["idaction"],
+                  idstatesto = frame["idstateto"];
+    craam::numvec values = frame[val_name];
 
     for (long i = 0; i < idstatesfrom.size(); i++) {
         long idstatefrom = idstatesfrom[i], idstateto = idstatesto[i],
              idaction = idactions[i];
 
         if (idstatefrom < 0) {
-            Rcpp::warning("idstatefrom must be non-negative");
+            Rcpp::warning(
+                "idstatefrom must be non-negative" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
             continue;
         }
-        if (idstatefrom > mdp.size()) {
-            Rcpp::warning("idstatefrom must be smaller than the number of MDP states");
+        if (idstatefrom >= mdp.size()) {
+            Rcpp::warning(
+                "idstatefrom must be smaller than the number of MDP states" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
             continue;
         }
         if (idaction < 0) {
-            Rcpp::warning("idaction must be non-negative");
+            Rcpp::warning(
+                "idaction must be non-negative" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
             continue;
         }
-        if (idaction > mdp[idstatefrom].size()) {
-            Rcpp::warning("idaction must be smaller than the number of actions for the "
-                          "corresponding state");
+        if (idaction >= mdp[idstatefrom].size()) {
+            Rcpp::warning(
+                "idaction must be smaller than the number of actions for the "
+                "corresponding state" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
             continue;
         }
         if (idstateto < 0) {
-            Rcpp::warning("idstateto must be non-negative");
+            Rcpp::warning(
+                "idstateto must be non-negative" +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
             continue;
         }
 
@@ -329,10 +381,11 @@ parse_sas_values(const craam::MDP& mdp, const Rcpp::DataFrame& frame,
         //     << endl;
 
         if (indexto < 0) {
-            Rcpp::warning("idstateto must be one of the states with non-zero probability."
-                          "idstatefrom = " +
-                          std::to_string(idstatefrom) +
-                          ", idaction = " + std::to_string(idaction));
+            Rcpp::warning(
+                "idstateto must be one of the states with non-zero probability."
+                "idstatefrom = " +
+                std::to_string(idstatefrom) + ", idaction = " + std::to_string(idaction) +
+                (param_name.empty() ? "." : " in parameter '" + param_name + "'."));
         } else {
             result[idstatefrom][idaction][indexto] = values[i];
         }
@@ -356,8 +409,8 @@ inline Rcpp::DataFrame sanature_todataframe(const craam::MDP& mdp,
         throw std::runtime_error("invalid number of states.");
 
     // construct output vectors
-    Rcpp::IntegerVector out_statefrom, out_action, out_stateto;
-    Rcpp::NumericVector out_prob;
+    craam::indvec out_statefrom, out_action, out_stateto;
+    craam::numvec out_prob;
 
     // iterate over states
     for (size_t idstate = 0; idstate < mdp.size(); ++idstate) {
@@ -406,8 +459,8 @@ inline Rcpp::DataFrame sanature_out_todataframe(const craam::MDPO& mdpo,
         throw std::runtime_error("invalid number of states.");
 
     // construct output vectors
-    Rcpp::IntegerVector out_statefrom, out_action, out_outcome;
-    Rcpp::NumericVector out_prob;
+    craam::indvec out_statefrom, out_action, out_outcome;
+    craam::numvec out_prob;
 
     // iterate over states
     for (size_t idstate = 0; idstate < mdpo.size(); ++idstate) {
@@ -442,6 +495,44 @@ inline Rcpp::DataFrame sanature_out_todataframe(const craam::MDPO& mdpo,
 
 /**
  * Turns the definition of the sas nature output to a dataframe
+ *
+ * @param mdp The definition of the mdp, needed to parse which transitions are possible
+ *              from a given state and action
+ * @param nature A vector over: state-from, action, outcome
+ *
+ * @return DataFrame with outcome weights for each states
+ */
+inline Rcpp::DataFrame output_snature(const craam::MDPO& mdpo,
+                                      const craam::numvecvec& nature) {
+
+    if (nature.size() != mdpo.size())
+        throw std::runtime_error("invalid number of states.");
+
+    // construct output vectors
+    craam::indvec out_statefrom, out_outcome;
+    craam::numvec out_prob;
+
+    // iterate over states
+    for (size_t idstate = 0; idstate < mdpo.size(); ++idstate) {
+        const auto& nature_state = nature[idstate];
+        // skip terminal states that have no outcomes
+        if (nature_state.empty()) continue;
+
+        // iterate over all state tos
+        for (size_t idoutcome = 0; idoutcome < nature_state.size(); ++idoutcome) {
+            out_statefrom.push_back(idstate);
+            out_outcome.push_back(idoutcome);
+            out_prob.push_back(nature[idstate][idoutcome]);
+        }
+    }
+
+    return Rcpp::DataFrame::create(Rcpp::_["idstatefrom"] = out_statefrom,
+                                   Rcpp::_["idoutcome"] = out_outcome,
+                                   Rcpp::_["probability"] = out_prob);
+}
+
+/**
+ * Turns the definition of the sas nature output to a dataframe
  * @param mdp The definition of the mdp, needed to parse which transitions are possible
  *              from a given state and action
  * @param nature A vector over: state-from, action, state-to
@@ -455,8 +546,8 @@ sasnature_todataframe(const craam::MDP& mdp,
         throw std::runtime_error("invalid number of states.");
 
     // construct output vectors
-    Rcpp::IntegerVector out_statefrom, out_action, out_stateto;
-    Rcpp::NumericVector out_prob;
+    craam::indvec out_statefrom, out_action, out_stateto;
+    craam::numvec out_prob;
 
     // iterate over states
     for (size_t idstate = 0; idstate < mdp.size(); ++idstate) {

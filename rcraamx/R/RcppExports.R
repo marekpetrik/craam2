@@ -6,6 +6,9 @@
 #' @param value Random variable (objective)
 #' @param reference_dst Reference distribution of the same size as value
 #' @param budget Maximum L1 distance from the reference dst
+#'
+#' @returns A list with dst as the worstcase distribution,
+#'         and value as the objective
 worstcase_l1 <- function(value, reference_dst, budget) {
     .Call(`_rcraam_worstcase_l1`, value, reference_dst, budget)
 }
@@ -15,12 +18,19 @@ worstcase_l1 <- function(value, reference_dst, budget) {
 #' @param value Random variable (as a vector over realizations)
 #' @param reference_dst Reference distribution of the same size as value
 #' @param alpha Confidence value. 0 is worst case, 1 is average
+#'
+#' @returns A list with dst as the distorted distribution,
+#'          and value as the avar value
 avar <- function(value, reference_dst, alpha) {
     .Call(`_rcraam_avar`, value, reference_dst, alpha)
 }
 
 pack_actions <- function(mdp) {
     .Call(`_rcraam_pack_actions`, mdp)
+}
+
+mdp_clean <- function(mdp) {
+    .Call(`_rcraam_mdp_clean`, mdp)
 }
 
 #' Solves a plain Markov decision process.
@@ -33,25 +43,27 @@ pack_actions <- function(mdp) {
 #'            after taking an action a. The columns are:
 #'            idstatefrom, idaction, idstateto, probability, reward
 #' @param discount Discount factor in [0,1]
-#' @param algorithm One of "mpi", "vi", "vi_j", "pi". Also supports "lp"
+#' @param algorithm One of "mpi", "vi", "vi_j", "vi_g", "pi". Also supports "lp"
 #'           when Gurobi is properly installed
 #' @param policy_fixed States for which the  policy should be fixed. This
 #'          should be a dataframe with columns idstate and idaction. The policy
 #'          is optimized only for states that are missing, and the fixed policy
-#'          is used otherwise
+#'          is used otherwise. Both indices are 0-based.
 #' @param maxresidual Residual at which to terminate
 #' @param iterations Maximum number of iterations
 #' @param timeout Maximum number of secods for which to run the computation
+#' @param value_init A  dataframe that contains the initial value function used
+#'          to initialize the method. The columns should be idstate and value.
+#'          Any states that are not provided are initialized to 0.
 #' @param pack_actions Whether to remove actions with no transition probabilities,
 #'          and rename others for the same state to prevent gaps. The policy
 #'          for the original actions can be recovered using ``action_map'' frame
 #'          in the result
-#' @param output_tran Whether to construct and return a matrix of transition
-#'          probabilites and a vector of rewards
-#' @param show_progress Whether to show a progress bar during the computation
+#' @param show_progress Whether to show a progress bar during the computation.
+#'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 #' @return A list with value function policy and other values
-solve_mdp <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
-    .Call(`_rcraam_solve_mdp`, mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress)
+solve_mdp <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, pack_actions = FALSE, show_progress = 1L) {
+    .Call(`_rcraam_solve_mdp`, mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, pack_actions, show_progress)
 }
 
 #' Solves a plain Markov decision process with randomized policies.
@@ -64,7 +76,7 @@ solve_mdp <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, max
 #'            after taking an action a. The columns are:
 #'            idstatefrom, idaction, idstateto, probability, reward
 #' @param discount Discount factor in [0,1]
-#' @param algorithm One of "mpi", "vi", "vi_j", "pi"
+#' @param algorithm One of "mpi", "vi", "vi_j", "vi_g", "pi"
 #' @param policy_fixed States for which the  policy should be fixed. This
 #'         should be a dataframe with columns idstate, idaction, probability.
 #'          The policy is optimized only for states that are missing, and the
@@ -72,13 +84,15 @@ solve_mdp <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, max
 #' @param maxresidual Residual at which to terminate
 #' @param iterations Maximum number of iterations
 #' @param timeout Maximum number of secods for which to run the computation
-#' @param output_tran Whether to construct and return a matrix of transition
-#'          probabilites and a vector of rewards
+#' @param value_init A  dataframe that contains the initial value function used
+#'          to initialize the method. The columns should be idstate and value.
+#'          Any states that are not provided are initialized to 0.
 #' @param show_progress Whether to show a progress bar during the computation
+#'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 #'
 #' @return A list with value function policy and other values
-solve_mdp_rand <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, output_tran = FALSE, show_progress = TRUE) {
-    .Call(`_rcraam_solve_mdp_rand`, mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, output_tran, show_progress)
+solve_mdp_rand <- function(mdp, discount, algorithm = "mpi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, show_progress = 1L) {
+    .Call(`_rcraam_solve_mdp_rand`, mdp, discount, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, show_progress)
 }
 
 #' Computes the function for the MDP for the given value function and discount factor
@@ -116,7 +130,7 @@ compute_qvalues <- function(mdp, discount, valuefunction) {
 #' @param nature Algorithm used to select the robust outcome. See details for options.
 #' @param nature_par Parameters for the nature. Varies depending on the nature.
 #'                   See details for options.
-#' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "pi". MPI and PI may
+#' @param algorithm One of "ppi", "mppi", "vppi", "mpi", "vi", "vi_j", "vi_g", "pi". MPI and PI may
 #'           may not converge
 #' @param policy_fixed States for which the  policy should be fixed. This
 #'          should be a dataframe with columns idstate and idaction. The policy
@@ -125,13 +139,17 @@ compute_qvalues <- function(mdp, discount, valuefunction) {
 #' @param maxresidual Residual at which to terminate
 #' @param iterations Maximum number of iterations
 #' @param timeout Maximum number of secods for which to run the computation
+#' @param value_init A  dataframe that contains the initial value function used
+#'          to initialize the method. The columns should be idstate and value.
+#'          Any states that are not provided are initialized to 0.
 #' @param pack_actions Whether to remove actions with no transition probabilities,
 #'          and rename others for the same state to prevent gaps. The policy
 #'          for the original actions can be recovered using ``action_map'' frame
 #'          in the result
 #' @param output_tran Whether to construct and return a matrix of transition
 #'          probabilites and a vector of rewards
-#' @param show_progress Whether to show a progress bar during the computation
+#' @param show_progress Whether to show a progress bar during the computation.
+#'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 #'
 #' @return A list with value function policy and other values
 #'
@@ -154,20 +172,20 @@ compute_qvalues <- function(mdp, discount, valuefunction) {
 #'                 nature_par is a list with parameters (alpha, beta). The worst-case
 #'                 response is computed as:
 #'                 beta * var [z] + (1-beta) * E[z], where
-#'                 var is inf{x \in R : P[X <= x] >= alpha}, with alpha = 0 being the
+#'                 var is inf{x in R : P[X <= x] >= alpha}, with alpha = 0 being the
 #'                 worst-case.
 #'         \item "evaru" a convex combination of expectation and AV@R over
 #'                 transition probabilites. Uniform over states
 #'                 nature_par is a list with parameters (alpha, beta). The worst-case
 #'                 response is computed as:
 #'                 beta * var [z] + (1-beta) * E[z], where
-#'                 var is AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )
+#'                 var is AVaR(z,alpha) = 1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a])
 #'                 where I is the indicator function and
-#'                 x_a = inf{x \in R : P[X <= x] >= alpha} being the
+#'                 x_a = inf{x in R : P[X <= x] >= alpha} being the
 #'                 worst-case.
 #'    }
-rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
-    .Call(`_rcraam_rsolve_mdp_sa`, mdp, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress)
+rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, pack_actions = FALSE, output_tran = FALSE, show_progress = 1L) {
+    .Call(`_rcraam_rsolve_mdp_sa`, mdp, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, pack_actions, output_tran, show_progress)
 }
 
 #' Solves a robust Markov decision process with state-action rectangular
@@ -181,7 +199,7 @@ rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi",
 #' The algorithms ppi and mppi are guaranteed to converge to an optimal solution.
 #'
 #'
-#' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "pi". MPI may
+#' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "vi_g", "pi". MPI may
 #'           may not converge
 #' @param policy_fixed States for which the  policy should be fixed. This
 #'          should be a dataframe with columns idstate and idaction. The policy
@@ -190,13 +208,17 @@ rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi",
 #' @param maxresidual Residual at which to terminate
 #' @param iterations Maximum number of iterations
 #' @param timeout Maximum number of secods for which to run the computation
+#' @param value_init A  dataframe that contains the initial value function used
+#'          to initialize the method. The columns should be idstate and value.
+#'          Any states that are not provided are initialized to 0.
 #' @param pack_actions Whether to remove actions with no transition probabilities,
 #'          and rename others for the same state to prevent gaps. The policy
 #'          for the original actions can be recovered using ``action_map'' frame
 #'          in the result
 #' @param output_tran Whether to construct and return a matrix of transition
 #'          probabilites and a vector of rewards
-#' @param show_progress Whether to show a progress bar during the computation
+#' @param show_progress Whether to show a progress bar during the computation.
+#'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 #'
 #' @return A list with value function policy and other values
 #'
@@ -212,7 +234,7 @@ rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi",
 #'                 beta * var [z] + (1-beta) * E[z], where
 #'                 var is \eqn{VaR(z,\alpha) = \inf{x \in R : P[X <= x] >= \alpha}}, with \eqn{\alpha = 0} being the
 #'                 worst-case.
-#'         \item "evaru" a convex combination of expectation and AV@R over
+#'         \item "eavaru" a convex combination of expectation and AV@R over
 #'                 transition probabilites. Uniform over states
 #'                 nature_par is a list with parameters (alpha, beta). The worst-case
 #'                 response is computed as:
@@ -222,8 +244,8 @@ rsolve_mdp_sa <- function(mdp, discount, nature, nature_par, algorithm = "mppi",
 #'                 \eqn{x_a = \inf{x \in R : P[X <= x] >= \alpha}} being the
 #'                 worst-case.
 #'    }
-rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
-    .Call(`_rcraam_rsolve_mdpo_sa`, mdpo, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress)
+rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, pack_actions = FALSE, output_tran = FALSE, show_progress = 1L) {
+    .Call(`_rcraam_rsolve_mdpo_sa`, mdpo, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, pack_actions, output_tran, show_progress)
 }
 
 #' Solves a robust Markov decision process with state rectangular
@@ -238,7 +260,7 @@ rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi
 #' are provided in the mdp dataframe, even when the transition
 #' probability to those states is 0.
 #'
-#' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "pi". MPI may
+#' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "v_g", "pi". MPI may
 #'           may not converge
 #' @param policy_fixed States for which the  policy should be fixed. This
 #'          should be a dataframe with columns idstate and idaction. The policy
@@ -247,13 +269,17 @@ rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi
 #' @param maxresidual Residual at which to terminate
 #' @param iterations Maximum number of iterations
 #' @param timeout Maximum number of secods for which to run the computation
+#' @param value_init A  dataframe that contains the initial value function used
+#'          to initialize the method. The columns should be idstate and value.
+#'          Any states that are not provided are initialized to 0.
 #' @param pack_actions Whether to remove actions with no transition probabilities,
 #'          and rename others for the same state to prevent gaps. The policy
 #'          for the original actions can be recovered using ``action_map'' frame
 #'          in the result
 #' @param output_tran Whether to construct and return a matrix of transition
 #'          probabilites and a vector of rewards
-#' @param show_progress Whether to show a progress bar during the computation
+#' @param show_progress Whether to show a progress bar during the computation.
+#'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 #'
 #' @return A list with value function policy and other values
 #' @details
@@ -271,8 +297,61 @@ rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi
 #'                 and weights must be a dataframe with columns:
 #'                 idstatefrom, idaction, idstateto, weight (for the l1 weighted norms)
 #'    }
-rsolve_mdp_s <- function(mdp, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE) {
-    .Call(`_rcraam_rsolve_mdp_s`, mdp, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, pack_actions, output_tran, show_progress)
+rsolve_mdp_s <- function(mdp, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, pack_actions = FALSE, output_tran = FALSE, show_progress = 1L) {
+    .Call(`_rcraam_rsolve_mdp_s`, mdp, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, pack_actions, output_tran, show_progress)
+}
+
+#' Solves a robust Markov decision process with state-action rectangular
+#' ambiguity sets.
+#'
+#' The worst-case is computed across the outcomes and not
+#' the actual transition probabilities.
+#'
+#' NOTE: The algorithms  mpi and pi may cycle infinitely without converging to a solution,
+#' when solving a robust MDP.
+#' The algorithms ppi and mppi are guaranteed to converge to an optimal solution.
+#'
+#'
+#' @param algorithm One of "ppi", "mppi", "mpi", "vi", "vi_j", "vi_g", "pi". MPI may
+#'           may not converge
+#' @param policy_fixed States for which the  policy should be fixed. This
+#'          should be a dataframe with columns idstate and idaction. The policy
+#'          is optimized only for states that are missing, and the fixed policy
+#'          is used otherwise
+#' @param maxresidual Residual at which to terminate
+#' @param iterations Maximum number of iterations
+#' @param timeout Maximum number of secods for which to run the computation
+#' @param value_init A  dataframe that contains the initial value function used
+#'          to initialize the method. The columns should be idstate and value.
+#'          Any states that are not provided are initialized to 0.
+#' @param pack_actions Whether to remove actions with no transition probabilities,
+#'          and rename others for the same state to prevent gaps. The policy
+#'          for the original actions can be recovered using ``action_map'' frame
+#'          in the result
+#' @param output_tran Whether to construct and return a matrix of transition
+#'          probabilites and a vector of rewards
+#' @param show_progress Whether to show a progress bar during the computation.
+#'         0 means no progress, 1 is progress bar, and 2 is a detailed report
+#'
+#' @return A list with value function policy and other values
+#'
+#' @details
+#'
+#' The options for nature and the corresponding nature_par are:
+#'    \itemize{
+#'         \item "exp" plain expectation over the outcomes
+#'         \item "eavaru" a convex combination of expectation and AV@R over
+#'                 transition probabilites. Uniform over states
+#'                 nature_par is a list with parameters (alpha, beta). The worst-case
+#'                 response is computed as:
+#'                 beta * var [z] + (1-beta) * E[z], where
+#'                 var is \eqn{AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )}
+#'                 where I is the indicator function and
+#'                 \eqn{x_a = \inf{x \in R : P[X <= x] >= \alpha}} being the
+#'                 worst-case.
+#'    }
+rsolve_mdpo_s <- function(mdpo, discount, nature, nature_par, algorithm = "mppi", policy_fixed = NULL, maxresidual = 10e-4, iterations = 10000L, timeout = 300, value_init = NULL, pack_actions = FALSE, output_tran = FALSE, show_progress = 1L) {
+    .Call(`_rcraam_rsolve_mdpo_s`, mdpo, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, pack_actions, output_tran, show_progress)
 }
 
 set_rcraam_threads <- function(n) {
@@ -283,6 +362,47 @@ set_rcraam_threads <- function(n) {
 #'
 mdp_from_samples <- function(samples_frame) {
     .Call(`_rcraam_mdp_from_samples`, samples_frame)
+}
+
+#' Constructs the linear programming matrix for the MDP
+#'
+#' The method can construct the LP matrix for the MDP, which is defined as
+#' follows:
+#' A = [I - gamma P_1; I - gamma P_2; ...] where P_a is the transition
+#' probability for action_a. It also constructs the corresponding vector of rewards
+#'
+#'
+#' @param mdp A dataframe representation of the MDP. Each row
+#'            represents a single transition from one state to another
+#'            after taking an action a. The columns are:
+#'            idstatefrom, idaction, idstateto, probability, reward
+#' @param discount Discount factor in [0,1]
+#'
+#' @return A list with entries A, b, and idstateaction which is a dataframe with
+#'         row_index (1-based), stateid (0-based), actionid (0-based) that
+#'         identifies the state and action for each row of the output
+matrix_mdp_lp <- function(mdp, discount) {
+    .Call(`_rcraam_matrix_mdp_lp`, mdp, discount)
+}
+
+#' Constructs transition probability matrix the MDP
+#'
+#' The method constructs the transition probability matrix (stochastic matrix)  P_pi
+#' and rewards r_pi for the MDP
+#'
+#'
+#' @param mdp A dataframe representation of the MDP. Each row
+#'            represents a single transition from one state to another
+#'            after taking an action a. The columns are:
+#'            idstatefrom, idaction, idstateto, probability, reward
+#' @param policy The policy used to construct the transition probabilities and rewards.
+#'            It can be a deterministic policy, in which case it should be a dataframe
+#'            with columns idstate and idaction. Both indices are 0-based.
+#'            It can also be a randomized policy, in which case it should be a dataframe with
+#'            columns idstate, idaction, probability.
+#' @return A list with P and r, the transition matrix and the reward vector
+matrix_mdp_transition <- function(mdp, policy) {
+    .Call(`_rcraam_matrix_mdp_transition`, mdp, policy)
 }
 
 mdp_example <- function(name) {

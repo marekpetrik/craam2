@@ -25,6 +25,7 @@
 #include "craam/definitions.hpp"
 
 #include <algorithm>
+#include <deque>
 #include <numeric>
 #include <tuple>
 // if available, use gurobi
@@ -65,11 +66,11 @@ std::pair<numvec, prec_t> inline worstcase_l1(numvec const& z, numvec const& pba
                                               prec_t xi) {
     assert(*min_element(pbar.cbegin(), pbar.cend()) >= -THRESHOLD);
     assert(*max_element(pbar.cbegin(), pbar.cend()) <= 1 + THRESHOLD);
-    assert(xi >= 0.0);
+    assert(xi >= -EPSILON);
     assert(z.size() > 0 && z.size() == pbar.size());
 
     // run craam::clamp when std is not available
-    xi = clamp(xi, 0.0, 2.0);
+    xi = std::clamp(xi, 0.0, 2.0);
 
     const size_t sz = z.size();
     // sort z values
@@ -270,7 +271,7 @@ public:
      * @param w Weights in the definition of the L1 norm
      */
     GradientsL1_w(const numvec& z, const numvec& w) {
-        constexpr prec_t epsilon = 1e-10;
+        constexpr prec_t epsilon = 1e-8;
         size_t element_count = z.size();
 
         assert(z.size() == element_count);
@@ -309,7 +310,8 @@ public:
                 if (z[i] <= z[j]) continue;
 
                 // case a: donor is less or equal to pbar
-                derivatives.push_back((-z[i] + z[j]) / (w[i] + w[j]));
+                const prec_t derivative = (-z[i] + z[j]) / (w[i] + w[j]);
+                derivatives.push_back(derivative < -epsilon ? derivative : 0);
                 donors.push_back(long(i));
                 receivers.push_back(long(j));
                 donor_greater.push_back(false);
@@ -326,10 +328,8 @@ public:
                 if (z[i] <= z[j]) continue;
 
                 if (std::abs(w[i] - w[j]) > epsilon && w[i] < w[j]) {
-                    // HACK!: adding the epsilon here makes sure that these basic
-                    // solutions are preferred in case of ties. This is to prevent
-                    // skipping over this kind of basis when it is tied with type a
-                    derivatives.push_back(epsilon + (-z[i] + z[j]) / (-w[i] + w[j]));
+                    const prec_t derivative = (-z[i] + z[j]) / (-w[i] + w[j]);
+                    derivatives.push_back(derivative < -epsilon ? derivative : 0);
                     donors.push_back(long(i));
                     receivers.push_back(long(j));
                     donor_greater.push_back(true);
@@ -355,6 +355,7 @@ public:
      * be greater than nominal?)
      */
     std::tuple<prec_t, size_t, size_t, bool> steepest_solution(size_t index) const {
+        assert(index >= 0 && index < sorted.size());
         size_t e = sorted[index];
         return {derivatives[e], donors[e], receivers[e], donor_greater[e]};
     }
@@ -393,55 +394,66 @@ std::pair<numvec, prec_t> inline worstcase_l1_w(const GradientsL1_w& gradients,
     assert(*min_element(pbar.cbegin(), pbar.cend()) >= 0);
     assert(std::abs(accumulate(pbar.cbegin(), pbar.cend(), 0.0) - 1.0) < 1e-6);
 
-    const prec_t epsilon = 1e-10;
+    constexpr prec_t epsilon = 1e-10;
 
     // the working value of the new probability distribution
     numvec p = pbar;
     // remaining value of xi that needs to be allocated
     prec_t xi_rest = xi;
 
+    // keep a queue of the last few gradients in order to
+    // minimize numerical issues due to ties and near-ties
+    // which can cause nasty inversions in the order in which the bases should be
+    // processed
+    // this is the working set of gradients
+    std::deque<std::tuple<prec_t, size_t, size_t, bool>> grad_que;
+    constexpr prec_t grad_epsilon = 1e-5;
+
     for (size_t k = 0; k < gradients.size(); k++) {
-// edge index
+
+        // push the steepest solution to the queue
+        grad_que.push_back(gradients.steepest_solution(k));
+
+        // check if the span of the gradients in the que if greater than and grad_epsilon
+        // and keep popping from the head (while there are at least two elements)
+        while (grad_que.size() > 1 && std::get<0>(grad_que.front()) <
+                                          std::get<0>(grad_que.back()) - grad_epsilon)
+            grad_que.pop_front();
+
+        // examine the feasibility all gradients and apply them if needed
+        for (size_t l = 0; l < grad_que.size(); l++) {
 #ifdef __cpp_structured_bindings
-        auto [ignore, donor, receiver, donor_greater] = gradients.steepest_solution(k);
+            // edge index
+            auto [ignore, donor, receiver, donor_greater] = grad_que[l];
 #else
-        size_t donor, receiver;
-        bool donor_greater;
-        tie(std::ignore, donor, receiver, donor_greater) = gradients.steepest_solution(k);
+            size_t donor, receiver;
+            bool donor_greater;
+            tie(std::ignore, donor, receiver, donor_greater) = grad_que[l];
 #endif
 
-        // this basic solution is not applicable here, just skip it
-        if (donor_greater && p[donor] <= pbar[donor] + epsilon) continue;
+            // Type C2 basis is not feasible; skip it
+            if (donor_greater && p[donor] <= pbar[donor] + epsilon) continue;
 
-        // No obvious reason how this could happen, but lets just make sure to flag it
-        // if this happens because of ties, see the hack above
-        if (!donor_greater && p[donor] > pbar[donor] + epsilon) {
-            std::cerr << "internal program error (numerical issues? continuing anyway), "
-                         "unexpected value of p, donor = " +
-                             std::to_string(donor) + "\n z = " + to_string(z) +
-                             "\n pbar = " + to_string(pbar) + "\n w = " + to_string(w) +
-                             "\n p = " + to_string(p) + "\n xi = " + std::to_string(xi) +
-                             "\n xi_rest = " + std::to_string(xi_rest) +
-                             "\n gradients = " + gradients.to_string() + "\n"
-                      << std::endl;
-            continue;
+            // Type C1 basis is not feasible; skip it
+            if (!donor_greater && p[donor] > pbar[donor] + epsilon) continue;
+
+            // make sure that the donor can give
+            if (p[donor] < epsilon) continue;
+
+            prec_t weight_change =
+                donor_greater ? (-w[donor] + w[receiver]) : (w[donor] + w[receiver]);
+            assert(weight_change > 0);
+
+            prec_t donor_step = std::min(
+                xi_rest / weight_change,
+                (p[donor] > pbar[donor] + epsilon) ? (p[donor] - pbar[donor]) : p[donor]);
+            p[donor] -= donor_step;
+            p[receiver] += donor_step;
+            xi_rest -= donor_step * weight_change;
+
+            // stop if there is nothing left
+            if (xi_rest < epsilon) break;
         }
-
-        // make sure that the donor can give
-        if (p[donor] < epsilon) continue;
-
-        prec_t weight_change =
-            donor_greater ? (-w[donor] + w[receiver]) : (w[donor] + w[receiver]);
-        assert(weight_change > 0);
-
-        prec_t donor_step = std::min(
-            xi_rest / weight_change,
-            (p[donor] > pbar[donor] + epsilon) ? (p[donor] - pbar[donor]) : p[donor]);
-        p[donor] -= donor_step;
-        p[receiver] += donor_step;
-        xi_rest -= donor_step * weight_change;
-
-        // stop if there is nothing left
         if (xi_rest < epsilon) break;
     }
 
@@ -487,7 +499,7 @@ std::pair<numvec, numvec> inline worstcase_l1_w_knots(const GradientsL1_w& gradi
                                                       const numvec& z, const numvec& pbar,
                                                       const numvec& w) {
 
-    const prec_t epsilon = 1e-10;
+    constexpr prec_t epsilon = 1e-10;
 
     // the working value of the new probability distribution
     numvec p = pbar;
@@ -500,45 +512,57 @@ std::pair<numvec, numvec> inline worstcase_l1_w_knots(const GradientsL1_w& gradi
     knots.push_back(inner_product(pbar.cbegin(), pbar.cend(), z.cbegin(), 0.0)); // u
     values.push_back(0.0); // || ||_{1,w}
 
+    // keep a queue of the last few gradients in order to
+    // minimize numerical issues due to ties and near-ties
+    // which can cause nasty inversions in the order in which the bases should be
+    // processed
+    // this is the working set of gradients
+    std::deque<std::tuple<prec_t, size_t, size_t, bool>> grad_que;
+    constexpr prec_t grad_epsilon = 1e-5;
+
     // trace the value of the norm and update the norm difference as well as the
     // value of the return (u)
     for (size_t k = 0; k < gradients.size(); k++) {
 
+        // push the steepest solution to the queue
+        grad_que.push_back(gradients.steepest_solution(k));
+
+        // check if the span of the gradients in the que if greater than and grad_epsilon
+        // and keep popping from the head (while there are at least two elements)
+        while (grad_que.size() > 1 && std::get<0>(grad_que.front()) <
+                                          std::get<0>(grad_que.back()) - grad_epsilon)
+            grad_que.pop_front();
+
+        // examine the feasibility all gradients and apply them if needed
+        for (size_t l = 0; l < grad_que.size(); l++) {
 #ifdef __cpp_structured_bindings
-        auto [ignore, donor, receiver, donor_greater] = gradients.steepest_solution(k);
+            // edge index
+            auto [ignore, donor, receiver, donor_greater] = grad_que[l];
 #else
-        size_t donor, receiver;
-        bool donor_greater;
-        tie(std::ignore, donor, receiver, donor_greater) = gradients.steepest_solution(k);
+            size_t donor, receiver;
+            bool donor_greater;
+            tie(std::ignore, donor, receiver, donor_greater) = grad_que[l];
 #endif
+            // Type C2 basis is not feasible here, just skip it
+            if (donor_greater && p[donor] <= pbar[donor] + epsilon) continue;
 
-        // this basic solution is not applicable here, just skip it
-        if (donor_greater && p[donor] <= pbar[donor] + epsilon) continue;
+            // Type C1 basis is not feasible here, just skip it
+            if (!donor_greater && p[donor] > pbar[donor] + epsilon) continue;
 
-        // No obvious reason how this could happen, but lets just make sure to flag it
-        // if this happens because of ties, see the hack above
-        if (!donor_greater && p[donor] > pbar[donor] + epsilon) {
-            std::cerr << "internal program error (numerical issues? continuing anyway), "
-                         "unexpected value of p, donor = " +
-                             std::to_string(donor) + "\n z = " + to_string(z) +
-                             "\n pbar = " + to_string(pbar) + "\n w = " + to_string(w) +
-                             "\n gradients = " + gradients.to_string() + "\n"
-                      << std::endl;
-            continue;
+            // make sure that the donor can give
+            if (p[donor] < epsilon) continue;
+
+            prec_t weight_change =
+                donor_greater ? (-w[donor] + w[receiver]) : (w[donor] + w[receiver]);
+            assert(weight_change > 0);
+
+            prec_t donor_step = donor_greater ? (p[donor] - pbar[donor]) : p[donor];
+            p[donor] -= donor_step;
+            p[receiver] += donor_step;
+
+            knots.push_back(knots.back() + donor_step * (z[receiver] - z[donor]));
+            values.push_back(values.back() + donor_step * weight_change);
         }
-        // make sure that the donor can give
-        if (p[donor] < epsilon) continue;
-
-        prec_t weight_change =
-            donor_greater ? (-w[donor] + w[receiver]) : (w[donor] + w[receiver]);
-        assert(weight_change > 0);
-
-        prec_t donor_step = donor_greater ? (p[donor] - pbar[donor]) : p[donor];
-        p[donor] -= donor_step;
-        p[receiver] += donor_step;
-
-        knots.push_back(knots.back() + donor_step * (z[receiver] - z[donor]));
-        values.push_back(values.back() + donor_step * weight_change);
     }
 
     return make_pair(move(knots), move(values));
@@ -1035,20 +1059,23 @@ std::pair<numvec, prec_t> inline var(const numvec& z, const numvec& pbar, prec_t
  *
  * beta * var_pbar [z] + (1-beta) * E_pbar[z]
  *
- * See also var for the details on how the variance is computed. alpha = 0 is the
+ * See also var for the details on how the VaR is computed. alpha = 0 is the
  * worst case.
  *
+ * @param z  Objective / random variable
+ * @param pbar Nominal distribution of the random variable
+ * @param alpha Risk level in [0,1]. alpha = 0 is the worst case
+ *              (minimum of z, alpha = 0 is treated as alpha -> 0)
+ *              alpha = 0.5 is the median, and alpha
+ * @param beta Weight on the VaR component
+ *
+ * @return A distribution p and the value at risk as well as the distribution such that
+ * p^T z = var. Note that there may not be an equivalent robust representation for var like there
+ * is for coherent/convex risk measures.
  */
 std::pair<numvec, prec_t> inline var_exp(const numvec& z, const numvec& pbar,
                                          prec_t alpha, prec_t beta) {
-
-#ifdef __cpp_structured_bindings
     auto [var_dist, var_value] = var(z, pbar, alpha);
-#else
-    numvec var_dist;
-    prec_t var_value;
-    std::tie(var_dist, var_value) = var(z, pbar, alpha);
-#endif
 
     assert(var_dist.size() == pbar.size());
     const auto mean_value = std::inner_product(z.cbegin(), z.cend(), pbar.cbegin(), 0.0);
@@ -1066,20 +1093,23 @@ std::pair<numvec, prec_t> inline var_exp(const numvec& z, const numvec& pbar,
  *
  * beta * avar_pbar [z] + (1-beta) * E_pbar[z]
  *
- * See also avar for the details on how the variance is computed. alpha = 0 is the
+ * See also avar for the details on how the AVaR is computed. alpha = 0 is the
  * worst case.
  *
+ * @param z  Objective / random variable
+ * @param pbar Nominal distribution of the random variable
+  * @param alpha Risk level in [0,1]. alpha = 0 is the worst case
+ *              (minimum of z, alpha = 0 is treated as alpha -> 0)
+ *              alpha = 0.5 is the median, and alpha
+ * @param beta Weight on the AVaR component
+ *
+ * @return A distribution p and the value at risk as well as the distribution such that
+ * p^T z = objective.
  */
 std::pair<numvec, prec_t> inline avar_exp(const numvec& z, const numvec& pbar,
                                           prec_t alpha, prec_t beta) {
-
-#ifdef __cpp_structured_bindings
     auto [avar_dist, avar_value] = avar(z, pbar, alpha);
-#else
-    numvec avar_dist;
-    prec_t avar_value;
-    std::tie(avar_dist, avar_value) = avar(z, pbar, alpha);
-#endif
+
     assert(avar_dist.size() == pbar.size());
     const auto mean_value = std::inner_product(z.cbegin(), z.cend(), pbar.cbegin(), 0.0);
 

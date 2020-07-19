@@ -1,0 +1,84 @@
+// This file is part of CRAAM, a C++ library for solving plain
+// and robust Markov decision processes.
+//
+// MIT License
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#pragma once
+#include <string>
+
+// This files includes simple example mdps that can be used to test algorithms
+
+std::string mdp_cartpole_str = //
+    "idstatefrom,idaction,idstateto,probability,reward\n"
+    "2,0,1,0.08366533864541832,1\n"
+    "2,0,2,0.2589641434262948,1\n"
+    "2,0,3,0.07171314741035857,1\n"
+    "2,0,4,0.00398406374501992,1\n"
+    "2,0,5,0.01593625498007968,1\n"
+    "2,0,6,0.17131474103585656,1\n"
+    "2,0,7,0.01593625498007968,1\n"
+    "2,0,8,0.01593625498007968,1\n"
+    "2,0,9,0.01593625498007968,1\n"
+    "2,0,10,0.00796812749003984,1\n"
+    "2,0,11,0.01195219123505976,1\n"
+    "2,0,12,0.16733067729083664,1\n"
+    "2,0,13,0.14741035856573706,1\n"
+    "2,0,14,0.01195219123505976,1\n"
+    "2,1,15,0.00796812749003984,1\n"
+    "2,1,2,0.3745019920318725,1\n"
+    "2,1,16,0.01593625498007968,1\n"
+    "2,1,17,0.0199203187250996,1\n"
+    "2,1,6,0.19123505976095617,1\n"
+    "2,1,7,0.18725099601593626,1\n"
+    "2,1,18,0.00796812749003984,1\n"
+    "2,1,8,0.03187250996015936,1\n"
+    "2,1,9,0.08366533864541832,1\n"
+    "2,1,19,0.00398406374501992,1\n"
+    "2,1,20,0.0199203187250996,1\n"
+    "2,1,13,0.055776892430278883,1";
+
+std::string rmdp_portfolio_str = //
+    "idstatefrom,idaction,idoutcome,idstateto,probability,reward\n"
+    "0,0,0,1,0.02816253664610363,-42.55719111848271\n"
+    "0,0,1,1,0.174789703939628,-42.55719111848271\n"
+    "0,0,2,1,0.012671457227857468,-42.55719111848271\n"
+    "0,0,3,1,0.07733353138487638,-42.55719111848271\n"
+    "0,0,4,1,0.07654089009044808,-42.55719111848271\n"
+    "0,0,0,2,0.18863043185505848,1.4397941570831945\n"
+    "0,0,1,2,0.0653271956391835,1.4397941570831945\n"
+    "0,0,2,2,0.26031396141325996,1.4397941570831945\n"
+    "0,0,3,2,0.2691714698074567,1.4397941570831945\n"
+    "0,0,4,2,0.45945652865007103,1.4397941570831945\n"
+    "0,0,0,3,0.21024570832520384,4.278088602364444\n"
+    "0,0,1,3,0.34578924405652123,4.278088602364444\n"
+    "0,0,2,3,0.5795421977295765,4.278088602364444\n"
+    "0,0,3,3,0.15317858781044347,4.278088602364444\n"
+    "0,0,4,3,0.09605866019828176,4.278088602364444\n"
+    "0,0,0,4,0.2030464766846726,-1.4410442606323597\n"
+    "0,0,1,4,0.2785652216671285,-1.4410442606323597\n"
+    "0,0,2,4,0.12036365049562346,-1.4410442606323597\n"
+    "0,0,3,4,0.25662641275215603,-1.4410442606323597\n"
+    "0,0,4,4,0.2858011501309509,-1.4410442606323597\n"
+    "0,0,0,5,0.36991484648896145,0.27402822413812405\n"
+    "0,0,1,5,0.1355286346975388,0.27402822413812405\n"
+    "0,0,2,5,0.027108733133682537,0.27402822413812405\n"
+    "0,0,3,5,0.24368999824506749,0.27402822413812405\n"
+    "0,0,4,5,0.08214277093024817,0.27402822413812405";

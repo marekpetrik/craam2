@@ -113,4 +113,10 @@ using SARobustOutcomeSolution = Solution<pair<long, numvec>>;
 ///         over *reachable* states (with non-zero nominal probability)
 using SRobustSolution = Solution<pair<numvec, numvecvec>>;
 
+/// Solution to an S-rectangular robust problem to an MDP
+/// The policy is:
+///  1) distribution over actions
+///  2) distribution over outcomes
+using SRobustOutcomeSolution = Solution<pair<numvec, numvec>>;
+
 } // namespace craam

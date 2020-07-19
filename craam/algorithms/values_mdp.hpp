@@ -43,34 +43,34 @@ using namespace std;
 // *******************************************************
 
 /**
-Computes the average value of the action.
-
-@param action Action for which to compute the value
-@param valuefunction State value function to use
-@param discount Discount factor
-@return Action value
-*/
+ * Computes the average value of the action.
+ *
+ * @param action Action for which to compute the value
+ * @param valuefunction State value function to use
+ * @param discount Discount factor
+ * @return Action value
+ */
 inline prec_t value_action(const Action& action, const numvec& valuefunction,
                            prec_t discount) {
     return action.value(valuefunction, discount);
 }
 
 /**
-Computes a value of the action for a given distribution. This function can be
-used to evaluate a robust solution which may modify the transition
-probabilities.
-
-The new distribution may be non-zero only for states for which the original
-distribution is not zero.
-
-@param action Action for which to compute the value
-@param valuefunction State value function to use
-@param discount Discount factor
-@param distribution New distribution. The length must match the number of
-            states to which the original transition probabilities are strictly
-greater than 0. The order of states is the same as in the underlying transition.
-@return Action value
-*/
+ * Computes a value of the action for a given distribution. This function can be
+ * used to evaluate a robust solution which may modify the transition
+ * probabilities.
+ *
+ * The new distribution may be non-zero only for states for which the original
+ * distribution is not zero.
+ *
+ * @param action Action for which to compute the value
+ * @param valuefunction State value function to use
+ * @param discount Discount factor
+ * @param distribution New distribution. The length must match the number of
+ *             states to which the original transition probabilities are strictly
+ * greater than 0. The order of states is the same as in the underlying transition.
+ * @return Action value
+ */
 inline prec_t value_action(const Action& action, const numvec& valuefunction,
                            prec_t discount, const numvec& distribution) {
     return action.value(valuefunction, discount, distribution);
@@ -107,14 +107,14 @@ inline numvec compute_zvalues(const Action& action, const numvec& valuefunction,
 }
 
 /**
-Computes an ambiguous value (e.g. robust) of the action, depending on the type
-of nature that is provided.
-
-@param action Action for which to compute the value
-@param valuefunction State value function to use
-@param discount Discount factor
-@param nature Method used to compute the response of nature.
-*/
+ * Computes an ambiguous value (e.g. robust) of the action, depending on the type
+ * of nature that is provided.
+ *
+ * @param action Action for which to compute the value
+ * @param valuefunction State value function to use
+ * @param discount Discount factor
+ * @param nature Method used to compute the response of nature.
+ */
 inline vec_scal_t value_action(const Action& action, const numvec& valuefunction,
                                prec_t discount, long stateid, long actionid,
                                const SANature& nature) {
@@ -127,8 +127,9 @@ inline vec_scal_t value_action(const Action& action, const numvec& valuefunction
 // *******************************************************
 
 /**
- * Constructs and returns a vector of nominal probabilities for each
- * state and positive transition probabilities.
+ * Constructs and returns a vector of nominal probabilities for each subsequent
+ * state that has positive transition probabilities.
+ *
  * @param state The state for which to compute the nominal probabilities
  * @return The length of the outer vector is the number of actions, the length
  *          of the inner vector is the number of non-zero transition
@@ -165,15 +166,15 @@ inline vector<numvec> compute_zvalues(const State& state, const numvec& valuefun
 }
 
 /**
-Computes the value of a probability distribution over actions.
-
-@param state State to compute the value for
-@param valuefunction Value function to use in computing value of states.
-@param discount Discount factor
-@param actiondist Distribution over actions
-
-@return Value of state, 0 if it's terminal regardless of the action index
-*/
+ * Computes the value of a probability distribution over actions.
+ *
+ * @param state State to compute the value for
+ * @param valuefunction Value function to use in computing value of states.
+ * @param discount Discount factor
+ * @param actiondist Distribution over actions
+ *
+ * @return Value of state, 0 if it's terminal regardless of the action index
+ */
 inline prec_t value_fix_state(const State& state, numvec const& valuefunction,
                               prec_t discount, const numvec& actiondist) {
     // this is the terminal state, return 0
@@ -183,11 +184,11 @@ inline prec_t value_fix_state(const State& state, numvec const& valuefunction,
     assert((1.0 - accumulate(actiondist.cbegin(), actiondist.cend(), 0.0) - 1.0) < 1e-5);
 
     prec_t result = 0.0;
+#pragma omp simd reduction(+ : result)
     for (size_t actionid = 0; actionid < state.size(); actionid++) {
-        const auto& action = state[actionid];
-
         assert(actiondist[actionid] >= 0);
-        result += actiondist[actionid] * value_action(action, valuefunction, discount);
+        result +=
+            actiondist[actionid] * value_action(state[actionid], valuefunction, discount);
     }
     return result;
 }
@@ -214,12 +215,8 @@ inline vector<numvec> compute_qfunction(const MDP& mdp, const numvec& valuefunct
         const State& s = mdp[is];
         numvec qa;
         qa.reserve(s.size());
-        //for (const Action& a : s) {
-        for (size_t ia = 0; ia < s.size(); ++ia) {
-            const Action& a = s[ia];
-
-            qa.push_back(value_action(a, valuefunction, discount));
-        }
+        for (size_t ia = 0; ia < s.size(); ++ia)
+            qa.push_back(value_action(s[ia], valuefunction, discount));
         qfunction.push_back(move(qa));
     }
     return qfunction;

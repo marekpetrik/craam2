@@ -11,4 +11,4 @@ Encoding: UTF-8
 LazyData: true
 Depends: Rcpp (>= 0.12.12), RcppProgress
 LinkingTo: Rcpp, RcppProgress
-RoxygenNote: 6.1.1
+RoxygenNote: 7.1.0

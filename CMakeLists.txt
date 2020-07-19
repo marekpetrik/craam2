@@ -35,7 +35,7 @@ endif()
 
 # **** Find packages ****
 find_package(OpenMP)
-find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+#find_package (Eigen3 3.3 REQUIRED NO_MODULE) # this is now included in the git
 find_package(Boost COMPONENTS unit_test_framework ) 
 find_package(Doxygen)
 if(${Boost_FOUND} LESS 1)
@@ -44,11 +44,12 @@ endif()
 
 if(GUROBI_USE)
     find_library(GUROBI_CXX_LIBRARY_1 NAMES libgurobi_g++5.2.a PATHS "lib/gurobi")
-    find_library(GUROBI_CXX_LIBRARY_2 NAMES libgurobi81.so PATHS "lib/gurobi")
+    find_library(GUROBI_CXX_LIBRARY_2 NAMES libgurobi90.so PATHS "lib/gurobi")
     find_path(GUROBI_INCLUDE_DIR_1 NAMES gurobi_c++.h PATHS "include/gurobi")
     find_path(GUROBI_INCLUDE_DIR_2 NAMES gurobi_c.h PATHS "include/gurobi")
 
-    if(NOT GUROBI_CXX_LIBRARY_1 OR NOT GUROBI_CXX_LIBRARY_2 OR NOT GUROBI_INCLUDE_DIR_1 OR NOT GUROBI_INCLUDE_DIR_2 )
+    if(NOT GUROBI_CXX_LIBRARY_1 OR NOT GUROBI_CXX_LIBRARY_2 OR
+            NOT GUROBI_INCLUDE_DIR_1 OR NOT GUROBI_INCLUDE_DIR_2 )
         message(WARNING "Gurobi files not found in lib/gurobi or include/gurobi, disabling support.")
         set (GUROBI_USE FALSE)
     endif()
@@ -130,6 +131,7 @@ set (SRCS
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/optimization/bisection.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/optimization/srect_gurobi.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/optimization/norms.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/optimization/gurobi.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/values.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/values_mdp.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/values_mdpo.hpp
@@ -149,6 +151,7 @@ set (TSTS ${CMAKE_CURRENT_SOURCE_DIR}/test/test.cpp
            ${CMAKE_CURRENT_SOURCE_DIR}/test/core_tests.hpp 
            ${CMAKE_CURRENT_SOURCE_DIR}/test/implementable_tests.hpp
            ${CMAKE_CURRENT_SOURCE_DIR}/test/simulation_tests.hpp
+           ${CMAKE_CURRENT_SOURCE_DIR}/test/example_mdps.hpp
 )
 set (DEV ${CMAKE_CURRENT_SOURCE_DIR}/test/dev.cpp)
 set (BENCH ${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp)
@@ -171,7 +174,7 @@ set (BENCH ${CMAKE_CURRENT_SOURCE_DIR}/test/benchmark.cpp)
 if (BUILD_TESTS)
     add_executable (unit_tests ${TSTS} ${SRCS} )
     target_link_libraries(unit_tests ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
-    target_link_libraries (unit_tests Eigen3::Eigen)
+    #target_link_libraries (unit_tests Eigen3::Eigen)
     if(GUROBI_USE)
         target_link_libraries(unit_tests ${GUROBI_CXX_LIBRARY_1})
         target_link_libraries(unit_tests ${GUROBI_CXX_LIBRARY_2})
@@ -180,7 +183,6 @@ if (BUILD_TESTS)
                         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
                         COMMENT "Running unit tests")
 endif (BUILD_TESTS)
-
 
 # **** COMMAND-LINE EXECUTABLE ****
 add_executable(craam-cli EXCLUDE_FROM_ALL ${BENCH} ${SRCS} )

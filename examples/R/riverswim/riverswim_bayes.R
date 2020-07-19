@@ -9,14 +9,14 @@ loadNamespace("stringr")
 
 ## ----- Parameters --------
 
-description <- "riverswim_mdp.csv"
+description <- "riverswim_mdp2.csv"
 
-init.dist <- rep(1/6,6)
-discount <- 0.9
-confidence <- 0.6
-bayes.samples <- 500
+init.dist <- c(1,0,0,0,0,0)# rep(1/6,6)
+discount <- 0.99
+confidence <- 0.95
+bayes.samples <- 1000
 
-samples <- 10000
+samples <- 500
 sample.seed <- 2011
 episodes <- 1
 
@@ -103,7 +103,7 @@ mdp.bayesian <- mdpo_bayes(simulation, rewards.truth, bayes.samples)
 #' @param mdp.bayesion MDPO with outcomes
 #' @param policy Deterministic policy to be evaluated
 bayes.returns <- function(mdp.bayesian, policy, maxcount = 100){
-  outcomes.unique <- unique(mdp.bayesian$idoutcome)[1:maxcount]
+  outcomes.unique <- head(unique(mdp.bayesian$idoutcome),maxcount)
   maxcount <- min(maxcount, nrow(outcomes.unique))
   sapply(outcomes.unique,
          function(outcome){
@@ -202,7 +202,7 @@ sol.freq <- rsolve_mdp_sa(model.freq$mdp.nominal, discount, "l1", model.freq$bud
 
 report_solution("Hoeff CR", mdp.bayesian, sol.freq)
 
-## ---- Bayesian Confidence Region -----
+## ---- Bayesian Credible Region -----
 
 rmdp.bayesian <- function(mdp.bayesian){
 # adjust the confidence level
@@ -238,7 +238,7 @@ sol.bcr <- rsolve_mdp_sa(model.bayes.loc$mdp.mean, discount, "l1",
                          model.bayes.loc$budgets, show_progress = FALSE)
 report_solution("Local BCR: ", mdp.bayesian, sol.bcr)
 
-## ---- Global Bayesian Confidence Region -----
+## ---- Global Bayesian Credible Region -----
 
 #' Uses a single global solution and relies on rectangularization. 
 #' It picks the confidence fraction of outcomes ordered
@@ -295,11 +295,19 @@ report_solution("RSVF", mdp.bayesian, sol.rsvf)
 ## ---- NORBU ----------
 
 sol.norbu <- rsolve_mdpo_sa(mdp.bayesian, discount, "eavaru", 
-               list(alpha = 1-confidence, beta = 0.9), show_progress = FALSE)
+               list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
 report_solution("NORBU: ", mdp.bayesian, sol.norbu)
+
+## ---- NORBU-s ---------
+
+sol.norbu.s <- rsolve_mdpo_s(mdp.bayesian, discount, "eavaru", 
+                            list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
+report_solution("NORBU-s: ", mdp.bayesian, sol.norbu.s)
+
+## ---- NORBU VaR version ----------
 
 # to see why this is wrong, try running it with a confidence 0.1 or something small
 sol.norbu.w <- rsolve_mdpo_sa(mdp.bayesian, discount, "evaru", 
                             list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
-report_solution("NORBU(maybe?): ", mdp.bayesian, sol.norbu.w)
+report_solution("NORBU-v: ", mdp.bayesian, sol.norbu.w)
 
