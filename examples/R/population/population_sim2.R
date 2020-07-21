@@ -378,13 +378,14 @@ if(FALSE){
 gurobi_set_param("OutputFlag", "1")
 gurobi_set_param("LogFile", "/tmp/gurobi.log")
 gurobi_set_param("LogToConsole", "1");
-gurobi_set_param("ConcurrentMIP", "2");
-gurobi_set_param("TimeLimit", "1000")
+gurobi_set_param("ConcurrentMIP", "3");
+gurobi_set_param("MIPGap", "0.05");
+gurobi_set_param("TimeLimit", "500")
 
 init.dist.df <- data.frame(idstate = seq(0,length(init.dist)-1),
                            probability = init.dist)
 
-risk_weight = 0.0
+risk_weight = 0.2
 sol.torbu.milp <- srsolve_mdpo(mdp.bayesian , 
                                init.dist.df, discount, 
                                alpha = 1-confidence, beta = risk_weight)
