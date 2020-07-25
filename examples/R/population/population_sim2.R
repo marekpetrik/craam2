@@ -1,11 +1,17 @@
 library(rcraam)
 library(dplyr)
 library(ggplot2)
-theme_set(theme_light())
 library(setRNG)
 library(readr)
 library(rjags)
 library(runjags)
+library(ggrepel) # labels that avoid data points
+library(forcats) # rename plot labels
+library(extrafont) # latex font output in plots
+font_install("fontcm") # install computer modern font
+loadfonts()
+
+theme_set(theme_light(base_family = "CM Roman"))
 
 error_size <- 0.1
 error_type <- "l1u"
@@ -321,21 +327,27 @@ cat("BCR\n")
 model.bayes.loc <- rmdp.bayesian(mdp.bayesian, confidence) 
 #TODO: Why is the normalization even needed?
 model.bayes.loc$mdp.mean <- normalize_transition_probs(model.bayes.loc$mdp.mean)
-sol.bcr <- rsolve_mdp_sa(model.bayes.loc$mdp.mean, discount, "l1",
-  model.bayes.loc$budgets,
-  show_progress = FALSE
-)
-report_solution("BCR-l", 1, mdp.bayesian, sol.bcr)
+for (risk_weight in seq(0.0, 1.4, by = 0.1)) {
+  sol.bcr <- rsolve_mdp_sa(
+    model.bayes.loc$mdp.mean, discount, "l1",
+    model.bayes.loc$budgets %>% mutate(budget = risk_weight * budget),
+    show_progress = FALSE
+  )
+  report_solution("BCR-l", risk_weight, mdp.bayesian, sol.bcr)  
+}
+
 
 ## ---- RSVF-like (simplified) -------
 
 sa.count <- nrow(unique(mdp.bayesian %>% select(idstatefrom, idaction)))
 confidence.rect <- (1 - confidence) / sa.count
-sol.rsvf <- rsolve_mdpo_sa(mdp.bayesian, discount, "evaru",
-  list(alpha = confidence.rect, beta = 1.0),
-  show_progress = FALSE
-)
-report_solution("RSVF", 1.0, mdp.bayesian, sol.rsvf)
+# alpha > 0.5 with VaR makes no sense because it becomes risk seeking
+for (risk_weight in seq(2*confidence.rect, 1, length.out = 10)) {
+  sol.rsvf <- rsolve_mdpo_sa(mdp.bayesian, discount, "evaru",
+    list(alpha = confidence.rect / risk_weight, beta = 1.0),
+    show_progress = FALSE)
+  report_solution("RSVF", risk_weight, mdp.bayesian, sol.rsvf)
+}
 
 ## ---- NORBU ----------
 
@@ -354,7 +366,8 @@ if(FALSE){
   for (risk_weight in risk_weights) {
     cat("s-NORBU", risk_weight, "\n")
     sol.norbu.s <- rsolve_mdpo_s(mdp.bayesian, discount, "eavaru",
-      list(alpha = 1 - confidence, beta = risk_weight), show_progress = 0, algorithm = "vi")
+      list(alpha = 1 - confidence, beta = risk_weight), show_progress = 0, 
+      algorithm = "vi")
     report_solution("s-NORBU", risk_weight, mdp.bayesian, sol.norbu.s)
   }
 }
@@ -380,34 +393,48 @@ gurobi_set_param("LogFile", "/tmp/gurobi.log")
 gurobi_set_param("LogToConsole", "1");
 gurobi_set_param("ConcurrentMIP", "3");
 gurobi_set_param("MIPGap", "0.05");
-gurobi_set_param("TimeLimit", "500")
+gurobi_set_param("TimeLimit", "1000")
 
 init.dist.df <- data.frame(idstate = seq(0,length(init.dist)-1),
                            probability = init.dist)
 
-risk_weight = 0.2
-sol.torbu.milp <- srsolve_mdpo(mdp.bayesian , 
-                               init.dist.df, discount, 
-                               alpha = 1-confidence, beta = risk_weight)
+for (risk_weight in c(0,0.2,0.4,0.6,0.8,1.0)) {
+  sol.torbu.milp <- srsolve_mdpo(mdp.bayesian , 
+                                 init.dist.df, discount, 
+                                 alpha = 1 - confidence, beta = risk_weight)
 
-print(sol.torbu.milp$policy)
-report_solution("TORBU-m: ", risk_weight, mdp.bayesian, sol.torbu.milp)
+  report_solution("sa-TORBU", risk_weight, mdp.bayesian, sol.torbu.milp)
+}
+
+
+#print(sol.torbu.milp$policy)
+
 
 ## -------- Report results ------------
 
 #x <- "test_population.csv"
 #write.csv2(results,x)
 results.df <- as.data.frame(results)
-results.df$method <- factor(results$method, levels=c("s-NORBU", "sa-NORBU", "BCR-l", "RSVF"))
-results.df$risk_weight <- round(results$risk_weight,2)
-plot <-
-    ggplot(results.df,
-           aes(x = avar, y = expected, color = method)) +
-    geom_point() +
-    geom_path(linetype="dashed") +
-    geom_text(aes(label=risk_weight), position="jitter") +
-    labs(x = paste0("AVaR(",confidence,")"), y = "Expected")
+results.df$method <- factor(results$method, 
+                            levels=c("sa-TORBU", "s-NORBU", "sa-NORBU", "BCR-l", "RSVF"))
 
+results.df$method <- fct_recode(results.df$method, "SoftRob-Opt" = "sa-TORBU", "SoftRob-Apr" = "sa-NORBU",
+           "Robust-BCR" = "BCR-l", "Robust-RSVF" = "RSVF")
+
+results.df$risk_weight <- round(results$risk_weight,2)
+results.df.plot <- results.df %>% 
+  filter(risk_weight <= 1) %>%
+  arrange(risk_weight) %>% distinct()
+plot <- ggplot(results.df.plot, aes(x = avar, y = expected, color = method, shape=method)) +
+        geom_point(size = 2) +
+        geom_path(linetype="dashed") +
+        geom_label_repel(aes(label=risk_weight),
+                  point.padding = 0.25,
+                  show.legend = FALSE,
+                  data = results.df.plot %>% filter(risk_weight <= 0.1 | risk_weight >= 0.91)) +
+        labs(x = paste0("Robust Return: CVaR(",confidence,")"), y = "Average Return",
+             shape = "Algorithm", color = "Algorithm")
+ggsave("population_comparison.pdf", plot, width = 6, height = 4, units = "in")
 print(plot)
 
 write_csv(results.df, "results_df.csv")
