@@ -1,6 +1,6 @@
 Package: rcraam
 Type: Package
-Title: Library for robust reinforcement learning
+Title: Build, solve, and simulate (robust) Markov decision processes
 Version: 3.0.0
 Author: Marek Petrik
 Maintainer: Marek Petrik <marek@petrik.us>
