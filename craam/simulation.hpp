@@ -622,7 +622,7 @@ using ModelStochasticPolicy = StochasticPolicy<ModelSimulator>;
 *                       affects the random number generator.
 * @param sample_count Number of samples to take for each state and action
 */
-template <class S> inline MDP build_mdp(S& sim, uint sample_count) {
+template <class S> inline MDP build_mdp(S& sim, unsigned int sample_count) {
 
     MDP result;
     // the problem with parallelizing this loop is that it may affect te random
