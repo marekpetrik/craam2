@@ -112,39 +112,26 @@ Note that Boost must be present in order to build the tests in the first place.
 
 ## Installing R Interface ##
 
-The R interface is experimental and has very limited functionality. Method signatures are expected to change. The package should work on Linux, Mac, and Windows (with RTools 3.4+).
+The R exposes most of the functions of the package. Method signatures are expected to change. The package should work on Linux, Mac, and Windows (with RTools 4.0+). R version 4.0 is required and the C++ compiler must support C+20 standard.
 
-**the following instructions do not currently work**
-
-A stable (and possibly stale) version of the package can be installed directly from the github repository using devtools:
+A stable (and possibly stale) version of the package can be installed directly from the github repository using `remotes`:
 ``` R
-library(devtools)
-devtools::install_github("marekpetrik/craam2/rcraam")
+install.packages("remotes")
+remotes::install_github("marekpetrik/craam2","rcraam")
 ```
-**the library can be installed only manually as follows**
+A development version can be installed from gitlab as follows:
+``` R
+install.packages("remotes")
+remotes::install_gitlab("RLsquared/craam2","rcraam")
+```
+To use methods that use on Gurobi, you must download Gurobi (and get a license) and set `GUROBI_PATH` to the installations directory that has subdirectories `include` and `lib`.
 
-The development version can be installed from gitlab as follows:
-
+To download and install a local development version, run:
 ``` bash
 gitlab clone git@gitlab.com/RLSquared/craam2
 cd craam2/rcraam
-R CMD INSTALL .
+R CMD INSTALL . --preclean
 ```
-
-To use methods that rely on Gurobi, it must be installed and a GUROBI_PATH variable needs to be set
-``` bash
-export GUROBI_PATH=<PATH_TO_GUROBI_HOME>
-```
-`PATH_TO_GUROBI_HOME` must have subdirectories `include` and `lib`
-
-R version 4.0 is required and the C++ compiler must support C+20 standard.
-
-### Installing on macOS
-
-You need to make tho following changes to compile the R extension:
-
-1. Remove `-fopenmp` from 2 lines in `rcraam/src/Makevars`
-
 ## C++ Development ##
 
 The instruction above generate a release version of the project. The release version is optimized for speed, but lacks debugging symbols and many intermediate checks are eliminated. For development purposes, is better to use the Debug version of the code. This can be generated as follows:
