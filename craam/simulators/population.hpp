@@ -60,7 +60,7 @@ protected:
     numvecvec rewards;
     /// Number of available actions: each one represents a
     /// different treatment type or intensity
-    uint actioncount;
+    unsigned int actioncount;
     /// External population supply (mean) - normal distribution
     prec_t external_mean;
     /// External population supply (std) - normal distribution
@@ -97,7 +97,7 @@ public:
      * @param external_mean External population supply (std). Normally distributed.
      * @param seed Seed for random number generation
      */
-    PopulationSim(long carrying_capacity, long init_population, uint actioncount,
+    PopulationSim(long carrying_capacity, long init_population, unsigned int actioncount,
                   numvecvec mean_growth_rate, numvecvec std_growth_rate,
                   numvecvec rewards, prec_t external_mean, prec_t external_std,
                   Growth growth_model = Growth::Exponential,

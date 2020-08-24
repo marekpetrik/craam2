@@ -31,7 +31,7 @@ A development version can be installed from gitlab as follows:
 
 ``` R
 install.packages("remotes")
-remotes::install_gitlab("RLsquared/craam2/rcraam")
+remotes::install_gitlab("RLsquared/craam2", "rcraam")
 ```
 
 To use methods that use on Gurobi, you must download Gurobi (and get a license) and set `GUROBI_PATH` to the installations directory that has subdirectories `include` and `lib`.

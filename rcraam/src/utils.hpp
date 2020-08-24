@@ -164,7 +164,7 @@ inline craam::MDPO mdpo_from_dataframe(const Rcpp::DataFrame& data, bool force =
  * indices and value is the name of the value column. def_value is the
  * default value for any elements that are not provided.
  */
-inline craam::numvecvec frame2matrix(const Rcpp::DataFrame& frame, uint dim1, uint dim2,
+inline craam::numvecvec frame2matrix(const Rcpp::DataFrame& frame, size_t dim1, size_t dim2,
                                      const std::string& index1, const std::string& index2,
                                      const std::string& value, double def_value) {
 
