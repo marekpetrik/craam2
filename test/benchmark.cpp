@@ -40,7 +40,7 @@ using namespace craam;
 
 enum class Solver { VI, MPI };
 
-void solve_mdp(const cxxopts::Options& options, Solver solver) {
+void solve_mdp(const cxxopts::ParseResult& options, Solver solver) {
     cout << "Loading ... " << endl;
 
     // open file
@@ -195,7 +195,7 @@ void solve_mdp(const cxxopts::Options& options, Solver solver) {
     cout << "Done." << endl;
 }
 
-void build_mdp(const cxxopts::Options& options) {
+void build_mdp(const cxxopts::ParseResult& options) {
 
     // load samples (reward is received after state and action in the same line)
     io::CSVReader<4> in(options["input"].as<string>());
@@ -266,32 +266,33 @@ int main(int argc, char* argv[]) {
         "u,ambiguity", "Type of ambiguity", cxxopts::value<string>());
 
     try {
-        options.parse(argc, argv);
+        auto presult = options.parse(argc, argv);
+
+        if (presult["h"].as<bool>()) {
+            cout << options.help() << endl;
+            return 0;
+        }
+
+        if (presult.count("input") == 0) {
+            cout << "No input file provided. See usage (-h)." << endl;
+            return 0;
+        }
+
+        const auto method = presult["method"].as<std::string>();
+        if (method == "MPI") {
+            solve_mdp(presult, Solver::MPI);
+        } else if (method == "VI") {
+            solve_mdp(presult, Solver::VI);
+        } else if (method == "MDP") {
+            build_mdp(presult);
+        } else {
+            cout << "Unknown method type: " << method << "." << endl;
+            return 0;
+        }
+
     } catch (const cxxopts::OptionException& oe) {
         cout << oe.what() << endl << endl << " *** usage *** " << endl;
         cout << options.help() << endl;
-        return 0;
-    }
-
-    if (options["h"].as<bool>()) {
-        cout << options.help() << endl;
-        return 0;
-    }
-
-    if (options.count("input") == 0) {
-        cout << "No input file provided. See usage (-h)." << endl;
-        return 0;
-    }
-
-    const auto method = options["method"].as<std::string>();
-    if (method == "MPI") {
-        solve_mdp(options, Solver::MPI);
-    } else if (method == "VI") {
-        solve_mdp(options, Solver::VI);
-    } else if (method == "MDP") {
-        build_mdp(options);
-    } else {
-        cout << "Unknown method type: " << method << "." << endl;
         return 0;
     }
 }

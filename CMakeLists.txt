@@ -6,7 +6,7 @@
 
 cmake_minimum_required (VERSION 3.17.3 FATAL_ERROR) # Required for modern C++
 
-set(CRAAMVERSION "3.0.0")
+set(CRAAMVERSION "0.4.0")
 project (CRAAM)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -70,7 +70,7 @@ endif()
 #    message(STATUS "${_variableName}=${${_variableName}}")
 #endforeach()
 # DEBUG
-#set(CMAKE_VERBOSE_MAKEFILE on) - just run make 
+#set(CMAKE_VERBOSE_MAKEFILE on) # only works with make (not ninja)
 
 # **** TURN FEATURES ON AND OFF ****
 

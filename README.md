@@ -80,24 +80,17 @@ The library has minimal dependencies and was tested on Linux. It also compiles o
 
 ### Requirements
 
--   At least C++14 compatible compiler (must edit `CMakeLists.txt`):
-    -   Tested with Linux GCC 4.9.2,5.2.0,6.1.0; does not work with GCC 4.7, 4.8.
-    -   Tested with Linux Clang 3.6.2 .
--   All unit tests enabled only with a C++17 compiler
--   [Eigen](http://eigen.tuxfamily.org) 3+ for computing occupancy frequencies
+-   At least C++17 compatible compiler, tested with C++20 compatible compiler:
+    -   Tested with Linux GCC 8.2+.
 
 #### Optional Dependencies
 
--   [CMake](http://cmake.org/): 3.1.0 to build tests, command line executable, and the documentation
--   [Gurobi 8](http://gurobi.com) for using robust objectives that require a linear program solver. On linux, the files that need to be copied to `lib/gurobi` are `libgurobi81.so`,`libgurobi_g++5.2.a`. If you figure out what to do on other platforms, please send a pull request. Also `gurobi_c++.h` and `gurobi_c.h` must be copied to `include/gurobi`.
+-   [CMake](http://cmake.org/): 3.17.3 to build tests, command line executable, and the documentation
+-   [Gurobi 9](http://gurobi.com) for using robust objectives that require a linear program solver. On linux, the files that need to be copied to `lib/gurobi` are `libgurobi81.so`,`libgurobi_g++5.2.a`. If you figure out what to do on other platforms, please send a pull request. Also `gurobi_c++.h` and `gurobi_c.h` must be copied to `include/gurobi`.
 -   [OpenMP](http://openmp.org) to enable parallel computation
 -   [Doxygen](http://doxygen.org%3E) 1.8.0+ to generate documentation
 -   [Boost](http://boost.org) for compiling and running unit tests (`boost-devel` package, `libboost-all-dev` package on some distributions)
 
-For python libraries
--   [SetupTools]() (`python3-pip` package)
--   [Cython] - via pip3
--   [Numpy] - via pip3
 
 ### Documentation
 
@@ -117,10 +110,6 @@ Note that Boost must be present in order to build the tests in the first place.
     $ cmake .
     $ cmake --build . --target testit
 ```
-
-## Installing Python Interface ##
-
-**The python interface is currently BROKEN! and will probably be rewritten from scratch**
 
 ## Installing R Interface ##
 
