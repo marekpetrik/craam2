@@ -30,7 +30,7 @@ namespace craam {
 
 #ifdef GUROBI_USE
 
-#include <gurobi/gurobi_c++.h>
+#include <gurobi_c++.h>
 
 /**
  * Constructs a static instance of the gurobi object.

@@ -30,7 +30,7 @@
 #include <tuple>
 // if available, use gurobi
 #ifdef GUROBI_USE
-#include "gurobi/gurobi_c++.h"
+#include "gurobi_c++.h"
 #include <cmath>  // pow in gurobi
 #include <memory> // unique_pointer for gurobi
 #endif

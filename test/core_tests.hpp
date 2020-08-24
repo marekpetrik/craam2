@@ -396,6 +396,8 @@ BOOST_AUTO_TEST_CASE(small_mdp_cartpole) {
     CHECK_CLOSE_COLLECTION(re1.valuefunction, re3.valuefunction, 1e-2);
 }
 
+#ifdef GUROBI_USE
+
 BOOST_AUTO_TEST_CASE(small_rmdp_portfolio) {
 
     std::stringstream mdp_stream(rmdp_portfolio_str);
@@ -413,8 +415,6 @@ BOOST_AUTO_TEST_CASE(small_rmdp_portfolio) {
         rsolve_s_vi(mdpo, 0.9, nats::robust_s_avar_exp_u_gurobi(0.3, 1.0), numvec(0));
     CHECK_CLOSE_COLLECTION(re1.valuefunction, re3.valuefunction, 1e-2);
 }
-
-#ifdef GUROBI_USE
 
 BOOST_AUTO_TEST_CASE(small_rmdp_portfolio_nonconvex) {
 

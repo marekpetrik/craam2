@@ -12,9 +12,17 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Whether to use gurobi or not (disabled if files are missing)
-set (GUROBI_USE TRUE)
-# set (GUROBI_USE FALSE)
+# To use Gurobi:
+# GUROBI_PATH should be pointing to the gurobi installation directory such that
+# GUROBI_PATH/include and GUROBI_PATH/lib exist
+if (DEFINED ENV{GUROBI_PATH})
+    set (GUROBI_USE TRUE)
+    message(STATUS "Compiling with Gurobi support.")
+else()
+    set (GUROBI_USE FALSE)
+    message(WARNING "GUROBI_PATH is not set; compiling without Gurobi support.")
+endif()
+
 
 # enable colors in the output
 SET(CMAKE_COLOR_MAKEFILE ON)
@@ -43,14 +51,14 @@ if(${Boost_FOUND} LESS 1)
 endif()
 
 if(GUROBI_USE)
-    find_library(GUROBI_CXX_LIBRARY_1 NAMES libgurobi_g++5.2.a PATHS "lib/gurobi")
-    find_library(GUROBI_CXX_LIBRARY_2 NAMES libgurobi90.so PATHS "lib/gurobi")
-    find_path(GUROBI_INCLUDE_DIR_1 NAMES gurobi_c++.h PATHS "include/gurobi")
-    find_path(GUROBI_INCLUDE_DIR_2 NAMES gurobi_c.h PATHS "include/gurobi")
+    find_library(GUROBI_CXX_LIBRARY_1 NAMES libgurobi_g++5.2.a PATHS $ENV{GUROBI_PATH}/lib)
+    find_library(GUROBI_CXX_LIBRARY_2 NAMES libgurobi90.so PATHS $ENV{GUROBI_PATH}/lib)
+    find_path(GUROBI_INCLUDE_DIR_1 NAMES gurobi_c++.h PATHS $ENV{GUROBI_PATH}/include)
+    find_path(GUROBI_INCLUDE_DIR_2 NAMES gurobi_c.h PATHS $ENV{GUROBI_PATH}/include)
 
     if(NOT GUROBI_CXX_LIBRARY_1 OR NOT GUROBI_CXX_LIBRARY_2 OR
             NOT GUROBI_INCLUDE_DIR_1 OR NOT GUROBI_INCLUDE_DIR_2 )
-        message(WARNING "Gurobi files not found in lib/gurobi or include/gurobi, disabling support.")
+        message(WARNING "Gurobi files not found in GUROBI_PATH, disabling support.")
         set (GUROBI_USE FALSE)
     endif()
 endif()
@@ -107,7 +115,7 @@ configure_file (
 # **** SOURCE FILES ****
 include_directories (.)
 if(GUROBI_USE)
-    include_directories (. "${GUROBI_HOME}/include")
+    include_directories (. "$ENV{GUROBI_PATH}/include")
 endif()
 # do not report warnings from included libraries
 include_directories (SYSTEM include)

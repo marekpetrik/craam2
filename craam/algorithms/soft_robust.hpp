@@ -36,7 +36,7 @@
 #include <memory>
 #include <string>
 
-#include <gurobi/gurobi_c++.h>
+#include <gurobi_c++.h>
 
 namespace craam::statalgs {
 

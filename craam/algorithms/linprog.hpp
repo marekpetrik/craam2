@@ -30,7 +30,7 @@
 #include "craam/Solution.hpp"
 
 #include <chrono>
-#include <gurobi/gurobi_c++.h>
+#include <gurobi_c++.h>
 #include <memory>
 
 namespace craam { namespace algorithms {

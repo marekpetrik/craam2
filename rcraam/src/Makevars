@@ -1,16 +1,22 @@
 ## -*- mode: makefile; -*-
 
+CXX_STD = CXX20
 
-# release configuration
-PKG_CXXFLAGS = -I. -I../../ -I../../include -fopenmp -DNDEBUG -O3 -march=native
+ifdef GUROBI_PATH
+    # release configuration
+    PKG_CXXFLAGS = -I. -I../../ -I../../include -I$(GUROBI_PATH)/include ${SHLIB_OPENMP_CXXFLAGS} -DNDEBUG -march=native -DGUROBI_USE
+    # debug configuration
+    # PKG_CXXFLAGS = -I. -I../../ -I../../include -UNDEBUG -g
+else
+    PKG_CXXFLAGS = -I. -I../../ -I../../include ${SHLIB_OPENMP_CXXFLAGS} -DNDEBUG -march=native
+endif
 
-# debug configuration
-# PKG_CXXFLAGS = -I. -I../../ -I../../include -UNDEBUG -fopenmp -g
 
 
 # libraries
-PKG_LIBS= -fopenmp -L../../lib/gurobi -lgurobi_g++5.2 -lgurobi90
+ifdef GUROBI_PATH
+    PKG_LIBS= ${SHLIB_OPENMP_CXXFLAGS} -L$(GUROBI_PATH)/lib -lgurobi_g++5.2 -lgurobi90
+else
+    PKG_LIBS= ${SHLIB_OPENMP_CXXFLAGS} 
+endif
 
-CXX_STD = CXX20
-#CXX_STD = CXX17
-#CXX_STD = CXX14
