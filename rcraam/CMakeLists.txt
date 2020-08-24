@@ -1,3 +1,4 @@
+# a fake cmake file to be used as a project for editing the package with QT Creator or like
 cmake_minimum_required (VERSION 3.1.0 FATAL_ERROR)
 
 project(RCRAAM)
