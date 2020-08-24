@@ -61,7 +61,6 @@ To see the list of command-line options, run:
     $ bin/craam-cli -h
 ```
 
-
 ## Installing C++ Library ##
 
 It is sufficient to copy the entire root directory to a convenient location.
@@ -86,7 +85,7 @@ The library has minimal dependencies and was tested on Linux. It also compiles o
 #### Optional Dependencies
 
 -   [CMake](http://cmake.org/): 3.17.3 to build tests, command line executable, and the documentation
--   [Gurobi 9](http://gurobi.com) for using robust objectives that require a linear program solver. On linux, the files that need to be copied to `lib/gurobi` are `libgurobi81.so`,`libgurobi_g++5.2.a`. If you figure out what to do on other platforms, please send a pull request. Also `gurobi_c++.h` and `gurobi_c.h` must be copied to `include/gurobi`.
+-   [Gurobi 9](http://gurobi.com) for using robust objectives that require a linear program solver. Set `GUROBI_PATH` to the location of the gurobi files (with subdirectories `include` and `lib`).
 -   [OpenMP](http://openmp.org) to enable parallel computation
 -   [Doxygen](http://doxygen.org%3E) 1.8.0+ to generate documentation
 -   [Boost](http://boost.org) for compiling and running unit tests (`boost-devel` package, `libboost-all-dev` package on some distributions)
@@ -115,11 +114,15 @@ Note that Boost must be present in order to build the tests in the first place.
 
 The R interface is experimental and has very limited functionality. Method signatures are expected to change. The package should work on Linux, Mac, and Windows (with RTools 3.4+).
 
+**the following instructions do not currently work**
+
 A stable (and possibly stale) version of the package can be installed directly from the github repository using devtools:
 ``` R
 library(devtools)
 devtools::install_github("marekpetrik/craam2/rcraam")
 ```
+**the library can be installed only manually as follows**
+
 The development version can be installed from gitlab as follows:
 
 ``` bash
@@ -128,15 +131,13 @@ cd craam2/rcraam
 R CMD INSTALL .
 ```
 
-An advanced version, which requires Gurobi to be installed (see above), can be installed as follows:
-
+To use methods that rely on Gurobi, it must be installed and a GUROBI_PATH variable needs to be set
 ``` bash
-gitlab clone git@gitlab.com/RLSquared/craam2
-cd craam2/rcraamx
-R CMD INSTALL .
+export GUROBI_PATH=<PATH_TO_GUROBI_HOME>
 ```
+`PATH_TO_GUROBI_HOME` must have subdirectories `include` and `lib`
 
-R version 3.4 and above is recommended, but the package probably works with earlier versions too. The local compiler must support at least C++14.
+R version 4.0 is required and the C++ compiler must support C+20 standard.
 
 ### Installing on macOS
 
