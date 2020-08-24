@@ -25,13 +25,13 @@ A stable (and possibly stale) version of the package can be installed directly f
 
 ``` R
 install.packages("remotes")
-remotes::install_github("marekpetrik/craam2","rcraam")
+remotes::install_github("marekpetrik/craam2/rcraam")
 ```
 A development version can be installed from gitlab as follows:
 
 ``` R
 install.packages("remotes")
-remotes::install_gitlab("RLsquared/craam2","rcraam")
+remotes::install_gitlab("RLsquared/craam2/rcraam")
 ```
 
 To use methods that use on Gurobi, you must download Gurobi (and get a license) and set `GUROBI_PATH` to the installations directory that has subdirectories `include` and `lib`.
@@ -45,11 +45,11 @@ R CMD INSTALL . --preclean
 
 ### Windows ###
 
-You also need to install [Rtools](https://cran.r-project.org/bin/windows/Rtools/) 4.0 or later. If you want to avoid having to configure the compilation paths too, install [pkgbuild](https://cran.r-project.org/web/packages/pkgbuild/index.html). The code for that is:
+You also need to install [Rtools](https://cran.r-project.org/bin/windows/Rtools/) 4.0 or later. If you want to avoid having to configure the compilation paths too, install [pkgbuild](https://cran.r-project.org/web/packages/pkgbuild/index.html). The code that should be able to install all of this automatically is:
 
 ``` R
 install.packages(c("remotes","pkgbuild"))
-remotes::install_github("marekpetrik/craam2","rcraam")
+remotes::install_github("marekpetrik/craam2/rcraam")
 ```
 
 ### Development ###
