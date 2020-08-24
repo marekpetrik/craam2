@@ -1,6 +1,6 @@
 ## -*- mode: makefile; -*-
 
-PKG_CXXFLAGS = -I. -I../../ -I../../include -fopenmp -DNDEBUG -std=c++14 -O3 -march=native
+PKG_CXXFLAGS = -I. -I../../ -I../../include -fopenmp -DNDEBUG -std=c++2a
 PKG_LIBS= -fopenmp
 
-CXX_STD = CXX17
+CXX_STD = CXX20

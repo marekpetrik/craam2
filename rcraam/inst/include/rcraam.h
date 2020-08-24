@@ -1,1 +1,2 @@
-../../../rcraamx/inst/include/rcraam.h
+#include "config.hpp"
+#include <craam/MDP.hpp>
