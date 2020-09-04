@@ -23,10 +23,7 @@
 
 #pragma once
 
-// skip configuration if it is already provided
-#ifndef CRAAM_CONFIG_HPP
-#include "config.hpp"
-#endif // CRAAM_CONFIG_HPP
+#include "craam_config.hpp"
 
 #include <algorithm>
 #include <assert.h>

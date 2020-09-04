@@ -61,16 +61,16 @@ A simulator should have the following methods:
 class Simulator{
 public:
     /// Type of states
-    typedef state_type State;
+    using State = state_type;
 
     /// Type of actions
-    typedef action_type Action;
+    using Action = action_type;
 
     /// Returns a sample from the initial states.
     State init_state();
 
-    /// Returns a sample of the reward and a decision state following an
-expectation state pair<double,State> transition(State, Action);
+    /// Returns a sample of the reward and a decision state following
+    /// an expectation state pair<double,State> transition(State, Action);
 
     /// Checks whether the decision state is terminal
     bool end_condition(State) const;
@@ -78,8 +78,8 @@ expectation state pair<double,State> transition(State, Action);
     /// ** The following functions are not necessary for simulation
     /// ** but are used to generate policies (random(ized) )
 
-    /// State dependent actions, with discrete number of actions (long id each
-action)
+    /// State dependent actions, with discrete number of actions
+    /// (long id each action)
     /// use -1 if infinite number of actions are available
     long action_count(State) const;
 

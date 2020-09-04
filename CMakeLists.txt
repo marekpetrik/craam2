@@ -108,8 +108,8 @@ endif()
 # configure a header file to pass some of the CMake settings
 # to the source code
 configure_file (
-  ${CMAKE_CURRENT_SOURCE_DIR}/craam/config.hpp.in
-  ${CMAKE_CURRENT_SOURCE_DIR}/craam/config.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/craam/craam_config.hpp.in
+  ${CMAKE_CURRENT_SOURCE_DIR}/craam/craam_config.hpp
 )
 
 # **** SOURCE FILES ****
