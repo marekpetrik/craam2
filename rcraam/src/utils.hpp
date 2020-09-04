@@ -22,7 +22,9 @@
 // SOFTWARE.
 #pragma once
 
-#include "config.hpp"
+#define CRAAM_CONFIG_HPP // make sure to override the standard configuration
+#include "craam/MDP.hpp"
+#include "craam/MDPO.hpp"
 
 #include <Rcpp.h>
 #include <eigen3/Eigen/Dense>
