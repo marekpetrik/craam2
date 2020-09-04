@@ -19,6 +19,9 @@ The available algorithms are *value iteration* and *modified policy iteration*. 
 
 The R exposes most of the functions of the package. Method signatures are expected to change. The package should work on Linux, Mac, and Windows (with RTools 4.0+). R version 4.0 is required and the C++ compiler must support C+20 standard.
 
+
+**Gurobi**: To enable methods that use on Gurobi, you must install Gurobi (with a license) and set `GUROBI_PATH` to the Gurobi directory that has the subdirectories `include` and `lib`. Also `libgurobi90.so` (on Linux) or equivalent (on Windows/Mac) must be in the library directory (or set `LD_LIBRARY_PATH`).
+
 ### Linux and Mac ###
 
 A stable (and possibly stale) version of the package can be installed directly from the github repository using `remotes`:
@@ -34,7 +37,6 @@ install.packages("remotes")
 remotes::install_gitlab("RLsquared/craam2", "rcraam")
 ```
 
-To use methods that use on Gurobi, you must download Gurobi (and get a license) and set `GUROBI_PATH` to the installations directory that has subdirectories `include` and `lib`.
 
 To download and install a local development version, run:
 ``` bash
@@ -52,7 +54,7 @@ install.packages(c("remotes","pkgbuild"))
 remotes::install_github("marekpetrik/craam2/rcraam")
 ```
 
-### Development ###
+### R Development ###
 
 The C++ sources in directories `craam` and `includes` are currently replicated in `rcraam/inst/includes`. We are not using symlinks because they are not supported on Windows which makes it impossible to use `remotes::install_...`. The file `rcraam/copy_libs.sh` copies (running bash or similar) the latest version of the appropriate C++ files to `rcraam/inst/includes`.
 
