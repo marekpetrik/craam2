@@ -70,13 +70,14 @@ public:
     State init_state();
 
     /// Returns a sample of the reward and a decision state following
-    /// an expectation state pair<double,State> transition(State, Action);
+    /// an expectation state
+    std::pair<double,State> transition(State, Action);
 
     /// Checks whether the decision state is terminal
     bool end_condition(State) const;
 
-    /// ** The following functions are not necessary for simulation
-    /// ** but are used to generate policies (random(ized) )
+    // ** The following functions are not necessary for simulation
+    // ** but are used to generate policies (random(ized) )
 
     /// State dependent actions, with discrete number of actions
     /// (long id each action)
@@ -85,6 +86,15 @@ public:
 
     /// State dependent action with the given index
     Action action(State, index) const;
+
+    // ** The following functions are needed in order to construct an
+    // ** MDP from the simulator
+
+    /// Returns the number of valid states
+    /// makes sense only with 0-based state index
+    long state_count() const;
+
+
 }
 \endcode
 
@@ -226,7 +236,7 @@ simulate_return(Sim& sim, prec_t discount,
 }
 
 // ************************************************************************************
-// **** Random(ized) policies ****
+// **** Randomized and random policies ****
 // ************************************************************************************
 
 /**
@@ -250,7 +260,7 @@ public:
         : sim(sim), gen(seed){};
 
     /** Returns a random action.
-        The action may be copied. */
+      The action may be copied. */
     Action operator()(const State& state) {
         // the rvalue here should be able to bind to a const reference
         const auto& valid_actions = sim.get_valid_actions(state);
@@ -285,18 +295,18 @@ public:
     using Action = typename Sim::Action;
 
     /**
-      Initializes randomized polices, transition probabilities
-      for each state. The policy is applicable only to simulators that
-      have:
+    Initializes randomized polices, transition probabilities
+    for each state. The policy is applicable only to simulators that
+    have:
 
-        1) At most as many states as probabilities.size()
-        2) At least as many actions are max(probabilities[i].size() | i)
+      1) At most as many states as probabilities.size()
+      2) At least as many actions are max(probabilities[i].size() | i)
 
 
-      \param sim Simulator used with the policy. The reference is retained,
-                  the object should not be deleted
-      \param probabilities List of action probabilities for each state
-      */
+    @param sim Simulator used with the policy. The reference is retained,
+                the object should not be deleted
+    @param probabilities List of action probabilities for each state
+    */
     RandomizedPolicy(const Sim& sim, const numvecvec& probabilities,
                      random_device::result_type seed = random_device{}())
         : gen(seed), distributions(probabilities.size()), sim(sim) {
@@ -353,13 +363,12 @@ public:
     using Action = typename Sim::Action;
 
     /**
-  Initializes randomized polices, transition probabilities
-  for each state.
-
-  \param sim Simulator used with the policy. The reference is retained,
-              the object should not be deleted
-  \param actions Index of action to take for each state
-  */
+     * Initializes randomized polices, transition probabilities for each state.
+     *
+     * @param sim Simulator used with the policy. The reference is retained,
+     *            the object should not be deleted
+     * @param actions Index of action to take for each state
+     */
     DeterministicPolicy(const Sim& sim, indvec actions) : actions(actions), sim(sim){};
 
     /** Returns a random action */
@@ -382,13 +391,12 @@ protected:
 };
 
 /**
-A stochastic policy that chooses actions according to the state and the action
-selection probability.
-
-State must be convertible to a long index; that is must support
-    (explicit) operator long
-
-*/
+ * A stochastic policy that chooses actions according to the state and the action
+ * selection probability.
+ *
+ * State must be convertible to a long index; that is must support
+ * (explicit) operator long
+ */
 template <typename Sim> class StochasticPolicy {
 
 public:
@@ -396,18 +404,18 @@ public:
     using Action = typename Sim::Action;
 
     /**
-  Initializes the action/state probability map
-
-  \param sim Simulator used with the policy. The reference is retained,
-              the object should not be deleted
-  \param actions Index of action to take for each state
-  */
+     * Initializes the action/state probability map
+     *
+     * @param sim Simulator used with the policy. The reference is retained,
+     *            the object should not be deleted
+     * @param actions Index of action to take for each state
+     */
     StochasticPolicy(const Sim& sim, prob_matrix_t actions,
                      random_device::result_type seed = random_device{}())
         : gen(seed), distribution(0, 1), actions(actions), sim(sim){};
 
     /** Returns an action based on the probability of it being selected from the
-   * given state*/
+     * given state*/
     Action operator()(State state) {
         // check that the state is valid for this policy
         long sl = static_cast<long>(state);
@@ -449,15 +457,15 @@ protected:
 // ************************************************************************************
 
 /**
-A simulator that behaves as the provided MDP. A state of MDP.size() is
-considered to be the terminal state.
-
-If the sum of all transitions is less than 1, then the remainder is assumed to
-be the probability of transitioning to the terminal state.
-
-Any state with an index higher or equal to the number of states is considered to
-be terminal.
-*/
+ * A simulator that behaves as the provided MDP. A state of MDP.size() is
+ * considered to be the terminal state.
+ *
+ * If the sum of all transitions is less than 1, then the remainder is assumed to
+ * be the probability of transitioning to the terminal state.
+ *
+ * Any state with an index higher or equal to the number of states is considered to
+ * be terminal.
+ */
 class ModelSimulator {
 
 public:
@@ -596,11 +604,11 @@ protected:
 using ModelRandomPolicy = RandomPolicy<ModelSimulator>;
 
 /**
-Randomized policy to be used with MDP model simulator.
-
-In order to have a determinstic outcome of a simulation, one
-needs to set also the seed of simulate and ModelSimulator.
-*/
+ * Randomized policy to be used with MDP model simulator.
+ *
+ * In order to have a determinstic outcome of a simulation, one
+ * needs to set also the seed of simulate and ModelSimulator.
+ */
 using ModelRandomizedPolicy = RandomizedPolicy<ModelSimulator>;
 
 /// Deterministic policy to be used with MDP model simulator
@@ -614,20 +622,23 @@ using ModelStochasticPolicy = StochasticPolicy<ModelSimulator>;
 // ************************************************************************************
 
 /**
-* Builds an MDP from a simulator.
-*
-* Requires that the states and actions have discrete numbers starting with 0.
-*
-* @param sim Simulator. This is passed not as a constant because simulation
-*                       affects the random number generator.
-* @param sample_count Number of samples to take for each state and action
-*/
+ * Builds an MDP from a simulator.
+ *
+ * Requires that the states and actions have discrete numbers starting with 0.
+ *
+ * @param sim Simulator. This is passed not as a constant because simulation
+ *                       affects the random number generator.
+ * @param sample_count Number of samples to take for each state and action
+ */
 template <class S> inline MDP build_mdp(S& sim, unsigned int sample_count) {
 
     MDP result;
-    // the problem with parallelizing this loop is that it may affect te random
+    // the problem with parallelizing this loop is that it may affect the random
     // number generator in an inpredictable way
     for (long statefrom = 0; statefrom < sim.state_count(); ++statefrom) {
+        // check if the state is terminal and include no actions for it
+        // if true (meaning it is terminal)
+        if (sim.end_condition(statefrom)) continue;
         for (long action = 0; action < sim.action_count(statefrom); ++action) {
             for (long i = 0; i < sample_count; ++i) {
                 // simulate a single step of the transition probabilities

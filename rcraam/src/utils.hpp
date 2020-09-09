@@ -26,7 +26,6 @@
 
 #include "rcraam_utils.hpp"
 
-#include <Rcpp.h>
 #include <eigen3/Eigen/Dense>
 
 #include <string>
