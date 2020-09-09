@@ -70,7 +70,8 @@ public:
     State init_state();
 
     /// Returns a sample of the reward and a decision state following
-    /// an expectation state pair<double,State> transition(State, Action);
+    /// an expectation state 
+    std::pair<double,State> transition(State, Action);
 
     /// Checks whether the decision state is terminal
     bool end_condition(State) const;
@@ -226,7 +227,7 @@ simulate_return(Sim& sim, prec_t discount,
 }
 
 // ************************************************************************************
-// **** Random(ized) policies ****
+// **** Randomized and random policies ****
 // ************************************************************************************
 
 /**

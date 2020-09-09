@@ -23,8 +23,8 @@
 #pragma once
 
 #define CRAAM_CONFIG_HPP // make sure to override the standard configuration
-#include "craam/MDP.hpp"
-#include "craam/MDPO.hpp"
+
+#include "rcraam_utils.hpp"
 
 #include <Rcpp.h>
 #include <eigen3/Eigen/Dense>
@@ -41,40 +41,6 @@
  */
 inline Rcpp::IntegerVector as_intvec(const craam::indvec& intvector) {
     return Rcpp::IntegerVector::import(intvector.cbegin(), intvector.cend());
-}
-
-/**
- * Constructs a data frame from the MDP definition
- */
-inline Rcpp::DataFrame mdp_to_dataframe(const craam::MDP& mdp) {
-    craam::indvec idstatefrom, idaction, idstateto;
-    craam::numvec probability, reward;
-
-    for (size_t i = 0; i < mdp.size(); i++) {
-        const auto& state = mdp[i];
-        //idaction
-        for (size_t j = 0; j < state.size(); j++) {
-            const auto& tran = state[j];
-
-            auto& indices = tran.get_indices();
-            const auto& rewards = tran.get_rewards();
-            const auto& probabilities = tran.get_probabilities();
-            //idstateto
-            for (size_t l = 0; l < tran.size(); l++) {
-                //std::cout << "processing " << i << ", " << j << ", " << l << std::endl;
-
-                idstatefrom.push_back(i);
-                idaction.push_back(j);
-                idstateto.push_back(indices[l]);
-                probability.push_back(probabilities[l]);
-                reward.push_back(rewards[l]);
-            }
-        }
-    }
-    return Rcpp::DataFrame::create(
-        Rcpp::Named("idstatefrom") = idstatefrom, Rcpp::Named("idaction") = idaction,
-        Rcpp::Named("idstateto") = idstateto, Rcpp::Named("probability") = probability,
-        Rcpp::Named("reward") = reward);
 }
 
 /**
