@@ -6,13 +6,24 @@
 ambiguity sets. The worst-case is computed with the MDP transition
 probabilities treated as nominal values.}
 \usage{
-rsolve_mdp_s(mdp, discount, nature, nature_par, algorithm = "mppi",
-  policy_fixed = NULL, maxresidual = 0.001, iterations = 10000L,
-  timeout = 300, pack_actions = FALSE, output_tran = FALSE,
-  show_progress = TRUE)
+rsolve_mdp_s(
+  mdp,
+  discount,
+  nature,
+  nature_par,
+  algorithm = "mppi",
+  policy_fixed = NULL,
+  maxresidual = 0.001,
+  iterations = 10000L,
+  timeout = 300,
+  value_init = NULL,
+  pack_actions = FALSE,
+  output_tran = FALSE,
+  show_progress = 1L
+)
 }
 \arguments{
-\item{algorithm}{One of "ppi", "mppi", "mpi", "vi", "vi_j", "pi". MPI may
+\item{algorithm}{One of "ppi", "mppi", "mpi", "vi", "vi_j", "v_g", "pi". MPI may
 may not converge}
 
 \item{policy_fixed}{States for which the  policy should be fixed. This
@@ -26,6 +37,10 @@ is used otherwise}
 
 \item{timeout}{Maximum number of secods for which to run the computation}
 
+\item{value_init}{A  dataframe that contains the initial value function used
+to initialize the method. The columns should be idstate and value.
+Any states that are not provided are initialized to 0.}
+
 \item{pack_actions}{Whether to remove actions with no transition probabilities,
 and rename others for the same state to prevent gaps. The policy
 for the original actions can be recovered using ``action_map'' frame
@@ -34,7 +49,8 @@ in the result}
 \item{output_tran}{Whether to construct and return a matrix of transition
 probabilites and a vector of rewards}
 
-\item{show_progress}{Whether to show a progress bar during the computation}
+\item{show_progress}{Whether to show a progress bar during the computation.
+0 means no progress, 1 is progress bar, and 2 is a detailed report}
 }
 \value{
 A list with value function policy and other values

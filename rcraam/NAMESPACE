@@ -1,1 +1,4 @@
-../rcraamx/NAMESPACE
+useDynLib(rcraam, .registration=TRUE)
+exportPattern("^[[:alpha:]]+")
+import(Rcpp)
+

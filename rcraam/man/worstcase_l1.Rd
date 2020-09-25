@@ -13,6 +13,10 @@ worstcase_l1(value, reference_dst, budget)
 
 \item{budget}{Maximum L1 distance from the reference dst}
 }
+\value{
+A list with dst as the worstcase distribution,
+        and value as the objective
+}
 \description{
 Computes the maximum distribution subject to L1 constraints
 }

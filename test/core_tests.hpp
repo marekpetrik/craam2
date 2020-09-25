@@ -27,6 +27,7 @@
 #include "craam/MDPO.hpp"
 #include "craam/algorithms/matrices.hpp"
 #include "craam/algorithms/nature_response.hpp"
+#include "craam/algorithms/soft_robust.hpp"
 #include "craam/algorithms/values.hpp"
 #include "craam/definitions.hpp"
 #include "craam/modeltools.hpp"
@@ -395,6 +396,8 @@ BOOST_AUTO_TEST_CASE(small_mdp_cartpole) {
     CHECK_CLOSE_COLLECTION(re1.valuefunction, re3.valuefunction, 1e-2);
 }
 
+#ifdef GUROBI_USE
+
 BOOST_AUTO_TEST_CASE(small_rmdp_portfolio) {
 
     std::stringstream mdp_stream(rmdp_portfolio_str);
@@ -412,6 +415,26 @@ BOOST_AUTO_TEST_CASE(small_rmdp_portfolio) {
         rsolve_s_vi(mdpo, 0.9, nats::robust_s_avar_exp_u_gurobi(0.3, 1.0), numvec(0));
     CHECK_CLOSE_COLLECTION(re1.valuefunction, re3.valuefunction, 1e-2);
 }
+
+BOOST_AUTO_TEST_CASE(small_rmdp_portfolio_nonconvex) {
+
+    std::stringstream mdp_stream(rmdp_portfolio_str);
+    io::CSVReader<6> reader("nofile", mdp_stream);
+    craam::MDPO mdpo = mdpo_from_csv(reader);
+    numvec initdist(6, 0);
+    initdist[0] = 1.0;
+
+    auto genv = get_gurobi();
+
+    auto sol1 = craam::statalgs::srsolve_avar_quad(*genv, mdpo, 0.5, 0.5, 0.9, initdist);
+    BOOST_CHECK(sol1.status == 0);
+
+    auto sol2 = craam::statalgs::srsolve_avar_milp(*genv, mdpo, 0.5, 0.5, 0.9, initdist,
+                                                   ProbDst(0), "/tmp/srob_opt.lp");
+    BOOST_CHECK(sol2.status == 0);
+}
+
+#endif
 
 BOOST_AUTO_TEST_CASE(simple_mdp_vi_of_nonrobust) {
     auto rmdp = create_test_mdp<MDP>();

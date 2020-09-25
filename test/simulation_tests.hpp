@@ -347,6 +347,7 @@ template <class Model> Model create_test_mdp_sim() {
     add_transition(rmdp, 2, 0, 1, 1.0, 1.0);
 
     add_transition(rmdp, 1, 2, 1, 0.5, 0.5);
+    add_transition(rmdp, 1, 2, 3, 0.5, 0.0);
 
     return rmdp;
 }
@@ -384,13 +385,10 @@ BOOST_AUTO_TEST_CASE(simulate_mdp) {
     // cout << "Return in sampled MDP " << solution2.total_return(initial) <<
     // endl;
 
-    // need to remove the terminal state from the samples
     indvec policy = solution2.policy;
-    policy.pop_back();
 
-    // cout << "Computed policy " << policy << endl;
-    indvec policytarget{1, 1, 1};
-    BOOST_CHECK_EQUAL_COLLECTIONS(policy.begin(), policy.end(), policytarget.begin(),
+    indvec policytarget{1, 1, 1, -1};
+    BOOST_CHECK_EQUAL_COLLECTIONS(policy.cbegin(), policy.cend(), policytarget.begin(),
                                   policytarget.end());
     auto solution3 = solve_mpi(*m, 0.9, numvec(0), policy);
 

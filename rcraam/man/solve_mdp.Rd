@@ -4,9 +4,18 @@
 \alias{solve_mdp}
 \title{Solves a plain Markov decision process.}
 \usage{
-solve_mdp(mdp, discount, algorithm = "mpi", policy_fixed = NULL,
-  maxresidual = 0.001, iterations = 10000L, timeout = 300,
-  pack_actions = FALSE, output_tran = FALSE, show_progress = TRUE)
+solve_mdp(
+  mdp,
+  discount,
+  algorithm = "mpi",
+  policy_fixed = NULL,
+  maxresidual = 0.001,
+  iterations = 10000L,
+  timeout = 300,
+  value_init = NULL,
+  pack_actions = FALSE,
+  show_progress = 1L
+)
 }
 \arguments{
 \item{mdp}{A dataframe representation of the MDP. Each row
@@ -16,13 +25,13 @@ idstatefrom, idaction, idstateto, probability, reward}
 
 \item{discount}{Discount factor in [0,1]}
 
-\item{algorithm}{One of "mpi", "vi", "vi_j", "pi". Also supports "lp"
+\item{algorithm}{One of "mpi", "vi", "vi_j", "vi_g", "pi". Also supports "lp"
 when Gurobi is properly installed}
 
 \item{policy_fixed}{States for which the  policy should be fixed. This
 should be a dataframe with columns idstate and idaction. The policy
 is optimized only for states that are missing, and the fixed policy
-is used otherwise}
+is used otherwise. Both indices are 0-based.}
 
 \item{maxresidual}{Residual at which to terminate}
 
@@ -30,15 +39,17 @@ is used otherwise}
 
 \item{timeout}{Maximum number of secods for which to run the computation}
 
+\item{value_init}{A  dataframe that contains the initial value function used
+to initialize the method. The columns should be idstate and value.
+Any states that are not provided are initialized to 0.}
+
 \item{pack_actions}{Whether to remove actions with no transition probabilities,
 and rename others for the same state to prevent gaps. The policy
 for the original actions can be recovered using ``action_map'' frame
 in the result}
 
-\item{output_tran}{Whether to construct and return a matrix of transition
-probabilites and a vector of rewards}
-
-\item{show_progress}{Whether to show a progress bar during the computation}
+\item{show_progress}{Whether to show a progress bar during the computation.
+0 means no progress, 1 is progress bar, and 2 is a detailed report}
 }
 \value{
 A list with value function policy and other values

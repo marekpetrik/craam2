@@ -34,28 +34,6 @@ release
 dependency/*
 !dependency/.gitkeep
 
-scripts/results/*
-scripts/figs/*
-write-up/*.pdf
-scripts/*.txt
-!results/.gitkeep
-**/wasswerstein.pdf
-**/plot_examples.html
-scripts/plot_examples.html
-**/plot_examples.nb*
-**/plot_benchmarks.html
-**/plot_benchmarks.nb*
-scripts/plot_examples_files/*
-**/abstract.pdf
-**/rmdp.pdf
-**/L1_L8.pdf
-**/halfspace.pdf
-**/L1_on_w.pdf
-**/aistat_L1_on_weights.pdf
-**/main.pdf
-**/supplementary.pdf
-**/L1_on_weights.pdf
-
 # Linux
 *~
 
@@ -72,6 +50,16 @@ scripts/plot_examples_files/*
 .nfs*
 
 
+<<<<<<< HEAD
+=======
+
+
+# Python 
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+
+>>>>>>> tmp
 # R
 # History files
 .Rhistory

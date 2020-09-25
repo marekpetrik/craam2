@@ -13,6 +13,10 @@ avar(value, reference_dst, alpha)
 
 \item{alpha}{Confidence value. 0 is worst case, 1 is average}
 }
+\value{
+A list with dst as the distorted distribution,
+         and value as the avar value
+}
 \description{
 Computes average value at risk
 }

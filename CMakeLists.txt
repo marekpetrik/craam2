@@ -4,17 +4,25 @@
 # Release:
 # cmake -DCMAKE_BUILD_TYPE=Release .
 
-cmake_minimum_required (VERSION 3.4.0 FATAL_ERROR) # Required for modern C++
+cmake_minimum_required (VERSION 3.17.3 FATAL_ERROR) # Required for modern C++
 
-set(CRAAMVERSION "3.0.0")
+set(CRAAMVERSION "0.4.0")
 project (CRAAM)
-set(CMAKE_CXX_STANDARD 17)
-#set(CMAKE_CXX_STANDARD 14) # partially supported, not all tests run
-set(CMAKE_CXX_STANDARD_REQUIRED)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Whether to use gurobi or not (disabled if files are missing)
-set (GUROBI_USE TRUE)
-# set (GUROBI_USE FALSE)
+# To use Gurobi:
+# GUROBI_PATH should be pointing to the gurobi installation directory such that
+# GUROBI_PATH/include and GUROBI_PATH/lib exist
+if (DEFINED ENV{GUROBI_PATH})
+    set (GUROBI_USE TRUE)
+    message(STATUS "Compiling with Gurobi support.")
+else()
+    set (GUROBI_USE FALSE)
+    message(WARNING "GUROBI_PATH is not set; compiling without Gurobi support.")
+endif()
+
 
 # enable colors in the output
 SET(CMAKE_COLOR_MAKEFILE ON)
@@ -43,14 +51,14 @@ if(${Boost_FOUND} LESS 1)
 endif()
 
 if(GUROBI_USE)
-    find_library(GUROBI_CXX_LIBRARY_1 NAMES libgurobi_g++5.2.a PATHS "lib/gurobi")
-    find_library(GUROBI_CXX_LIBRARY_2 NAMES libgurobi90.so PATHS "lib/gurobi")
-    find_path(GUROBI_INCLUDE_DIR_1 NAMES gurobi_c++.h PATHS "include/gurobi")
-    find_path(GUROBI_INCLUDE_DIR_2 NAMES gurobi_c.h PATHS "include/gurobi")
+    find_library(GUROBI_CXX_LIBRARY_1 NAMES libgurobi_g++5.2.a PATHS $ENV{GUROBI_PATH}/lib)
+    find_library(GUROBI_CXX_LIBRARY_2 NAMES libgurobi90.so PATHS $ENV{GUROBI_PATH}/lib)
+    find_path(GUROBI_INCLUDE_DIR_1 NAMES gurobi_c++.h PATHS $ENV{GUROBI_PATH}/include)
+    find_path(GUROBI_INCLUDE_DIR_2 NAMES gurobi_c.h PATHS $ENV{GUROBI_PATH}/include)
 
     if(NOT GUROBI_CXX_LIBRARY_1 OR NOT GUROBI_CXX_LIBRARY_2 OR
             NOT GUROBI_INCLUDE_DIR_1 OR NOT GUROBI_INCLUDE_DIR_2 )
-        message(WARNING "Gurobi files not found in lib/gurobi or include/gurobi, disabling support.")
+        message(WARNING "Gurobi files not found in GUROBI_PATH, disabling support.")
         set (GUROBI_USE FALSE)
     endif()
 endif()
@@ -62,7 +70,7 @@ endif()
 #    message(STATUS "${_variableName}=${${_variableName}}")
 #endforeach()
 # DEBUG
-#set(CMAKE_VERBOSE_MAKEFILE on) - just run make 
+#set(CMAKE_VERBOSE_MAKEFILE on) # only works with make (not ninja)
 
 # **** TURN FEATURES ON AND OFF ****
 
@@ -100,14 +108,14 @@ endif()
 # configure a header file to pass some of the CMake settings
 # to the source code
 configure_file (
-  ${CMAKE_CURRENT_SOURCE_DIR}/craam/config.hpp.in
-  ${CMAKE_CURRENT_SOURCE_DIR}/craam/config.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/craam/craam_config.hpp.in
+  ${CMAKE_CURRENT_SOURCE_DIR}/craam/craam_config.hpp
 )
 
 # **** SOURCE FILES ****
 include_directories (.)
 if(GUROBI_USE)
-    include_directories (. "${GUROBI_HOME}/include")
+    include_directories (. "$ENV{GUROBI_PATH}/include")
 endif()
 # do not report warnings from included libraries
 include_directories (SYSTEM include)
@@ -141,6 +149,7 @@ set (SRCS
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/bellman_mdp.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/bellman_mdpo.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/iteration_methods.hpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/soft_robust.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/linprog.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/algorithms/bayesian.hpp
           ${CMAKE_CURRENT_SOURCE_DIR}/craam/simulators/inventory.hpp

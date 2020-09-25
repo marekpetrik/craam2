@@ -9,16 +9,16 @@ loadNamespace("stringr")
 
 ## ----- Parameters --------
 
-description <- "riverswim_mdp2.csv"
+description <- "riverswim3_mdp.csv"
 
-init.dist <- c(1,0,0,0,0,0)# rep(1/6,6)
+init.dist <- rep(1/6,6)
 discount <- 0.99
 confidence <- 0.95
 bayes.samples <- 1000
 
-samples <- 500
+samples <- 50
 sample.seed <- 2011
-episodes <- 1
+episodes <- 10
 
 ## ----- Initialization ------
 
@@ -123,11 +123,12 @@ bayes.returns <- function(mdp.bayesian, policy, maxcount = 100){
 #' @param mdp.bayesian MDP with outcomes representing bayesian samples
 #' @param solution Output from the algorithm's solution
 report_solution <- function(name, mdp.bayesian, solution){
-  cat("**", stringr::str_pad(name, 15, 'right'), 
-      solution$valuefunction$value %*% init.dist, "****\n")
+  predicted <- ifelse("valuefunction" %in% ls(solution), 
+                      solution$valuefunction$value %*% init.dist,
+                      solution$objective)
+  cat("**", stringr::str_pad(name, 15, 'right'), predicted, "****\n")
   cat("    Policy", solution$policy$idaction,"\n")
-  
-  cat("    Return predicted:", solution$valuefunction$value %*% init.dist)
+  cat("    Return predicted:", predicted)
   sol.tr <- solve_mdp(mdp.truth, discount, 
                       policy_fixed = solution$policy,
                       show_progress = FALSE)
@@ -311,3 +312,13 @@ sol.norbu.w <- rsolve_mdpo_sa(mdp.bayesian, discount, "evaru",
                             list(alpha = 1-confidence, beta = 1.0), show_progress = FALSE)
 report_solution("NORBU-v: ", mdp.bayesian, sol.norbu.w)
 
+## ---- TORBU-milp ------------
+
+gurobi_set_param("LogFile", "/tmp/gurobi.log")
+
+init.dist.df <- data.frame(idstate = seq(0, length(init.dist) -1), 
+                           probability = init.dist)
+
+sol.torbu.milp <- srsolve_mdpo(mdp.bayesian, init.dist.df, discount, 
+                            alpha = 1-confidence, beta = 1.0, output_filename = "/tmp/torbu.lp")
+report_solution("TORBU-m: ", mdp.bayesian, sol.torbu.milp)
