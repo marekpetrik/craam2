@@ -1,5 +1,6 @@
 library(rcraam)
 library(dplyr)
+library(readr)
 
 compare_gurobi <- FALSE
 
