@@ -1,0 +1,35 @@
+---
+title: "inventory_weighted"
+output: html_document
+---
+
+```{r}
+# install from gitlab.com/RLSquared/craam2
+library(rcraam)
+library(dplyr)
+library(stringr)
+```
+```{r}
+
+budget <- 0.1
+config <- list(iterations = 50000, progress = FALSE, timeout = 300, precision = 0.1)
+discount <- 0.995
+
+for(actions in seq(2, 100, by = 2)){
+  #actions <- 45
+  states <- 3 * actions
+  cat("Running with ", states, " states...\n")
+  
+  # construct an inventory management problem with the given number of actions
+  problem.name <- "inventory"
+  inv <- inventory.default()
+  inv$max_order <- actions
+  inv$max_inventory <- 2 * inv$max_order
+  inv$max_backlog <- inv$max_order
+  mdp <- mdp_inventory(inv)
+  solmdp <- solve_mdp(mdp, discount, append(config, list(algorithm="pi")))
+
+}
+
+```
+
