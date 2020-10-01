@@ -7,29 +7,82 @@ output: html_document
 # install from gitlab.com/RLSquared/craam2
 library(rcraam)
 library(dplyr)
-library(stringr)
 ```
-```{r}
 
-budget <- 0.1
-config <- list(iterations = 50000, progress = FALSE, timeout = 300, precision = 0.1)
+```{r}
+# global variables - yuck
+# config 1:
+states <- 3
+bell_iters = 200
+time_limit = 500  # in seconds, max runtime for a method   
+actions <- 2
+cat("Running with ", states, " states...\n")
+discount = 0.995
+
+# set configuation parameters
+budget <- 0.2
+budget_s <- 1.2  # this is larger because this is the sum over all actions
 discount <- 0.995
 
-for(actions in seq(2, 100, by = 2)){
-  #actions <- 45
-  states <- 3 * actions
-  cat("Running with ", states, " states...\n")
-  
-  # construct an inventory management problem with the given number of actions
-  problem.name <- "inventory"
-  inv <- inventory.default()
-  inv$max_order <- actions
-  inv$max_inventory <- 2 * inv$max_order
-  inv$max_backlog <- inv$max_order
-  mdp <- mdp_inventory(inv)
-  solmdp <- solve_mdp(mdp, discount, append(config, list(algorithm="pi")))
+```
 
-}
 
+```{r}
+# construct an inventory management problem with the given number of actions
+problem.name <- "inventory"
+inv <- inventory.default()
+inv$max_order <- actions
+inv$max_inventory <- 2 * inv$max_order
+inv$max_backlog <- inv$max_order
+mdp <- mdp_inventory(inv)
+mdp <- mdp_clean(mdp)    
+
+solmdp <- solve_mdp(mdp, discount, algorithm = "pi", show_progress = FALSE)
+
+
+# **** sa-rectangular, no weights
+budgets_sa <- mdp %>% select(idstate=idstatefrom, idaction) %>% 
+                unique() %>% mutate(budget=budget)
+
+
+solRmdp  <-
+  rsolve_mdp_sa(
+    mdp,
+    discount,
+    "l1",
+    budgets_sa,
+    algorithm = "vi_j",
+    iterations = 50000,
+    show_progress = FALSE,
+    timeout = time_limit,
+    maxresidual = 0.1
+  )
+
+# **** weights
+weights <- abs(solmdp$valuefunction$value -
+                 mean(solmdp$valuefunction$value)) + 10 # 10 is regularization
+weights <- weights / max(weights)
+
+weights <- seq(1,7)*31
+
+# construct a dataframe that has the weight to the destination states
+weights.df <- data.frame(idstate = solmdp$valuefunction$idstate,
+                         weight = weights) %>%  full_join(mdp, by = c(idstate = "idstateto")) %>%  rename(idstateto = idstate) %>%  select(idstatefrom, idaction, idstateto, weight = weight)
+
+solWRmdp <-
+  rsolve_mdp_sa(
+    mdp,
+    discount,
+    "l1w",
+    list(budgets = budgets_sa, weights = weights.df),
+    algorithm = "vi_j",
+    iterations = 50000,
+    show_progress = FALSE,
+    timeout = time_limit,
+    maxresidual = 0.1
+  )
+
+cat(solRmdp[["valuefunction"]][["value"]], "\n")
+cat(solWRmdp[["valuefunction"]][["value"]])
 ```
 

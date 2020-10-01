@@ -13,6 +13,45 @@ worstcase_l1 <- function(value, reference_dst, budget) {
     .Call(`_rcraam_worstcase_l1`, value, reference_dst, budget)
 }
 
+#' Computes the maximum distribution subject to weighted L1 constraints
+#'
+#' @param value Random variable (objective)
+#' @param reference_dst Reference distribution of the same size as value
+#' @param budget Maximum L1 distance from the reference dst
+#' @param w set of weights for ambiguity set
+#'
+#' @returns A list with dst as the worstcase distribution,
+#'         and value as the objective
+worstcase_l1_w <- function(value, reference_dst, w, budget) {
+    .Call(`_rcraam_worstcase_l1_w`, value, reference_dst, w, budget)
+}
+
+#' Computes the maximum distribution subject to weighted L1 constraints using Gurobi
+#'
+#' @param value Random variable (objective)
+#' @param reference_dst Reference distribution of the same size as value
+#' @param budget Maximum L1 distance from the reference dst
+#' @param w set of weights for ambiguity set
+#'
+#' @returns A list with dst as the worstcase distribution,
+#'         and value as the objective
+worstcase_l1_w_gurobi <- function(value, reference_dst, w, budget) {
+    .Call(`_rcraam_worstcase_l1_w_gurobi`, value, reference_dst, w, budget)
+}
+
+#' Computes the maximum distribution subject to weighted Linf constraints using Gurobi
+#'
+#' @param value Random variable (objective)
+#' @param reference_dst Reference distribution of the same size as value
+#' @param budget Maximum Linf distance from the reference dst
+#' @param w set of weights for ambiguity set
+#'
+#' @returns A list with dst as the worstcase distribution,
+#'         and value as the objective
+worstcase_linf_w_gurobi <- function(value, reference_dst, w, budget) {
+    .Call(`_rcraam_worstcase_linf_w_gurobi`, value, reference_dst, w, budget)
+}
+
 #' Computes average value at risk
 #'
 #' @param value Random variable (as a vector over realizations)
@@ -386,6 +425,9 @@ set_rcraam_threads <- function(n) {
 #'
 #' See https://www.gurobi.com/wp-content/plugins/hd_documentations/documentation/9.0/refman.pdf
 #' for examples
+#'
+#' For example, to enable logging call:
+#' gurobi_set_param("OutputFlag", "1")
 #'
 #' @examples
 #' gurobi_set_param("TimeLimit", "100.0")
