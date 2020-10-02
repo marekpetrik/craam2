@@ -13,6 +13,8 @@ bin
 /craam.pro.user
 /out
 build
+/examples/R/single_bellman_update/figs
+/examples/R/single_bellman_update/results
 /python/craam.egg-info
 /python/craam/crobust.cpp
 dist
