@@ -4,7 +4,7 @@
 #define CRAAM_CONFIG_HPP
 
 #define IS_DEBUG
-#define GUROBI_USE
+/* #undef GUROBI_USE */
 
 #ifndef IS_DEBUG
     #define NDEBUG

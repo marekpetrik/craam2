@@ -10,6 +10,7 @@ bin
 /craam/eigen-eigen-5a0156e40feb
 /include/gurobi
 !include/gurobi/.gitkeep
+!include/gurobi/README
 /lib/gurobi
 !lib/gurobi/README
 !lib/gurobi/.gitkeep
@@ -18,8 +19,6 @@ bin
 /craam.pro.user
 /out
 build
-/examples/R/single_bellman_update/figs
-/examples/R/single_bellman_update/results
 /python/craam.egg-info
 /python/craam/crobust.cpp
 dist

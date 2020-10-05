@@ -18,8 +18,8 @@ endif()
 
 include_directories(../
                     ../include
-                    ~/R/x86_64-pc-linux-gnu-library/3.6/Rcpp/include/
-                    ~/R/x86_64-pc-linux-gnu-library/3.6/RcppProgress/include
+                    ~/R/x86_64-pc-linux-gnu-library/4.0/Rcpp/include/
+                    ~/R/x86_64-pc-linux-gnu-library/4.0/RcppProgress/include
                     /usr/include/R/)
 
 find_path(RCPP "Rcpp.h" PATHS "~/R/x86_64-pc-linux-gnu-library/3.6/Rcpp/include/")

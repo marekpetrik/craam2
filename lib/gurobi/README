@@ -1,0 +1,6 @@
+Copy the following Gurobi library files into this directory:
+
+- libgurobi90.so
+- libgurobi_g++5.2.a
+
+The library files must be accessible to R to be loaded at runtime. They should be either installed in the system lib directory, or LD_LIBRARY_PATH must be set appropriately.
