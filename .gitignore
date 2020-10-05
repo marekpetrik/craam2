@@ -8,7 +8,6 @@
 /doc/doxyfile.config
 bin
 /craam/eigen-eigen-5a0156e40feb
-/include/Eigen
 /include/gurobi
 !include/gurobi/.gitkeep
 /lib/gurobi
@@ -185,6 +184,11 @@ Meta
 *.ps
 *.eps
 *.pdf
+
+
+
+## sqlite
+*.sqlite3
 
 
 ## Bibliography auxiliary files (bibtex/biblatex/biber):
