@@ -15,6 +15,9 @@ bin
 !lib/gurobi/README
 !lib/gurobi/.gitkeep
 /examples/R/inventory/*.csv
+/examples/R/single_bellman_update/fig
+/examples/R/single_bellman_update/results
+
 /data
 /craam.pro.user
 /out
