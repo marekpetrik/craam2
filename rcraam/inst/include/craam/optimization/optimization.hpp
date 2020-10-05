@@ -658,17 +658,6 @@ std::pair<numvec, prec_t> inline worstcase_l1_w_gurobi(const GRBEnv& env, const 
     return make_pair(move(p_result), objective_value);
 }
 
-
-/// See the overloaded method
-std::pair<numvec, prec_t> inline worstcase_l1_w_gurobi(const numvec& z,
-                                                           const numvec& pbar,
-                                                           const numvec& wi, prec_t xi) {
-    GRBEnv* env = new GRBEnv();
-    env->set(GRB_IntParam_OutputFlag, 0);
-    env->set(GRB_IntParam_Threads, 1);
-    return worstcase_l1_w_gurobi(*env, z, pbar, wi, xi);
-}
-
 /**
  * @brief worstcase_l_inf_w_gurobi Uses gurobi to solve for the worst case
  *  response subject to a weighted L_inf constraint
@@ -713,13 +702,11 @@ std::pair<numvec, double> worstcase_linf_w_gurobi(const GRBEnv& env, const numve
     model.addConstr(ones, GRB_EQUAL, 1.0);
 
     //TODO: Check if the weighted linf derivation is correct. unweighted linf looks good though.
-    // constraints: p - pbar <= (1/w) .* xi (p - ((1/w) .* xi) <= pbar) and
-    //              pbar - p <= (1/w) .* xi (-(1/w) .* xi) - p <= -pbar)
+    // constraints: p - pbar <= w .* xi (p - (w .* xi) <= pbar) and
+    //              pbar - p <= w .* xi ((w .* xi) - p <= -pbar)
     for (size_t idstate = 0; idstate < nstates; idstate++) {
-//        model.addConstr(p[idstate] - (w[idstate] * xi) <= pbar[idstate]);
-//        model.addConstr((-w[idstate] * xi) - p[idstate] <= -pbar[idstate]);
-        model.addConstr(p[idstate] - (xi / w[idstate]) <= pbar[idstate]);
-        model.addConstr((- xi / w[idstate]) - p[idstate] <= -pbar[idstate]);
+        model.addConstr(p[idstate] - (w[idstate] * xi) <= pbar[idstate]);
+        model.addConstr((-w[idstate] * xi) - p[idstate] <= -pbar[idstate]);
     }
 
     // objective p^T z
@@ -741,16 +728,6 @@ std::pair<numvec, double> worstcase_linf_w_gurobi(const GRBEnv& env, const numve
 
     return make_pair(move(p_result), objective_value);
 }
-
-/// See the overloaded method
-    std::pair<numvec, prec_t> inline worstcase_linf_w_gurobi(const numvec& z,
-                                                           const numvec& pbar,
-                                                           const numvec& wi, prec_t xi) {
-        GRBEnv* env = new GRBEnv();
-        env->set(GRB_IntParam_OutputFlag, 0);
-        env->set(GRB_IntParam_Threads, 1);
-        return worstcase_linf_w_gurobi(*env, z, pbar, wi, xi);
-    }
 
 /**
  * @brief Computes the worst case probability distribution subject to a

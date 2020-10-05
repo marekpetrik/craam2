@@ -19,9 +19,10 @@ loadNamespace("tidyr")
 loadNamespace("reshape2")
 loadNamespace("stringr")
 
+
 description <- "machine_replacement_mdp.csv"
 
-discount <- 0.8
+discount <- 0.9
 confidence <- 0.6
 bayes.samples <- 500
 
@@ -33,6 +34,7 @@ episodes <- 1
 ## Initialization 
 
 ```{r}
+
 mdp.truth <- read_csv(description, 
                       col_types = cols(idstatefrom = 'i',
                                        idaction = 'i',
@@ -52,6 +54,7 @@ init.dist <- rep(1/num.state, num.state)
 
 # construct a biased policy to prefer to not-repair 
 # this is to ensure that the "latest" state is sampled
+
 ur.policy = data.frame(idstate = c(seq(0, last.stateid), seq(0, last.stateid)),
                        idaction = c(rep(0,num.state), rep(1,num.state)),
                        probability = c(rep(0.2, num.state), rep(0.8, num.state)))
@@ -60,6 +63,7 @@ ur.policy = data.frame(idstate = c(seq(0, last.stateid), seq(0, last.stateid)),
 sol.true <- solve_mdp(mdp.truth, discount, show_progress = FALSE)
 vf.true <- sol.true$valuefunction$value
 cat("True optimal return", vf.true %*% init.dist, "policy:", sol.true$policy$idaction, "\n\n")
+
 ```
 
 ## Generate Samples 
@@ -172,7 +176,7 @@ report_solution <- function(name, mdp.bayesian, solution){
 }
 ```
 
-##  Solve Empirical MDP and Bayesian MDP
+##  Solve 
 
 ```{r}
 
