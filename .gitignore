@@ -9,6 +9,12 @@
 bin
 /craam/eigen-eigen-5a0156e40feb
 /include/Eigen
+/include/gurobi
+!include/gurobi/.gitkeep
+/lib/gurobi
+!lib/gurobi/README
+!lib/gurobi/.gitkeep
+/examples/R/inventory/*.csv
 /data
 /craam.pro.user
 /out
