@@ -105,7 +105,68 @@ Note that Boost must be present in order to build the tests in the first place.
     $ cmake --build . --target testit
 ```
 
-## Build and Run Command-line Executable ##
+
+## C++ Development ##
+
+The instructions above generate a release version of the project. The release version is optimized for speed, but lacks debugging symbols and many intermediate checks are eliminated. For development purposes, is better to use the Debug version of the code. This can be generated as follows:
+
+``` bash
+    $ cmake -DCMAKE_BUILD_TYPE=Debug .
+    $ cmake --build .
+```
+The release version that omits many of the time-consuming debugging checks can be compiled as:
+
+``` bash
+    $ cmake -DCMAKE_BUILD_TYPE=Release .
+    $ cmake --build .
+```
+
+By default, the project assumes that the [Gurobi](http://www.gurobi.com/) LP solver is available.  It is possible to disable the code that requires gurobi by uncommenting the fillowing line in CMakeLists.txt: 
+
+```
+set (GUROBI_USE FALSE)
+```
+
+CMake assumes by default that C++17 is available. If it is not, change the corresponding line in `CMakeLists.txt`.  If the necessary Gurobi files (see above) are not found in the expected directories, Gurobi support is disabled by CMake.
+
+[QT creator](https://www.qt.io/download) is a nice IDE that can automatically parse and run cmake projects directly. As an alternative, CMake can be used to generate a [CodeBlocks](http://www.codeblocks.org/) project files too:
+
+
+To help with development, CMake can be used to generate a [CodeBlocks](http://www.codeblocks.org/) project files too:
+
+``` bash
+  $ cmake . -G "CodeBlocks - Ninja"
+```
+
+To list other types of projects that CMake can generate, call:
+
+``` bash
+  $ cmake . -G
+```
+
+## Pull Request Guidelines ##
+
+0. Do not add class `git add` when adding files to commits. Rather, call `git commit -a` in order to avoid adding spurious files
+
+1. All C++ code should be formatted using `clang-format` and the style file `craam/.clang-format`. For example:
+
+``` bash
+clang-format -i -style=file Action.hpp
+```
+
+2. Please do not add any files that are proprietary or not licensed under a permissive license (MIT/BSD)
+
+3. Do not remove any of the libraries that are already included in the repository (eigen3 and others). They are included in the repository for a purpose.
+
+4. Do not include any of the auto-generated config files in the repository
+
+5. Make sure that all unit tests pass
+
+6. See the R-development section above to make sure that the changes to the C++ code are reflected in the R package (= run the script as described in the the R-development section
+
+## Other Steps ##
+
+### Build and Run Command-line Executable ###
 
 To run a benchmark problem, download and decompress one of the following test files:
 
@@ -149,51 +210,7 @@ To see the list of command-line options, run:
 ``` bash
     $ bin/craam-cli -h
 ```
-
-## C++ Development ##
-
-The instructions above generate a release version of the project. The release version is optimized for speed, but lacks debugging symbols and many intermediate checks are eliminated. For development purposes, is better to use the Debug version of the code. This can be generated as follows:
-
-``` bash
-    $ cmake -DCMAKE_BUILD_TYPE=Debug .
-    $ cmake --build .
-```
-The release version that omits many of the time-consuming debugging checks can be compiled as:
-
-``` bash
-    $ cmake -DCMAKE_BUILD_TYPE=Release .
-    $ cmake --build .
-```
-
-By default, the project assumes that the [Gurobi](http://www.gurobi.com/) LP solver is available.  It is possible to disable the code that requires gurobi by uncommenting the fillowing line in CMakeLists.txt: 
-
-```
-set (GUROBI_USE FALSE)
-```
-
-CMake assumes by default that C++17 is available. If it is not, change the corresponding line in `CMakeLists.txt`.  If the necessary Gurobi files (see above) are not found in the expected directories, Gurobi support is disabled by CMake.
-
-[QT creator](https://www.qt.io/download) is a nice IDE that can automatically parse and run cmake projects directly. As an alternative, CMake can be used to generate a [CodeBlocks](http://www.codeblocks.org/) project files too:
-
-
-To help with development, CMake can be used to generate a [CodeBlocks](http://www.codeblocks.org/) project files too:
-
-``` bash
-  $ cmake . -G "CodeBlocks - Ninja"
-```
-
-To list other types of projects that CMake can generate, call:
-
-``` bash
-  $ cmake . -G
-```
-
-## Next Steps ##
-
 ### C++ Library ###
-
-
-See the [online documentation](http://cs.unh.edu/~mpetrik/code/craam) or generate it locally as described above.
 
 Unit tests provide some examples of how to use the library. For simple end-to-end examples, see `tests/benchmark.cpp` and `test/dev.cpp`. Targets `BENCH` and `DEV` build them respectively.
 
