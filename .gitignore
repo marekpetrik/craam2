@@ -12,7 +12,8 @@ bin
 !include/gurobi/README
 /include/gurobi/*
 !lib/gurobi/README
-!lib/gurobi/.gitkeep
+!.gitkeep
+!.keep
 /lib/gurobi/*
 /examples/R/inventory/*.csv
 /examples/R/single_bellman_update/fig
