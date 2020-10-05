@@ -1,0 +1,4 @@
+To use Gurobi, set a GUROBI_PATH to the location of the Gurobi library, such that
+
+GUROBI_PATH/include  contains include files, and
+GUROBI_PATH/lib      contains the library files
