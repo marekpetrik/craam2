@@ -8,19 +8,7 @@
 /doc/doxyfile.config
 bin
 /craam/eigen-eigen-5a0156e40feb
-!include/gurobi/.gitkeep
-!include/gurobi/README
-include/gurobi/*
-!lib/gurobi/README
-**/!.gitkeep
-**/!.keep
-
-!lib/gurobi/.gitkeep
-lib/gurobi/*
-/examples/R/inventory/*.csv
-/examples/R/single_bellman_update/fig
-/examples/R/single_bellman_update/results
-
+/include/Eigen
 /data
 /craam.pro.user
 /out
@@ -31,6 +19,11 @@ dist
 /python/craam/__pycache__
 *.so
 *.o
+
+/examples/R/inventory/*.csv
+/examples/R/single_bellman_update/fig
+/examples/R/single_bellman_update/results
+
 
 
 cmake-build-*
