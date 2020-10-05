@@ -10,10 +10,10 @@ bin
 /craam/eigen-eigen-5a0156e40feb
 !include/gurobi/.gitkeep
 !include/gurobi/README
-/include/gurobi
+/include/gurobi/*
 !lib/gurobi/README
 !lib/gurobi/.gitkeep
-/lib/gurobi
+/lib/gurobi/*
 /examples/R/inventory/*.csv
 /examples/R/single_bellman_update/fig
 /examples/R/single_bellman_update/results
