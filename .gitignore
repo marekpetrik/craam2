@@ -9,6 +9,8 @@
 bin
 /craam/eigen-eigen-5a0156e40feb
 /include/Eigen
+/include/gurobi/
+**/craam_config.hpp
 /data
 /craam.pro.user
 /out
