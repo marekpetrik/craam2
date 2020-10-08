@@ -11,6 +11,8 @@ bin
 /include/Eigen
 /include/gurobi/
 **/craam_config.hpp
+rcraam/R/RcppExports.R
+
 /data
 /craam.pro.user
 /out
