@@ -1,4 +1,6 @@
 #!/bin/bash
-wget http://bitbucket.org/eigen/eigen/get/3.3.5.tar.bz2
-tar xf 3.3.5.tar.bz2 
-mv eigen-eigen-b3f3d4950030 eigen3
+wget https://gitlab.com/libeigen/eigen/-/archive/3.3.8/eigen-3.3.8.tar.bz2
+tar xf eigen-3.3.8.tar.bz2 
+rm -rf eigen3
+mv eigen-3.3.8 eigen3
+rm eigen-3.3.8.tar.bz2 
