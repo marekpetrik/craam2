@@ -1,3 +1,11 @@
+# a function that is called on load
+.onAttach <- function(libname, pkgname){
+    if(!rcraam_supports_gurobi()){
+        message("NOTE: Rcraam compiled without Gurobi support. Set GUROBI_PATH to your Gurobi installation and reinstall rcraam to enable methods that require LP or MILP support.")
+    }
+}
+
+
 .normalize <- function(x) {x / sum(x)}
 
 inventory.default <- function(){

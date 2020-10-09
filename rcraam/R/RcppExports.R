@@ -28,6 +28,8 @@ worstcase_l1_w <- function(value, reference_dst, w, budget) {
 
 #' Computes the maximum distribution subject to weighted L1 constraints using Gurobi
 #'
+#' The function is only supported when the package is installed with Gurobi support 
+#'
 #' @param value Random variable (objective)
 #' @param reference_dst Reference distribution of the same size as value
 #' @param budget Maximum L1 distance from the reference dst
@@ -40,6 +42,8 @@ worstcase_l1_w_gurobi <- function(value, reference_dst, w, budget) {
 }
 
 #' Computes the maximum distribution subject to weighted Linf constraints using Gurobi
+#'
+#' The function is only supported when the package is installed with Gurobi support 
 #'
 #' @param value Random variable (objective)
 #' @param reference_dst Reference distribution of the same size as value
@@ -481,6 +485,10 @@ matrix_mdp_lp <- function(mdp, discount) {
 #' @return A list with P and r, the transition matrix and the reward vector
 matrix_mdp_transition <- function(mdp, policy) {
     .Call(`_rcraam_matrix_mdp_transition`, mdp, policy)
+}
+
+rcraam_supports_gurobi <- function() {
+    .Call(`_rcraam_rcraam_supports_gurobi`)
 }
 
 mdp_example <- function(name) {

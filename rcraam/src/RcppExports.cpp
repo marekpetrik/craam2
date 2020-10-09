@@ -313,6 +313,16 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// rcraam_supports_gurobi
+bool rcraam_supports_gurobi();
+RcppExport SEXP _rcraam_rcraam_supports_gurobi() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(rcraam_supports_gurobi());
+    return rcpp_result_gen;
+END_RCPP
+}
 // mdp_example
 Rcpp::DataFrame mdp_example(Rcpp::String name);
 RcppExport SEXP _rcraam_mdp_example(SEXP nameSEXP) {
@@ -391,6 +401,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_rcraam_mdp_from_samples", (DL_FUNC) &_rcraam_mdp_from_samples, 1},
     {"_rcraam_matrix_mdp_lp", (DL_FUNC) &_rcraam_matrix_mdp_lp, 2},
     {"_rcraam_matrix_mdp_transition", (DL_FUNC) &_rcraam_matrix_mdp_transition, 2},
+    {"_rcraam_rcraam_supports_gurobi", (DL_FUNC) &_rcraam_rcraam_supports_gurobi, 0},
     {"_rcraam_mdp_example", (DL_FUNC) &_rcraam_mdp_example, 1},
     {"_rcraam_mdp_inventory", (DL_FUNC) &_rcraam_mdp_inventory, 1},
     {"_rcraam_mdp_population", (DL_FUNC) &_rcraam_mdp_population, 8},

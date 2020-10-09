@@ -1581,3 +1581,16 @@ Rcpp::List matrix_mdp_transition(Rcpp::DataFrame mdp, Rcpp::DataFrame policy) {
     }
     return result;
 }
+
+//' Whether Gurobi LP and MILP is installed
+//' 
+//' This function can be used when determining which functionality
+//' is available in the package
+// [[Rcpp::export]]
+bool rcraam_supports_gurobi(){
+#ifdef GUROBI_USE
+    return true;
+#else
+    return false;
+#endif
+}
