@@ -88,7 +88,8 @@ public:
                                             prec_t discount) const {
         try {
             // check whether this state should only be evaluated
-            assert(initial_policy.empty() || stateid < initial_policy.size());
+            assert(stateid >= 0);
+            assert(initial_policy.empty() || stateid < long(initial_policy.size()));
             if (initial_policy.empty() || initial_policy.at(stateid) < 0) { // optimizing
                 prec_t newvalue;
                 policy_type action;

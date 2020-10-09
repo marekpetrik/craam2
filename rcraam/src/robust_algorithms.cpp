@@ -190,6 +190,94 @@ Rcpp::List worstcase_l1(Rcpp::NumericVector value, Rcpp::NumericVector reference
     return result;
 }
 
+
+
+//' Computes the maximum distribution subject to weighted L1 constraints
+//'
+//' @param value Random variable (objective)
+//' @param reference_dst Reference distribution of the same size as value
+//' @param budget Maximum L1 distance from the reference dst
+//' @param w set of weights for ambiguity set
+//'
+//' @returns A list with dst as the worstcase distribution,
+//'         and value as the objective
+//[[Rcpp::export]]
+Rcpp::List worstcase_l1_w(Rcpp::NumericVector value, Rcpp::NumericVector reference_dst, Rcpp::NumericVector w, double budget ) {
+    craam::numvec p; // resulting probability
+    double objective; // resulting objective value
+
+    craam::numvec vz(value.begin(), value.end()), vq(reference_dst.begin(), reference_dst.end()), vw(w.begin(), w.end());
+    std::tie(p, objective) = craam::worstcase_l1_w(vz, vq, vw, budget);
+
+    Rcpp::List result;
+    result["dst"] = Rcpp::NumericVector(p.cbegin(), p.cend());
+    result["value"] = objective;
+
+    return result;
+}
+
+
+//' Computes the maximum distribution subject to weighted L1 constraints using Gurobi
+//'
+//' The function is only supported when the package is installed with Gurobi support 
+//'
+//' @param value Random variable (objective)
+//' @param reference_dst Reference distribution of the same size as value
+//' @param budget Maximum L1 distance from the reference dst
+//' @param w set of weights for ambiguity set
+//'
+//' @returns A list with dst as the worstcase distribution,
+//'         and value as the objective
+//[[Rcpp::export]]
+Rcpp::List worstcase_l1_w_gurobi(Rcpp::NumericVector value, Rcpp::NumericVector reference_dst, Rcpp::NumericVector w, double budget ) {
+#ifdef GUROBI_USE
+    craam::numvec p; // resulting probability
+    double objective; // resulting objective value
+
+    craam::numvec vz(value.begin(), value.end()), vq(reference_dst.begin(), reference_dst.end()), vw(w.begin(), w.end());
+    std::tie(p, objective) = craam::worstcase_l1_w_gurobi(vz, vq, vw, budget);
+
+    Rcpp::List result;
+    result["dst"] = Rcpp::NumericVector(p.cbegin(), p.cend());
+    result["value"] = objective;
+
+    return result;
+#else
+    Rcpp::stop("The function is not supported because Gurobi is not installed");
+#endif // GUROBI_USE
+}
+
+//' Computes the maximum distribution subject to weighted Linf constraints using Gurobi
+//'
+//' The function is only supported when the package is installed with Gurobi support 
+//'
+//' @param value Random variable (objective)
+//' @param reference_dst Reference distribution of the same size as value
+//' @param budget Maximum Linf distance from the reference dst
+//' @param w set of weights for ambiguity set
+//'
+//' @returns A list with dst as the worstcase distribution,
+//'         and value as the objective
+//[[Rcpp::export]]
+Rcpp::List worstcase_linf_w_gurobi(Rcpp::NumericVector value, Rcpp::NumericVector reference_dst, Rcpp::NumericVector w, double budget ) {
+#ifdef GUROBI_USE
+    craam::numvec p; // resulting probability
+    double objective; // resulting objective value
+
+    craam::numvec vz(value.begin(), value.end()), vq(reference_dst.begin(), reference_dst.end()), vw(w.begin(), w.end());
+    std::tie(p, objective) = craam::worstcase_linf_w_gurobi(vz, vq, vw, budget);
+
+    Rcpp::List result;
+    result["dst"] = Rcpp::NumericVector(p.cbegin(), p.cend());
+    result["value"] = objective;
+
+    return result;
+#else
+    Rcpp::stop("The function is not supported because Gurobi is not installed");
+#endif // GUROBI_USE
+}
+
+
 //' Computes average value at risk
 //'
 //' @param value Random variable (as a vector over realizations)
