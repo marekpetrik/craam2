@@ -8,7 +8,7 @@ When using the *robust objective*, adversarial nature chooses the worst plausibl
 
 The library also provides tools for *basic simulation*, for constructing MDPs from *sample*s, and *value function approximation*. Objective functions supported are infinite horizon discounted MDPs, finite horizon MDPs, and stochastic shortest path \[Puterman2005\]. Some basic stochastic shortest path methods are also supported. The library assumes *maximization* over actions. The number of states and actions must be finite.
 
-The library is based on two main data structures: MDP and MDPO. **MDP** is the standard model that consists of states 𝒮 and actions 𝒜. Note that robust solutions are constrained to be **absolutely continuous** with respect to *P*(*s*, *a*, ⋅). This is a hard requirement for all choices of ambiguity (or uncertainty).
+The library is based on two main data structures: MDP and MDPO. **MDP** is the standard model that consists of states S and actions A. Note that robust solutions are constrained to be **absolutely continuous** with respect to *P*(*s*, *a*, ⋅). This is a hard requirement for all choices of ambiguity (or uncertainty).
 
 The **MPDO** model adds a set of *outcomes* that model possible actions that can be taken by nature. Using outcomes makes it more convenient to capture correlations between the ambiguity in rewards and the uncertainty in transition probabilities. It also make it much easier to represent uncertainties that lie in small-dimensional vector spaces. Constraints for nature's distributions over outcomes are also supported.
 
@@ -20,7 +20,7 @@ The available algorithms are *value iteration* and *modified policy iteration*. 
 The R exposes most of the functions of the package. Method signatures are expected to change. The package should work on Linux, Mac, and Windows (with RTools 4.0+). R version 4.0 is required and the C++ compiler must support C+20 standard.
 
 
-**Gurobi**: To enable methods that use on Gurobi, you must install Gurobi (with a license) and set `GUROBI_PATH` to the Gurobi directory that has the subdirectories `include` and `lib`. Also `libgurobi90.so` (on Linux) or equivalent (on Windows/Mac) must be in the library directory (or set `LD_LIBRARY_PATH`).
+**Gurobi**: To enable methods that use Gurobi, you must install Gurobi (with a license) and set `GUROBI_PATH` to the Gurobi directory that has the subdirectories `include` and `lib`. Also `libgurobi90.so` (on Linux) or equivalent (on Windows/Mac) must be in the library directory (or set `LD_LIBRARY_PATH`).
 
 ### Linux and Mac ###
 
@@ -121,13 +121,8 @@ The release version that omits many of the time-consuming debugging checks can b
     $ cmake --build .
 ```
 
-By default, the project assumes that the [Gurobi](http://www.gurobi.com/) LP solver is available.  It is possible to disable the code that requires gurobi by uncommenting the following line in CMakeLists.txt: 
+**Gurobi**: To enable methods that use Gurobi, you must install Gurobi (with a license) and set `GUROBI_PATH` to the Gurobi directory that has the subdirectories `include` and `lib`. Also `libgurobi90.so` (on Linux) or equivalent (on Windows/Mac) must be in the system library path (or set `LD_LIBRARY_PATH`).
 
-```
-set (GUROBI_USE FALSE)
-```
-
-CMake assumes by default that C++17 is available. If it is not, change the corresponding line in `CMakeLists.txt`.  If the necessary Gurobi files (see above) are not found in the expected directories, Gurobi support is disabled by CMake.
 
 [QT creator](https://www.qt.io/download) is a nice IDE that can automatically parse and run cmake projects directly. As an alternative, CMake can be used to generate a [CodeBlocks](http://www.codeblocks.org/) project files too:
 
