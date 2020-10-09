@@ -10,6 +10,10 @@ gurobi_set_param(param, value)
 See https://www.gurobi.com/wp-content/plugins/hd_documentations/documentation/9.0/refman.pdf
 for examples
 }
+\details{
+For example, to enable logging call:
+gurobi_set_param("OutputFlag", "1")
+}
 \examples{
 gurobi_set_param("TimeLimit", "100.0")
 

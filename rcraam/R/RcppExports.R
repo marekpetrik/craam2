@@ -487,6 +487,10 @@ matrix_mdp_transition <- function(mdp, policy) {
     .Call(`_rcraam_matrix_mdp_transition`, mdp, policy)
 }
 
+#' Whether Gurobi LP and MILP is installed
+#' 
+#' This function can be used when determining which functionality
+#' is available in the package
 rcraam_supports_gurobi <- function() {
     .Call(`_rcraam_rcraam_supports_gurobi`)
 }

@@ -10,7 +10,7 @@ srsolve_mdpo(
   discount,
   alpha,
   beta,
-  algorithm = "quadratic",
+  algorithm = "milp",
   model_distribution = NULL,
   output_filename = ""
 )
@@ -22,6 +22,8 @@ The number of outcomes must be uniform for all states and actions
 
 \item{init_distribution}{Initial distribution over states. The columns should be
 are idstate, and probability.}
+
+\item{discount}{Discount factor. Clamped to be in [0,1]}
 
 \item{alpha}{Risk level of avar (0 = worst-case). The minimum value is 1e-5, the maximum
 value is 1.}
@@ -35,8 +37,6 @@ to a uniform distribution. The columns should be idstate, and probablity.}
 \item{output_filename}{Name of the file to save the model output. Valid suffixes are
   .mps, .rew, .lp, or .rlp for writing the model itself.
 If it is an empty string, then it does not write the file.}
-
-\item{gamma}{Discount factor. Clamped to be in [0,1]}
 }
 \description{
 The objective is:
