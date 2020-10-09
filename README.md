@@ -139,9 +139,9 @@ To list other types of projects that CMake can generate, call:
   $ cmake . -G
 ```
 
-## Pull Request Guidelines ##
+## Pull/Merge Request Guidelines ##
 
-0. Do not add class `git add` when adding files to commits. Rather, call `git commit -a` in order to avoid adding spurious files
+0. Do not add files using `git add` when adding files to commits. Rather, call `git commit -a` in order to avoid adding spurious files
 
 1. All C++ code should be formatted using `clang-format` and the style file `craam/.clang-format`. For example:
 
@@ -153,11 +153,11 @@ clang-format -i -style=file Action.hpp
 
 3. Do not remove any of the libraries that are already included in the repository (eigen3 and others). They are included in the repository for a purpose.
 
-4. Do not include any of the auto-generated config files in the repository
+4. Do not include any of the auto-generated configuration files in the repository
 
-5. Make sure that all unit tests pass
+5. Make sure that all unit tests pass and that rcraam installs and loads OK
 
-6. See the R-development section above to make sure that the changes to the C++ code are reflected in the R package (= run the script as described in the the R-development section
+6. See the R-development section above to make sure that the changes to the C++ code are reflected in the R package (= run the script as described in the R-development section
 
 ## Other Steps ##
 
