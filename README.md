@@ -121,7 +121,7 @@ The release version that omits many of the time-consuming debugging checks can b
     $ cmake --build .
 ```
 
-By default, the project assumes that the [Gurobi](http://www.gurobi.com/) LP solver is available.  It is possible to disable the code that requires gurobi by uncommenting the fillowing line in CMakeLists.txt: 
+By default, the project assumes that the [Gurobi](http://www.gurobi.com/) LP solver is available.  It is possible to disable the code that requires gurobi by uncommenting the following line in CMakeLists.txt: 
 
 ```
 set (GUROBI_USE FALSE)

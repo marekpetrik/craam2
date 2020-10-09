@@ -219,6 +219,8 @@ Rcpp::List worstcase_l1_w(Rcpp::NumericVector value, Rcpp::NumericVector referen
 
 //' Computes the maximum distribution subject to weighted L1 constraints using Gurobi
 //'
+//' The function is only supported when the package is installed with Gurobi support 
+//'
 //' @param value Random variable (objective)
 //' @param reference_dst Reference distribution of the same size as value
 //' @param budget Maximum L1 distance from the reference dst
@@ -228,6 +230,7 @@ Rcpp::List worstcase_l1_w(Rcpp::NumericVector value, Rcpp::NumericVector referen
 //'         and value as the objective
 //[[Rcpp::export]]
 Rcpp::List worstcase_l1_w_gurobi(Rcpp::NumericVector value, Rcpp::NumericVector reference_dst, Rcpp::NumericVector w, double budget ) {
+#ifdef GUROBI_USE
     craam::numvec p; // resulting probability
     double objective; // resulting objective value
 
@@ -239,9 +242,14 @@ Rcpp::List worstcase_l1_w_gurobi(Rcpp::NumericVector value, Rcpp::NumericVector 
     result["value"] = objective;
 
     return result;
+#else
+    Rcpp::stop("The function is not supported because Gurobi is not installed");
+#endif // GUROBI_USE
 }
 
 //' Computes the maximum distribution subject to weighted Linf constraints using Gurobi
+//'
+//' The function is only supported when the package is installed with Gurobi support 
 //'
 //' @param value Random variable (objective)
 //' @param reference_dst Reference distribution of the same size as value
@@ -252,6 +260,7 @@ Rcpp::List worstcase_l1_w_gurobi(Rcpp::NumericVector value, Rcpp::NumericVector 
 //'         and value as the objective
 //[[Rcpp::export]]
 Rcpp::List worstcase_linf_w_gurobi(Rcpp::NumericVector value, Rcpp::NumericVector reference_dst, Rcpp::NumericVector w, double budget ) {
+#ifdef GUROBI_USE
     craam::numvec p; // resulting probability
     double objective; // resulting objective value
 
@@ -263,6 +272,9 @@ Rcpp::List worstcase_linf_w_gurobi(Rcpp::NumericVector value, Rcpp::NumericVecto
     result["value"] = objective;
 
     return result;
+#else
+    Rcpp::stop("The function is not supported because Gurobi is not installed");
+#endif // GUROBI_USE
 }
 
 

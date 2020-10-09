@@ -5,7 +5,7 @@ project(RCRAAM)
 
 find_package(OpenMP)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED)
 
 
@@ -22,7 +22,7 @@ include_directories(../
                     ~/R/x86_64-pc-linux-gnu-library/4.0/RcppProgress/include
                     /usr/include/R/)
 
-find_path(RCPP "Rcpp.h" PATHS "~/R/x86_64-pc-linux-gnu-library/3.6/Rcpp/include/")
+find_path(RCPP "Rcpp.h" PATHS "~/R/x86_64-pc-linux-gnu-library/4.0/Rcpp/include/")
 
 
 add_executable(${PROJECT_NAME}
