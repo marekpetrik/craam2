@@ -1,51 +1,71 @@
+#!/usr/bin/Rscript
+
+# Version 1.0
+# 
+# This script creates a dataset for the pest population control problem. The goal
+# is to choose one of several pesticides to control a pest based on its current 
+# size. 
+#
+# The posterior is estimated using a JAGS models. 
+#
+# Known limitations:
+#   - JAGS model is currently used to only estimate the mean effectiveness of the pesticide.
+#     The standard deviation of the effectiveness is assumed to be known
+#   - Because of the dependence on JAGS, seeds may be insufficient to guarantee exact
+#     reproducibility if any version of the packages changes
+# 
+# Other considerations:    
+#   - The JAGS program models an exponential population growth, while the baseline model 
+#     that of logistic growth. These two models are similar long as the pest populations remain
+#     low. Also, this discrepancy is irrelevant from the view of the posterior evaluation.
+#     It means, though, that the prior is mis-specified (which is likely to happen in practice too)
+#
+# See the domains README.md file for details about the files that are created
+
+rm(list = ls())  # clear the workspace to prevent bugs in interactive runs
+
 library(rcraam)
 library(dplyr)
-library(ggplot2)
 library(setRNG)
 library(readr)
 library(rjags)
 library(runjags)
-library(ggrepel) # labels that avoid data points
-library(forcats) # rename plot labels
-library(extrafont) # latex font output in plots
-font_install("fontcm") # install computer modern font
-loadfonts()
 
-theme_set(theme_light(base_family = "CM Roman"))
+## ----- Problem Specification Parameters -------------
 
-error_size <- 0.1
-error_type <- "l1u"
-extra=FALSE
+# data output (platform-independent construction)
+folder_output <- file.path('domains', 'population')  
 
-### ----- Problem definition -------------
+# general parameters
+discount <- 0.9
+
+# overall population model specification
 max.population <- 50
 init.population <- 10
 actions <- 5
-discount <- 0.9
-plot.breaks <- seq(0,0.4,by=0.005)
-show.plots <- FALSE
 external.pop <- 3
-init.dist <- c(1,rep(0, 50))
-confidence <- 0.7
-post_sample_count <- 100
 
-risk_weights <- seq(0, 1, length.out = 5)
-seed=1
-set.seed(seed)
-
+# transition probability parameters
+#    general effectiveness function
 corr <- (seq(0,max.population) - (max.population/2))^2 
+#    relative effectiveness of the pesticides 
 growth.app <- 0.2 + corr / max(corr) 
+#    first action: no control, second action: pesticide
+#    rows: actions, colums: population level (must match the specs above)
+exp.growth.rate <- rbind(rep(2.0, max.population + 1), 
+                         growth.app, growth.app, growth.app, growth.app)
+stopifnot( all(dim(exp.growth.rate) == c(actions, max.population + 1)) )
+#    standard deviations of individual actions
+#    rows: actions, colums: population level (must match the specs above)
+sd.growth.rate <- rbind(rep(0.6, max.population + 1), rep(0.6, max.population + 1), 
+                        rep(0.5, max.population + 1), rep(0.4, max.population + 1),
+                        rep(0.3, max.population + 1))
+stopifnot( all(dim(std.growth.rate) == c(actions, max.population + 1)) )
 
-# first action: no control, second action: pesticide
-exp.growth.rate <- rbind(rep(2.0, max.population+1), growth.app,
-                         growth.app, growth.app, growth.app)
-sd.growth.rate <- rbind(rep(0.6, max.population+1), rep(0.6, max.population+1), 
-                        rep(0.5, max.population+1), rep(0.4, max.population+1),
-                        rep(0.3, max.population+1))
-
-# rewards decrease with increasing population, and there is an extra penalty
-# for applying the pesticide
-rewards <- matrix(rep(- seq(0,max.population)^2, actions), nrow=actions, byrow=TRUE)
+# reward parameters
+#      rewards decrease with increasing population, and there is an extra penalty
+#      for applying the pesticide
+rewards <- matrix(rep(-seq(0,max.population)^2, actions), nrow = actions, byrow = TRUE)
 rewards <- rewards + 1000 # add harvest return
 spray.cost <- 800
 rewards[2,] <- rewards[2,] - spray.cost
@@ -53,10 +73,21 @@ rewards[3,] <- rewards[3,] - spray.cost * 1.05
 rewards[4,] <- rewards[4,] - spray.cost * 1.10
 rewards[5,] <- rewards[5,] - spray.cost * 1.15
 
+# posterior sample specification
+postsamples_train <- 1000
+postsamples_test <- 1000
+
+seed <- 1
+set.seed(seed)
+
+
+## ------ Construct the true MDP model ------------
 pop.model.mdp <- rcraam::mdp_population(max.population, init.population, 
                                         exp.growth.rate, sd.growth.rate, 
-                                        rewards, external.pop, external.pop/2, "logistic")
-### ----- Sample from an optimal policy -------------
+                                        rewards, external.pop, external.pop/2, 
+                                        "logistic")
+
+## ----- Sample from an optimal policy -------------
 
 # solve for the optimal policy
 mdp_sol <- solve_mdp(pop.model.mdp, discount,show_progress=FALSE)
@@ -68,12 +99,8 @@ rpolicy <- mutate(mdp_sol$policy, probability = 1.0) # needs a randomized policy
 set.seed(1)
 sim.samples <- simulate_mdp(pop.model.mdp,0,rpolicy,100,5,seed=seed)
 
-### ------ Fit a model to the solution ---------------------
+## ------ Fit a model to the solution ---------------------
 
-# IMPORTANT: This fits an exponential model, while 
-#  the baseline model is logistic; it does not make much
-# of a difference as long as the pest populations remain
-# low
 
 set.seed(1)
 sim.samples <- simulate_mdp(pop.model.mdp, init.population, rpolicy, 300, 1,seed=seed)
@@ -82,13 +109,9 @@ pop <- sim.samples$idstatefrom
 pop.next <- sim.samples$idstateto
 act <- sim.samples$idaction
 
-
-# check if there is a cached posterior dataset
-post_samples <- try({readRDS("postsamples.rds")})
-# construct the posterior samples if there is no cache
-if(class(post_samples) == "try-error"){
-    cat("Unable to load JAGS samples, sampling ... \n")
-    model_str <-"
+generate_posterior <- function(){
+    model_str <- 
+    "
     model {
       for (i in 1:N){
         ext[i] ~ dnorm(ext_mu, ext_std)
@@ -161,8 +184,6 @@ if(class(post_samples) == "try-error"){
       geom_line(mapping=aes(x=population, y=rate), 
                 data=efficiency_true, color = "red", 
                 inherit.aes = FALSE)
-} else {
-    cat("Posterior samples loaded from a file. ")
 }
 
 ### ------ Plot the true vs estimated effectiveness --------
@@ -179,18 +200,9 @@ efficiency_sampled <- matrix(0, nrow = dim(post_samples$mu0)[2] * dim(post_sampl
 ### ------ Formulate Bayesian MDP ---------------------
 
 generate_posterior <- function(){
-
-    # TODO: This is wrong: this is the true model, which should not be here
-    #mdp.bayesian <- rcraam::mdp_population(max.population, init.population,
-    #                                        exp.growth.rate, sd.growth.rate,
-    #                                        rewards, external.pop, external.pop/2, "logistic")
-    #mdp.bayesian['idoutcome'] <- 0
-
     mdp.bayesian <- NULL
     idoutcome <- 0
-    #TODO: This code assumes that the variance of the different actions is the same
-    # which is a limitation, since that is the only/main difference between the different
-    # control actions
+    # NOTE: the code assumes that the standard deviation of the actions is known
     for (iteration in 1:dim(post_samples$mu)[2]) { 
         cat(".")
         # create an empty matrix of rates

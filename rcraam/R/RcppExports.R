@@ -503,6 +503,26 @@ mdp_inventory <- function(params) {
     .Call(`_rcraam_mdp_inventory`, params)
 }
 
+#' Creates an MDP for a pest population control problem
+#'
+#' The state is the pest population and action is a possible control intervention (pesticide).
+#' Several possible population growth models are available, and the effectiveness of
+#' the control actions is configurable.
+#'
+#' @param capacity Maximum possible carrying capacity (or maximum population)
+#' @param initial Initial population (for simulation purposes)
+#' @param growth_rates_exp A matrix of expected growth rates (also known as r_0) for
+#'                         each action (row) and pest population (column).
+#' @param growth_rates_std A matrix of standard deviations for the growth rates for
+#'                         each action (row) and pest population (column). The actuall growth
+#'							is sampled from the Normal distribution.
+#' @param rewards A matrix for the reward for taking each action in the particular population level
+#'                for each action (row) and population (column)
+#' @param external_mean Mean external pest immigration in each period.
+#' @param external_std Standard deviation for the external pest immigration. Normally distributed.
+#' @param s_growth_model One of `logistic` or `exponential` representing the interaction between
+#'                       the pest population and the carrying capacity (see wikipedia)
+#'
 mdp_population <- function(capacity, initial, growth_rates_exp, growth_rates_std, rewards, external_mean, external_std, s_growth_model) {
     .Call(`_rcraam_mdp_population`, capacity, initial, growth_rates_exp, growth_rates_std, rewards, external_mean, external_std, s_growth_model)
 }
