@@ -122,7 +122,7 @@ policy.
 // **************************************************************************
 
 /**
- * \ingroup ValueIteration
+ * @ingroup ValueIteration
  */
 inline DetermSolution
 solve_vi(const MDP& mdp, prec_t discount, numvec valuefunction = numvec(0),
@@ -150,15 +150,15 @@ solve_mpi(const MDP& mdp, prec_t discount, const numvec& valuefunction = numvec(
 }
 
 /**
-Computes occupancy frequencies using matrix representation of transition
-probabilities. This method requires computing a matrix inverse.
-
-\param init Initial distribution (alpha)
-\param discount Discount factor (gamma)
-\param policies The policy (indvec) or a pair of the policy and the policy
-        of nature (pair<indvec,vector<numvec> >). The nature is typically
-        a randomized policy
-*/
+ * Computes occupancy frequencies using matrix representation of transition
+ * probabilities. This method requires computing a matrix inverse.
+ *
+ * @param init Initial distribution (alpha)
+ * @param discount Discount factor (gamma)
+ * @param policies The policy (indvec) or a pair of the policy and the policy
+ *        of nature (pair<indvec,vector<numvec> >). The nature is typicall
+ *        a randomized policy
+ */
 inline numvec occupancies(const MDP& mdp, const Transition& initial, prec_t discount,
                           const indvec& policy) {
 
@@ -168,7 +168,7 @@ inline numvec occupancies(const MDP& mdp, const Transition& initial, prec_t disc
 }
 
 /**
- * \ingroup PolicyIteration
+ * @ingroup PolicyIteration
  */
 inline DetermSolution
 solve_pi(const MDP& mdp, prec_t discount, numvec valuefunction = numvec(0),
@@ -267,7 +267,7 @@ inline numvec occupancies(const MDP& mdp, const Transition& initial, prec_t disc
 }*/
 
 /**
- * \ingroup PolicyIteration
+ * @ingroup PolicyIteration
  */
 inline RandSolution solve_pi_r(
     const MDP& mdp, prec_t discount, numvec valuefunction = numvec(0),

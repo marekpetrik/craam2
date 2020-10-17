@@ -28,7 +28,7 @@ worstcase_l1_w <- function(value, reference_dst, w, budget) {
 
 #' Computes the maximum distribution subject to weighted L1 constraints using Gurobi
 #'
-#' The function is only supported when the package is installed with Gurobi support 
+#' The function is only supported when the package is installed with Gurobi support
 #'
 #' @param value Random variable (objective)
 #' @param reference_dst Reference distribution of the same size as value
@@ -43,7 +43,7 @@ worstcase_l1_w_gurobi <- function(value, reference_dst, w, budget) {
 
 #' Computes the maximum distribution subject to weighted Linf constraints using Gurobi
 #'
-#' The function is only supported when the package is installed with Gurobi support 
+#' The function is only supported when the package is installed with Gurobi support
 #'
 #' @param value Random variable (objective)
 #' @param reference_dst Reference distribution of the same size as value
@@ -421,8 +421,25 @@ rsolve_mdpo_s <- function(mdpo, discount, nature, nature_par, algorithm = "mppi"
     .Call(`_rcraam_rsolve_mdpo_s`, mdpo, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, pack_actions, output_tran, show_progress)
 }
 
-set_rcraam_threads <- function(n) {
-    invisible(.Call(`_rcraam_set_rcraam_threads`, n))
+#' Evaluates a randomized policy for many Bayesian samples
+#'
+#' @param mdpo Dataframe with `idstatefrom`, `idaction`, `idstateto`, `idoutcome`, `probability`, `reward`.
+#'             Each `idoutcome` represents a sample. The outcomes must be sorted increasingly.
+#' @param discount Discount rate in [0,1) (or = 1 at the risk of divergence)
+#' @param policy_rand Randomized policy with columns `idstate`, `idaction`, `probability`
+#' @param initial Initial distribution with columns `idstate` and `probability`
+#' @param show_progress Whether to show a progress bar
+#'
+#' @return List of returns for all outcomes
+revaluate_mdpo_rnd <- function(mdpo, discount, policy_rnd, initial, show_progress = TRUE) {
+    .Call(`_rcraam_revaluate_mdpo_rnd`, mdpo, discount, policy_rnd, initial, show_progress)
+}
+
+#'
+#' Sets the number of threads for parallelization.
+#' @param n Number of threads
+rcraam_set_threads <- function(n) {
+    invisible(.Call(`_rcraam_rcraam_set_threads`, n))
 }
 
 #' Sets a gurobi parameter. Even numeric values may be provided as strings
@@ -488,7 +505,7 @@ matrix_mdp_transition <- function(mdp, policy) {
 }
 
 #' Whether Gurobi LP and MILP is installed
-#' 
+#'
 #' This function can be used when determining which functionality
 #' is available in the package
 rcraam_supports_gurobi <- function() {

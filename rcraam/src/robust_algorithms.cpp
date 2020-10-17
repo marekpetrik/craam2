@@ -39,6 +39,7 @@
 #include <omp.h>
 #endif // _OPENMP
 
+#include <algorithm>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -190,8 +191,6 @@ Rcpp::List worstcase_l1(Rcpp::NumericVector value, Rcpp::NumericVector reference
     return result;
 }
 
-
-
 //' Computes the maximum distribution subject to weighted L1 constraints
 //'
 //' @param value Random variable (objective)
@@ -202,11 +201,13 @@ Rcpp::List worstcase_l1(Rcpp::NumericVector value, Rcpp::NumericVector reference
 //' @returns A list with dst as the worstcase distribution,
 //'         and value as the objective
 //[[Rcpp::export]]
-Rcpp::List worstcase_l1_w(Rcpp::NumericVector value, Rcpp::NumericVector reference_dst, Rcpp::NumericVector w, double budget ) {
-    craam::numvec p; // resulting probability
+Rcpp::List worstcase_l1_w(Rcpp::NumericVector value, Rcpp::NumericVector reference_dst,
+                          Rcpp::NumericVector w, double budget) {
+    craam::numvec p;  // resulting probability
     double objective; // resulting objective value
 
-    craam::numvec vz(value.begin(), value.end()), vq(reference_dst.begin(), reference_dst.end()), vw(w.begin(), w.end());
+    craam::numvec vz(value.begin(), value.end()),
+        vq(reference_dst.begin(), reference_dst.end()), vw(w.begin(), w.end());
     std::tie(p, objective) = craam::worstcase_l1_w(vz, vq, vw, budget);
 
     Rcpp::List result;
@@ -216,10 +217,9 @@ Rcpp::List worstcase_l1_w(Rcpp::NumericVector value, Rcpp::NumericVector referen
     return result;
 }
 
-
 //' Computes the maximum distribution subject to weighted L1 constraints using Gurobi
 //'
-//' The function is only supported when the package is installed with Gurobi support 
+//' The function is only supported when the package is installed with Gurobi support
 //'
 //' @param value Random variable (objective)
 //' @param reference_dst Reference distribution of the same size as value
@@ -229,12 +229,15 @@ Rcpp::List worstcase_l1_w(Rcpp::NumericVector value, Rcpp::NumericVector referen
 //' @returns A list with dst as the worstcase distribution,
 //'         and value as the objective
 //[[Rcpp::export]]
-Rcpp::List worstcase_l1_w_gurobi(Rcpp::NumericVector value, Rcpp::NumericVector reference_dst, Rcpp::NumericVector w, double budget ) {
+Rcpp::List worstcase_l1_w_gurobi(Rcpp::NumericVector value,
+                                 Rcpp::NumericVector reference_dst, Rcpp::NumericVector w,
+                                 double budget) {
 #ifdef GUROBI_USE
-    craam::numvec p; // resulting probability
+    craam::numvec p;  // resulting probability
     double objective; // resulting objective value
 
-    craam::numvec vz(value.begin(), value.end()), vq(reference_dst.begin(), reference_dst.end()), vw(w.begin(), w.end());
+    craam::numvec vz(value.begin(), value.end()),
+        vq(reference_dst.begin(), reference_dst.end()), vw(w.begin(), w.end());
     std::tie(p, objective) = craam::worstcase_l1_w_gurobi(vz, vq, vw, budget);
 
     Rcpp::List result;
@@ -249,7 +252,7 @@ Rcpp::List worstcase_l1_w_gurobi(Rcpp::NumericVector value, Rcpp::NumericVector 
 
 //' Computes the maximum distribution subject to weighted Linf constraints using Gurobi
 //'
-//' The function is only supported when the package is installed with Gurobi support 
+//' The function is only supported when the package is installed with Gurobi support
 //'
 //' @param value Random variable (objective)
 //' @param reference_dst Reference distribution of the same size as value
@@ -259,12 +262,15 @@ Rcpp::List worstcase_l1_w_gurobi(Rcpp::NumericVector value, Rcpp::NumericVector 
 //' @returns A list with dst as the worstcase distribution,
 //'         and value as the objective
 //[[Rcpp::export]]
-Rcpp::List worstcase_linf_w_gurobi(Rcpp::NumericVector value, Rcpp::NumericVector reference_dst, Rcpp::NumericVector w, double budget ) {
+Rcpp::List worstcase_linf_w_gurobi(Rcpp::NumericVector value,
+                                   Rcpp::NumericVector reference_dst,
+                                   Rcpp::NumericVector w, double budget) {
 #ifdef GUROBI_USE
-    craam::numvec p; // resulting probability
+    craam::numvec p;  // resulting probability
     double objective; // resulting objective value
 
-    craam::numvec vz(value.begin(), value.end()), vq(reference_dst.begin(), reference_dst.end()), vw(w.begin(), w.end());
+    craam::numvec vz(value.begin(), value.end()),
+        vq(reference_dst.begin(), reference_dst.end()), vw(w.begin(), w.end());
     std::tie(p, objective) = craam::worstcase_linf_w_gurobi(vz, vq, vw, budget);
 
     Rcpp::List result;
@@ -276,7 +282,6 @@ Rcpp::List worstcase_linf_w_gurobi(Rcpp::NumericVector value, Rcpp::NumericVecto
     Rcpp::stop("The function is not supported because Gurobi is not installed");
 #endif // GUROBI_USE
 }
-
 
 //' Computes average value at risk
 //'
@@ -1367,7 +1372,7 @@ Rcpp::List rsolve_mdpo_s(Rcpp::DataFrame mdpo, double discount, Rcpp::String nat
     if (pack_actions) { result["action_map"] = m.pack_actions(); }
 
     // policy: the method can be used to compute the robust solution for a policy
-    // rpolicy stands for randomize policy and NOT robust policy
+    // rpolicy stands for randomized policy and NOT robust policy
     numvecvec rpolicy =
         policy_fixed.isNotNull()
             ? parse_sa_values(m, policy_fixed, 0.0, "probability", "policy_fixed")
@@ -1434,15 +1439,92 @@ Rcpp::List rsolve_mdpo_s(Rcpp::DataFrame mdpo, double discount, Rcpp::String nat
 
     return result;
 #else
-    Rcpp::stop("Not supported without gurobi.");
+    Rcpp::stop("Not supported without Gurobi.");
 #endif
 }
 
-/**
- * Sets the number of threads for parallelization.
- */
+//' Evaluates a randomized policy for many Bayesian samples
+//'
+//' @param mdpo Dataframe with `idstatefrom`, `idaction`, `idstateto`, `idoutcome`, `probability`, `reward`.
+//'             Each `idoutcome` represents a sample. The outcomes must be sorted increasingly.
+//' @param discount Discount rate in [0,1) (or = 1 at the risk of divergence)
+//' @param policy_rand Randomized policy with columns `idstate`, `idaction`, `probability`
+//' @param initial Initial distribution with columns `idstate` and `probability`
+//' @param show_progress Whether to show a progress bar
+//'
+//' @return List of returns for all outcomes
 // [[Rcpp::export]]
-void set_rcraam_threads(int n) {
+Rcpp::DataFrame revaluate_mdpo_rnd(Rcpp::DataFrame mdpo, double discount,
+                                   Rcpp::DataFrame policy_rnd, Rcpp::DataFrame initial,
+                                   bool show_progress = true) {
+
+    if (mdpo.nrow() == 0) return Rcpp::List();
+
+    craam::indvec idstatefrom = mdpo["idstatefrom"], idaction = mdpo["idaction"],
+                  idstateto = mdpo["idstateto"], idoutcome = mdpo["idoutcome"];
+    craam::numvec probability = mdpo["probability"], reward = mdpo["reward"];
+
+    // parse the data for the first outcome
+    if (!std::ranges::is_sorted(idoutcome)) {
+        Rcpp::stop("The function requires that the outcomes are sorted increasingly.");
+    }
+
+    // get the unique outcomes
+    craam::indvec idoutcome_unique = idoutcome;
+    {
+        auto unique_end = std::unique(idoutcome_unique.begin(), idoutcome_unique.end());
+        idoutcome_unique.erase(unique_end, idoutcome_unique.end());
+    }
+
+    // parse the first MDP to get the number of states (assumed be the same for each outcome!)
+    auto mdp_init =
+        mdp_from_mdpo_dataframe(idstatefrom, idaction, idoutcome, idstateto, probability,
+                                reward, idoutcome_unique[0], false);
+
+    // policy: the method can be used to compute the robust solution for a policy
+    // rpolicy stands for randomized policy and NOT robust policy
+    craam::numvecvec rpolicy =
+        parse_sa_values(mdp_init, policy_rnd, 0.0, "probability", "policy_fixed");
+
+    const auto initial_tran =
+        craam::Transition(parse_s_values(mdp_init.size(), initial, 0.0, "probability"));
+
+    numvec mdp_returns(idoutcome_unique.size(),
+                       numeric_limits<craam::prec_t>::quiet_NaN());
+
+    // create a progress bar and use to interrupt the computation
+    RcppProg::Progress progress(idoutcome_unique.size(), true);
+
+    // check that all states and actions have the same number of outcomes
+    // skip the first element, because that one is already parsed
+#pragma omp parallel for
+    for (long ind_outcome = 0; ind_outcome < long(idoutcome_unique.size());
+         ++ind_outcome) {
+
+        // check if an abort was called; do not stop or bad things happen because of openMP
+        if (!progress.check_abort()) {
+            // parse the MDP for the given outcome
+            auto mdp = mdp_from_mdpo_dataframe(idstatefrom, idaction, idoutcome,
+                                               idstateto, probability, reward,
+                                               idoutcome_unique[ind_outcome], false);
+            // solve the MDP
+            auto sol = solve_mpi_r(mdp, discount, craam::numvec(0), rpolicy);
+            mdp_returns[ind_outcome] = sol.total_return(initial_tran);
+
+            // there may be a race here, but it is just a progress bar, no big deal
+            progress.increment(1);
+        }
+    }
+    if (progress.check_abort()) { Rcpp::stop("Computation aborted."); }
+    return Rcpp::DataFrame::create(Rcpp::_["idoutcome"] = idoutcome_unique,
+                                   Rcpp::_["return"] = mdp_returns);
+}
+
+//'
+//' Sets the number of threads for parallelization.
+//' @param n Number of threads
+// [[Rcpp::export]]
+void rcraam_set_threads(int n) {
 #ifdef _OPENMP
     omp_set_num_threads(n);
 #else
@@ -1583,11 +1665,11 @@ Rcpp::List matrix_mdp_transition(Rcpp::DataFrame mdp, Rcpp::DataFrame policy) {
 }
 
 //' Whether Gurobi LP and MILP is installed
-//' 
+//'
 //' This function can be used when determining which functionality
 //' is available in the package
 // [[Rcpp::export]]
-bool rcraam_supports_gurobi(){
+bool rcraam_supports_gurobi() {
 #ifdef GUROBI_USE
     return true;
 #else

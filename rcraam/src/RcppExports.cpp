@@ -257,13 +257,28 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// set_rcraam_threads
-void set_rcraam_threads(int n);
-RcppExport SEXP _rcraam_set_rcraam_threads(SEXP nSEXP) {
+// revaluate_mdpo_rnd
+Rcpp::DataFrame revaluate_mdpo_rnd(Rcpp::DataFrame mdpo, double discount, Rcpp::DataFrame policy_rnd, Rcpp::DataFrame initial, bool show_progress);
+RcppExport SEXP _rcraam_revaluate_mdpo_rnd(SEXP mdpoSEXP, SEXP discountSEXP, SEXP policy_rndSEXP, SEXP initialSEXP, SEXP show_progressSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type mdpo(mdpoSEXP);
+    Rcpp::traits::input_parameter< double >::type discount(discountSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type policy_rnd(policy_rndSEXP);
+    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type initial(initialSEXP);
+    Rcpp::traits::input_parameter< bool >::type show_progress(show_progressSEXP);
+    rcpp_result_gen = Rcpp::wrap(revaluate_mdpo_rnd(mdpo, discount, policy_rnd, initial, show_progress));
+    return rcpp_result_gen;
+END_RCPP
+}
+// rcraam_set_threads
+void rcraam_set_threads(int n);
+RcppExport SEXP _rcraam_rcraam_set_threads(SEXP nSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    set_rcraam_threads(n);
+    rcraam_set_threads(n);
     return R_NilValue;
 END_RCPP
 }
@@ -396,7 +411,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_rcraam_srsolve_mdpo", (DL_FUNC) &_rcraam_srsolve_mdpo, 8},
     {"_rcraam_rsolve_mdp_s", (DL_FUNC) &_rcraam_rsolve_mdp_s, 13},
     {"_rcraam_rsolve_mdpo_s", (DL_FUNC) &_rcraam_rsolve_mdpo_s, 13},
-    {"_rcraam_set_rcraam_threads", (DL_FUNC) &_rcraam_set_rcraam_threads, 1},
+    {"_rcraam_revaluate_mdpo_rnd", (DL_FUNC) &_rcraam_revaluate_mdpo_rnd, 5},
+    {"_rcraam_rcraam_set_threads", (DL_FUNC) &_rcraam_rcraam_set_threads, 1},
     {"_rcraam_gurobi_set_param", (DL_FUNC) &_rcraam_gurobi_set_param, 2},
     {"_rcraam_mdp_from_samples", (DL_FUNC) &_rcraam_mdp_from_samples, 1},
     {"_rcraam_matrix_mdp_lp", (DL_FUNC) &_rcraam_matrix_mdp_lp, 2},

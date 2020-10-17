@@ -28,6 +28,7 @@
 
 #include <eigen3/Eigen/Dense>
 
+#include <algorithm>
 #include <string>
 
 /**
@@ -98,6 +99,43 @@ inline craam::MDP mdp_from_dataframe(const Rcpp::DataFrame& data, bool force = f
 }
 
 /**
+ * Parses a MDPO dataframe  to an MDP.
+ *
+ * IMPORTANT: Assumes that the outcomes are sorted increasingly!
+ *
+ * Selects only one outcome from the dataframe which must have a column idoutcome.
+ *
+ * Also checks whether the values passed are consistent with the MDP definition.
+ *
+ * @param idstatefrom These are columns from the dataframe. The function takes processed inputs
+ *                    in order to be more efficient.
+ *
+ * @param force Whether transitions with probability 0 should be focibly added to the transitions.
+ *              This makes a difference with robust MDPs.
+ * @param outcome_act Which outcome should be used
+ *
+ * @returns Corresponding MDP definition
+ */
+inline craam::MDP
+mdp_from_mdpo_dataframe(const craam::indvec& idstatefrom, const craam::indvec idaction,
+                        const craam::indvec idoutcome, const craam::indvec idstateto,
+                        const craam::numvec probability, const craam::numvec reward,
+                        long outcome_act, bool force) {
+    // idstatefrom, idaction, idstateto, probability, reward
+    const auto start = std::ranges::lower_bound(idoutcome, outcome_act);
+    const auto end = std::ranges::upper_bound(idoutcome, outcome_act);
+
+    const auto istart = std::distance(std::ranges::begin(idoutcome), start);
+    const auto iend = std::distance(std::ranges::begin(idoutcome), end);
+
+    craam::MDP m;
+    for (size_t i = istart; i < iend; i++) {
+        craam::add_transition(m, idstatefrom[i], idaction[i], idstateto[i],
+                              probability[i], reward[i], force);
+    }
+    return m;
+}
+/**
  * Parses a data frame  to an MDPO. Each outcome represents a possible outcome of nature
  *
  * Also checks whether the values passed are consistent with the MDP definition.
@@ -131,9 +169,10 @@ inline craam::MDPO mdpo_from_dataframe(const Rcpp::DataFrame& data, bool force =
  * indices and value is the name of the value column. def_value is the
  * default value for any elements that are not provided.
  */
-inline craam::numvecvec frame2matrix(const Rcpp::DataFrame& frame, size_t dim1, size_t dim2,
-                                     const std::string& index1, const std::string& index2,
-                                     const std::string& value, double def_value) {
+inline craam::numvecvec frame2matrix(const Rcpp::DataFrame& frame, size_t dim1,
+                                     size_t dim2, const std::string& index1,
+                                     const std::string& index2, const std::string& value,
+                                     double def_value) {
 
     craam::numvecvec result(dim1);
     for (long i = 0; i < dim1; i++) {
