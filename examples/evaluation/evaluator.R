@@ -24,8 +24,11 @@ if(test_on_train){
 
 ## ------ Define domains ------
 
-# domains_path
+# domains_path (where the csv files are stored)
 domains_path <- "domains"
+
+# domains_source (where the domains may be downloaded from)
+domains_source <- "http://data.rmdp.xyz/domains"   # no trailing "/"
 
 # list all domains that are being considered; each one should be
 # in a separate directory that should have 3 files:
@@ -33,10 +36,11 @@ domains_path <- "domains"
 #   - training.csv.xz  (posterior optimization samples)
 #   - test.csv.xz      (posterior evaluation samples)
 domains <- list(
-  riverswim = file.path("riverswim")
+  riverswim = "riverswim"
 )
 
 domains_paths <- lapply(domains, function(d){file.path(domains_path, d)})
+
 
 ## ----- Define algorithms --------
 
@@ -68,6 +72,37 @@ algorithms <- list(
 
 # construct paths to algorithms
 algorithms_paths <- lapply(algorithms, function(a){file.path(algorithms_path, a)} ) 
+
+## ------ Check domain availability ----
+
+cat("Checking if domains are available ...\n")
+
+if(!dir.exists(domains_path)) dir.create(domains_path)
+for(idpath in seq_along(domains_paths)){
+	if(dir.exists(domains_paths[[idpath]])){
+		cat("Domain", names(domains)[[idpath]], "available, using cached version.\n")
+	} else {
+		cat("Domain", names(domains)[[idpath]], "unavailable, downloading...\n")
+		cat("  Creating", domains_paths[[idpath]], "...\n")
+		dir.create(domains_paths[[idpath]])
+		withCallingHandlers({
+			domain_files <- c("parameters.csv", "true.csv.xz", "initial.csv.xz", 
+												"training.csv.xz","test.csv.xz")
+			for(dfile in domain_files){
+				urlf <- paste(domains_source, domains[[idpath]], dfile, sep = "/")
+				targetf <- file.path(domains_paths[[idpath]], dfile)
+				cat("Downloading", urlf, "to", targetf, "\n")
+				download.file(urlf, targetf)
+			}
+		}, 
+		error = function(e){
+			cat("Download error! Stopping.\n")
+			unlink(domains_paths[[idpath]], recursive = TRUE, force = TRUE)
+			stop(e)
+		})
+	}
+}
+
 
 ## ----- Parameters --------
 
@@ -219,7 +254,6 @@ main_eval <- function(domains_paths, algorithms_paths){
   }
 
   cat("Done computing, formatting...\n")
-	browser()
 	results <- bind_rows(results) %>% relocate(domain, algorithm)
   cat("Done.\n")
   return (results)
@@ -229,9 +263,11 @@ results <- main_eval(domains_paths, algorithms_paths)
 
 cat("*** Results: \n")
 
-if(require("huxtable", quietly = TRUE)){
-  print_screen(hux(results) %>% set_all_borders() %>% set_bold(row=1, col=everywhere, value=TRUE),
-							 colnames = FALSE, color = TRUE)
+if(requireNamespace("huxtable", quietly = TRUE)){
+	huxtable::print_screen(huxtable::hux(results) %>% 
+												 huxtable::set_all_borders() %>% 
+												 huxtable::set_bold(row=1, col=huxtable::everywhere, value=TRUE),
+							 colnames = FALSE, color = TRUE, compact = FALSE)
 	cat("\n")
 } else {
   print(results)

@@ -40,7 +40,7 @@ folder_output <- file.path('domains', 'riverswim')
 state.count <- 20                 # number of states in the riverswim problem
 init.dist <- rep(1/state.count, state.count)  # initial distribution p0
 left.reward <- 5                  # reward whenever  taking action a0
-prize.reward <- 1000000           # reward in the highest state (the risky reward)
+prize.reward <- 100               # reward in the highest state (the risky reward)
 probabilities.true <- c(0.2, 0.3, 0.5)  # true transition probabilities for action 1 (move: left, stay, right)
 stopifnot(abs(1.0 - sum(probabilities.true)) < 1e-6)
 discount <- 0.9                   # discount rate
