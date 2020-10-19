@@ -41,6 +41,7 @@ suppressPackageStartupMessages({
 
 # data output (platform-independent construction)
 folder_output <- file.path('domains', 'population')  
+folder_output_small <- file.path('domains', 'population_small')	# one tenth of the outcomes
 
 # general parameters
 discount <- 0.9
@@ -84,8 +85,8 @@ rewards[4,] <- rewards[4,] - spray.cost * 1.10
 rewards[5,] <- rewards[5,] - spray.cost * 1.15
 
 # posterior sample specification
-postsamples_train <- 1000          # training samples
-postsamples_test <- 1000           # test samples
+postsamples_train <- 1000          # number training samples
+postsamples_test <- 1000           # number test samples
 postsamples <- postsamples_train + postsamples_test # total number of samples
 
 # specific JAGS sampling parameters
@@ -97,7 +98,7 @@ n_update <- 20000                 # samples to converge to limiting distribution
 # set seeds for reproducibility
 simulation_seed <- 1
 posterior_seeds <- c(2365, 1, 25, 458, 965, 147, 78, 457)
-# make sure one seed per chain
+# make sure there is one seed per chain
 stopifnot(n_chains == length(posterior_seeds) )
 
 
@@ -238,7 +239,7 @@ mdpo_test <- mdpo %>% filter(idoutcome >= postsamples_train) %>%
 # construct initial distribution
 initial_dist <- rep(0, max.population + 1)
 initial_dist[init.population] <- 1.0
-initial_df = data.frame(idstate = population_range, initial_dist)
+initial_df = data.frame(idstate = population_range, probability = initial_dist)
 
 # parameters
 parameters_df <- data.frame(parameter = c("discount"), value = c(0.9))
@@ -250,8 +251,26 @@ write_csv(pop.model.mdp, file.path(folder_output, 'true.csv.xz'))
 write_csv(mdpo_train, file.path(folder_output, 'training.csv'))
 # compression using parallel xz
 cat("  compressing training ... \n")
-system(paste("pixz", file.path(folder_output, 'training.csv')))
+system2("pixz", file.path(folder_output, 'training.csv'))
 write_csv(mdpo_test, file.path(folder_output, 'test.csv'))
 # compression using parallel xz
 cat("  compressing test ... \n")
-system(paste("pixz", file.path(folder_output, 'test.csv')))
+system2("pixz", file.path(folder_output, 'test.csv'))
+
+
+## ---- Save small results -------
+
+if(!dir.exists(folder_output)) dir.create(folder_output_small, recursive = TRUE)
+# save all the files
+write_csv(initial_df, file.path(folder_output_small, "initial.csv.xz"))
+write_csv(parameters_df, file.path(folder_output_small, "parameters.csv"))
+write_csv(pop.model.mdp, file.path(folder_output_small, 'true.csv.xz'))
+write_csv(mdpo_train %>% filter(idoutcome < postsamples_train / 10), 
+		  file.path(folder_output_small, 'training.csv'))
+# compression using parallel xz
+cat("  compressing training ... \n")
+system2("pixz", file.path(folder_output_small, 'training.csv'))
+write_csv(mdpo_test %>% filter(idoutcome < postsamples_test/10), file.path(folder_output_small, 'test.csv'))
+# compression using parallel xz
+cat("  compressing test ... \n")
+system2("pixz", file.path(folder_output_small, 'test.csv'))

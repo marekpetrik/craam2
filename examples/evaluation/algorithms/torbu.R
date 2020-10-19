@@ -13,30 +13,43 @@ library(dplyr)
 #' @param discount discount rate
 algorithm_main <- function(mdpo, initial, discount){
 
-	# read the global confidence
-	confidence <- params$confidence
-	risk_weight <- params$risk_weight
+  # read the global confidence
+  confidence <- params$confidence
+  risk_weight <- params$risk_weight
 
-	# get a location for a temporary file
-	log_file <- tempfile();
+  # get a location for a temporary file
+  log_file <- tempfile();
 
-	cat("    Logging to:", log_file, "\n")
+  cat("    Logging to:", log_file, "\n")
 
   # Set parameters for the MILP gurobi environment
   gurobi_set_param("nonconvex", "LogFile", log_file)
-	# change to 1 to enable logging
-  gurobi_set_param("nonconvex", "OutputFlag", "0")
-  gurobi_set_param("nonconvex", "LogToConsole", "0");
+  # change to 1 to enable logging
+  gurobi_set_param("nonconvex", "OutputFlag", "1")
+  gurobi_set_param("nonconvex", "LogToConsole", "1");
 
-	# how many independent MILP solvers to run (helps when there are many threads)
-	par_runs <- ceiling(parallel::detectCores() / 8)
+  # how many independent MILP solvers to run (helps when there are many threads)
+  par_runs <- ceiling(parallel::detectCores() / 12)
   gurobi_set_param("nonconvex", "ConcurrentMIP", as.character(par_runs));  
-	
+
   gurobi_set_param("nonconvex", "MIPGap", "0.05");
-  gurobi_set_param("nonconvex", "TimeLimit", "1000")
+  time_limit <- 60 * 15
+  cat("    Running with time limit", time_limit, "s ...\n")
+  cat("    This computation cannot be terminated without killing the R process!\n")
+  gurobi_set_param("nonconvex", "TimeLimit", as.character(time_limit))
 
-	solution <- srsolve_mdpo(mdpo, initial, discount, 
-						alpha = 1 - confidence, beta = risk_weight)
 
-	list(policy = solution$policy, estimate = solution$objective)
+  # trim the number of outcomes used depending on the number of states and actions
+	sa.count <- nrow(unique(mdpo %>% select(idstatefrom, idaction)))
+  out.count <- nrow(unique(mdpo %>% select(idoutcome)))
+  
+  # assume that outcomes identifiers start with 0 and are contiguous
+  out.use <- max(1, min(out.count, 50000 / sa.count))  # at least 2!
+  cat("    Trimming outcomes to", out.use + 1, " in the interest of speed. \n")
+  mdpo.trim <- mdpo %>% filter(idoutcome <= out.use)
+
+  solution <- srsolve_mdpo(mdpo.trim, initial, discount, 
+            alpha = 1 - confidence, beta = risk_weight)
+
+  list(policy = solution$policy, estimate = solution$objective)
 }

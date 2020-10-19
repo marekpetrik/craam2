@@ -15,12 +15,20 @@ suppressPackageStartupMessages({
 	library(readr)
 	library(progress)})
 
+
 rm(list = ls())
 
 test_on_train <- FALSE
 if(test_on_train){
 	cat(" ***** Reporting test results on the training set ***********")
 }
+
+## ------ Output file ---------
+
+# where to save the final result
+output_file <- "eval_results.csv"    
+# whether to print partial results during the computation
+print_partial <- TRUE
 
 ## ------ Define domains ------
 
@@ -36,11 +44,12 @@ domains_source <- "http://data.rmdp.xyz/domains"   # no trailing "/"
 #   - training.csv.xz  (posterior optimization samples)
 #   - test.csv.xz      (posterior evaluation samples)
 domains <- list(
-  riverswim = "riverswim"
+  #riverswim = "riverswim"
+	pop_small = "population_small"
+	#, population = "population",
 )
 
 domains_paths <- lapply(domains, function(d){file.path(domains_path, d)})
-
 
 ## ----- Define algorithms --------
 
@@ -169,14 +178,65 @@ compute_statistics <- function(mdpo, mdp_true, solution, initial, discount){
 #'
 #' @param dir_path Path to the directory with the required files
 load_domain <- function(dir_path){
+  cat("    Loading parameters ... \n")
   parameters <- read_csv(file.path(dir_path, "parameters.csv"), col_types = cols())
-  true_mdp <- read_csv(file.path(dir_path, "true.csv.xz"), col_types = cols())
-  initial <- read_csv(file.path(dir_path, "initial.csv.xz"), col_types = cols())
-  training <- read_csv(file.path(dir_path, "training.csv.xz"), col_types = cols())
-	# make sure that the test data is sorted with increasing idoutcome
-  test <- read_csv(file.path(dir_path, "test.csv.xz"), col_types = cols()) %>%
-		arrange(idoutcome)
   
+  cat("    Loading true MDP ... ")
+  true_mdp <- read_csv(file.path(dir_path, "true.csv.xz"), col_types = cols())
+  sa.count <- select(true_mdp, idstatefrom, idaction) %>% unique() %>% nrow()
+  cat(sa.count, "state-actions \n")
+    
+  cat("    Loading initial distribution ... ")
+  initial <- read_csv(file.path(dir_path, "initial.csv.xz"), col_types = cols())
+  s.count <- select(initial, idstate) %>% unique() %>% nrow()
+  cat(s.count, "states \n")
+  
+  
+	# TRAINING
+	# unzip and save the raw csv file to speed up loading of the file
+  cat("    Loading training file ... ")
+	training_file <- file.path(dir_path, "training.csv.xz")
+	stopifnot(file.exists(training_file))
+	if(file.size(training_file) < 10e6){
+		training <- read_csv(training_file, col_types = cols())
+	} else {  
+		training_raw <- tools::file_path_sans_ext(training_file)
+		if(!file.exists(training_raw)) {
+		  cat("      Large, decompressing using pixz ... \n")
+			system2("pixz", paste("-d -k", training_file))
+		}
+		training <- read_csv(training_raw, col_types = cols())
+	}
+	# make sure that the training data is sorted with increasing idoutcome
+	training <- arrange(training, idoutcome)
+
+  sa.count <- select(training, idstatefrom, idaction) %>% unique() %>% nrow()
+  out.count <- select(training, idoutcome) %>% unique() %>% nrow()
+  cat(sa.count, "states,", out.count, "outcomes \n")
+	
+
+	# TEST
+	# unzip and save the raw csv file to speed up loading of the file
+	cat("    Loading test file ... ")
+	test_file <- file.path(dir_path, "test.csv.xz")
+	stopifnot(file.exists(test_file))
+	if(file.size(test_file) < 10e6){
+		test <- read_csv(test_file, col_types = cols()) 
+	} else {
+		test_raw <- tools::file_path_sans_ext(test_file)
+		if(!file.exists(test_raw)) {
+		  cat("      Large, decompressing using pixz ... \n")
+			system2("pixz", paste("-d -k", test_file))
+		}
+		test <- read_csv(test_raw, col_types = cols() )
+	}
+	# make sure that the test data is sorted with increasing idoutcome
+	test <- arrange(test, idoutcome)
+  
+  sa.count <- select(test, idstatefrom, idaction) %>% unique() %>% nrow()
+  out.count <- select(test, idoutcome) %>% unique() %>% nrow()
+  cat(sa.count, "states,", out.count, "outcomes \n")
+
   list(
     discount = filter(parameters, parameter == "discount")$value[[1]],
     initial_dist = initial,
@@ -185,6 +245,25 @@ load_domain <- function(dir_path){
     test_mdpo = test
   )
 }
+
+## ------ Printing -----------------
+
+#' Pretty prints the results
+#' @param results_frame Algorithm domain results
+print_results <- function(results_frame) {
+  if(requireNamespace("huxtable", quietly = TRUE)){
+    huxtable::print_screen(huxtable::hux(results_frame) %>% 
+                           huxtable::set_all_borders() %>% 
+                           huxtable::set_bold(row=1, col=huxtable::everywhere, value=TRUE),
+                 colnames = FALSE, color = TRUE, compact = FALSE, max_width = 140)
+    cat("\n")
+  } else {
+    cat("Install huxtable to get pretty results!\n")
+    print(results)
+  }
+}
+
+
 
 ## ------ Main Method ----------------
 
@@ -250,25 +329,23 @@ main_eval <- function(domains_paths, algorithms_paths){
 				cat("  No solution returned, skipping evaluation ...\n");
 			}
 			# TODO: It would be good to detach and better isolate the execution
+	    results_table <- bind_rows(results) %>% relocate(domain, algorithm)
+      if(print_partial){
+        cat("Results so far (saving just in case): \n")
+        print_results(results_table)
+      }
+      write_csv(results_table, output_file)
     }
   }
 
   cat("Done computing, formatting...\n")
-	results <- bind_rows(results) %>% relocate(domain, algorithm)
+	results_table <- bind_rows(results) %>% relocate(domain, algorithm)
   cat("Done.\n")
-  return (results)
+  return (results_table)
 }
 
 results <- main_eval(domains_paths, algorithms_paths)
 
 cat("*** Results: \n")
-
-if(requireNamespace("huxtable", quietly = TRUE)){
-	huxtable::print_screen(huxtable::hux(results) %>% 
-												 huxtable::set_all_borders() %>% 
-												 huxtable::set_bold(row=1, col=huxtable::everywhere, value=TRUE),
-							 colnames = FALSE, color = TRUE, compact = FALSE)
-	cat("\n")
-} else {
-  print(results)
-}
+print_results(results)
+write_csv(results, output_file)
