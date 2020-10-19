@@ -212,7 +212,7 @@ load_domain <- function(dir_path){
 
   sa.count <- select(training, idstatefrom, idaction) %>% unique() %>% nrow()
   out.count <- select(training, idoutcome) %>% unique() %>% nrow()
-  cat(sa.count, "states,", out.count, "outcomes \n")
+  cat(sa.count, "state-actions,", out.count, "outcomes \n")
 	
 
 	# TEST
@@ -235,7 +235,7 @@ load_domain <- function(dir_path){
   
   sa.count <- select(test, idstatefrom, idaction) %>% unique() %>% nrow()
   out.count <- select(test, idoutcome) %>% unique() %>% nrow()
-  cat(sa.count, "states,", out.count, "outcomes \n")
+  cat(sa.count, "state-actions,", out.count, "outcomes \n")
 
   list(
     discount = filter(parameters, parameter == "discount")$value[[1]],
@@ -251,16 +251,18 @@ load_domain <- function(dir_path){
 #' Pretty prints the results
 #' @param results_frame Algorithm domain results
 print_results <- function(results_frame) {
-  if(requireNamespace("huxtable", quietly = TRUE)){
-    huxtable::print_screen(huxtable::hux(results_frame) %>% 
-                           huxtable::set_all_borders() %>% 
-                           huxtable::set_bold(row=1, col=huxtable::everywhere, value=TRUE),
-                 colnames = FALSE, color = TRUE, compact = FALSE, max_width = 140)
-    cat("\n")
-  } else {
-    cat("Install huxtable to get pretty results!\n")
-    print(results)
-  }
+  tryCatch({
+    if(requireNamespace("huxtable", quietly = TRUE)){
+      huxtable::print_screen(huxtable::hux(results_frame) %>% 
+                             huxtable::set_all_borders() %>% 
+                             huxtable::set_bold(row=1, col=huxtable::everywhere, value=TRUE),
+                   colnames = FALSE, color = TRUE, compact = FALSE)
+      cat("\n")
+    } else {
+      cat("Install huxtable to get pretty results!\n")
+      print(results)
+    }
+  })
 }
 
 
