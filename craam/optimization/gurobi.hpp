@@ -32,15 +32,36 @@ namespace craam {
 
 #include <gurobi_c++.h>
 
+using uint = unsigned int;
+
+/// Represents different Gurobi environments depending on the purpose
+/// for which it is being used
+enum class OptimizerType : uint {
+    /// Used when computing Bellman updates with robust optimization
+    NatureUpdate = 0,
+    /// Linear programming MDP solution (and similar)
+    LinearProgramMDP = 1,
+    /// Mixed Integer and Nonconvex formulations
+    NonconvexOptimization = 2,
+    /// Other use: Must be the last item with the highest index
+    Other = 3
+};
+
 /**
  * Constructs a static instance of the gurobi object.
  * The returned object should not be used concurrently,
  * but is definitely being used that way!
  *
- * The construction is also not thread-safe.
+ * The construction is also not thread-safe, but seems to work.
+ *
+ * @param What purpose the optimizer is being used for. There is a different
+ *        environment for each purpose.
  */
-inline std::shared_ptr<GRBEnv> get_gurobi() {
-    static std::shared_ptr<GRBEnv> env;
+inline std::shared_ptr<GRBEnv> get_gurobi(OptimizerType purpose) {
+    using SPG = std::shared_ptr<GRBEnv>;
+    static std::array<SPG, uint(OptimizerType::Other) + 1> envirs;
+
+    SPG& env = envirs[uint(purpose)];
     if (env == nullptr) {
         try {
             env = std::make_shared<GRBEnv>();

@@ -464,7 +464,7 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
     const auto index_sa = [&](size_t s, size_t a) {
         assert(s >= 0 && s < nstates && a >= 0 && a < mdpo[s].size());
         const auto r = array_index_sa[s][a];
-        if (r < 0 || r >= nstateactions)
+        if (r < 0 || r >= long(nstateactions))
             throw std::runtime_error("Invalid output index in index_sa.");
         return r;
     };

@@ -296,6 +296,9 @@ rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi
 #' The objective is:
 #'  \deqn{\max_{\pi} \beta * CVaR_{P \sim f}^\alpha [return(\pi,P)] + (1-\beta) * E_{P \sim f}^\alpha [return(\pi,P)]}
 #'
+#' The parameters for the optimizer (such as the time to run, or the outputs to show) can be set
+#' by calling `gurobi_set_param` and passing the value "nonconvex" to the `optimizer` argument.
+#'
 #' @param mdpo Uncertain MDP. The outcomes are assumed to represent the uncertainty over MDPs.
 #'              The number of outcomes must be uniform for all states and actions
 #'              (except for terminal states which have no actions).
@@ -311,6 +314,9 @@ rsolve_mdpo_sa <- function(mdpo, discount, nature, nature_par, algorithm = "mppi
 #' @param output_filename Name of the file to save the model output. Valid suffixes are
 #'                          .mps, .rew, .lp, or .rlp for writing the model itself.
 #'                        If it is an empty string, then it does not write the file.
+#'
+#' @return Returns a list with policy, objective (return), time (computation),
+#'               status (whether it is optimal, directly passed from gurobi)
 srsolve_mdpo <- function(mdpo, init_distribution, discount, alpha, beta, algorithm = "milp", model_distribution = NULL, output_filename = "") {
     .Call(`_rcraam_srsolve_mdpo`, mdpo, init_distribution, discount, alpha, beta, algorithm, model_distribution, output_filename)
 }
@@ -453,8 +459,12 @@ rcraam_set_threads <- function(n) {
 #' @examples
 #' gurobi_set_param("TimeLimit", "100.0")
 #'
-gurobi_set_param <- function(param, value) {
-    invisible(.Call(`_rcraam_gurobi_set_param`, param, value))
+#' @param optimizer Which internal gurobi environment should be used. Should be one of
+#'                  c('nature', 'lp', 'nonconvex', 'other'). Any other string leads to an error.
+#' @param param The name (string) of the parameter to set
+#' @param value String value of the parameter (see examples)
+gurobi_set_param <- function(optimizer, param, value) {
+    invisible(.Call(`_rcraam_gurobi_set_param`, optimizer, param, value))
 }
 
 #'  Builds an MDP from samples

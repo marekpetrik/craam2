@@ -1031,6 +1031,9 @@ Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String na
 //' The objective is:
 //'  \deqn{\max_{\pi} \beta * CVaR_{P \sim f}^\alpha [return(\pi,P)] + (1-\beta) * E_{P \sim f}^\alpha [return(\pi,P)]}
 //'
+//' The parameters for the optimizer (such as the time to run, or the outputs to show) can be set
+//' by calling `gurobi_set_param` and passing the value "nonconvex" to the `optimizer` argument.
+//'
 //' @param mdpo Uncertain MDP. The outcomes are assumed to represent the uncertainty over MDPs.
 //'              The number of outcomes must be uniform for all states and actions
 //'              (except for terminal states which have no actions).
@@ -1046,6 +1049,9 @@ Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String na
 //' @param output_filename Name of the file to save the model output. Valid suffixes are
 //'                          .mps, .rew, .lp, or .rlp for writing the model itself.
 //'                        If it is an empty string, then it does not write the file.
+//'
+//' @return Returns a list with policy, objective (return), time (computation),
+//'               status (whether it is optimal, directly passed from gurobi)
 // [[Rcpp::export]]
 Rcpp::List srsolve_mdpo(Rcpp::DataFrame mdpo, Rcpp::DataFrame init_distribution,
                         double discount, double alpha, double beta,
@@ -1069,7 +1075,7 @@ Rcpp::List srsolve_mdpo(Rcpp::DataFrame mdpo, Rcpp::DataFrame init_distribution,
                                                    "probability", "model_distribution")
                                   : ProbDst(0);
 
-    auto grb = craam::get_gurobi();
+    auto grb = craam::get_gurobi(craam::OptimizerType::NonconvexOptimization);
     if (algorithm == "milp") {
         const craam::DetStaticSolution sol = craam::statalgs::srsolve_avar_milp(
             *grb, m, alpha, beta, discount, init_dst, model_dst, output_filename);
@@ -1470,16 +1476,15 @@ Rcpp::DataFrame revaluate_mdpo_rnd(Rcpp::DataFrame mdpo, double discount,
     }
 
     // get the unique outcomes
-    craam::indvec idoutcome_unique = idoutcome;
+    craam::indvec outcome_uniq = idoutcome;
     {
-        auto unique_end = std::unique(idoutcome_unique.begin(), idoutcome_unique.end());
-        idoutcome_unique.erase(unique_end, idoutcome_unique.end());
+        auto unique_end = std::unique(outcome_uniq.begin(), outcome_uniq.end());
+        outcome_uniq.erase(unique_end, outcome_uniq.end());
     }
 
     // parse the first MDP to get the number of states (assumed be the same for each outcome!)
-    auto mdp_init =
-        mdp_from_mdpo_dataframe(idstatefrom, idaction, idoutcome, idstateto, probability,
-                                reward, idoutcome_unique[0], false);
+    auto mdp_init = mdp_from_mdpo_dataframe(idstatefrom, idaction, idoutcome, idstateto,
+                                            probability, reward, outcome_uniq[0], false);
 
     // policy: the method can be used to compute the robust solution for a policy
     // rpolicy stands for randomized policy and NOT robust policy
@@ -1489,34 +1494,32 @@ Rcpp::DataFrame revaluate_mdpo_rnd(Rcpp::DataFrame mdpo, double discount,
     const auto initial_tran =
         craam::Transition(parse_s_values(mdp_init.size(), initial, 0.0, "probability"));
 
-    numvec mdp_returns(idoutcome_unique.size(),
-                       numeric_limits<craam::prec_t>::quiet_NaN());
+    numvec mdp_returns(outcome_uniq.size(), numeric_limits<craam::prec_t>::quiet_NaN());
 
     // create a progress bar and use to interrupt the computation
-    RcppProg::Progress progress(idoutcome_unique.size(), true);
+    RcppProg::Progress progress(outcome_uniq.size(), true);
 
     // check that all states and actions have the same number of outcomes
     // skip the first element, because that one is already parsed
 #pragma omp parallel for
-    for (long ind_outcome = 0; ind_outcome < long(idoutcome_unique.size());
-         ++ind_outcome) {
+    for (long iout = 0; iout < long(outcome_uniq.size()); ++iout) {
 
         // check if an abort was called; do not stop or bad things happen because of openMP
         if (!progress.check_abort()) {
             // parse the MDP for the given outcome
-            auto mdp = mdp_from_mdpo_dataframe(idstatefrom, idaction, idoutcome,
-                                               idstateto, probability, reward,
-                                               idoutcome_unique[ind_outcome], false);
+            auto mdp =
+                mdp_from_mdpo_dataframe(idstatefrom, idaction, idoutcome, idstateto,
+                                        probability, reward, outcome_uniq[iout], false);
             // solve the MDP
             auto sol = solve_mpi_r(mdp, discount, craam::numvec(0), rpolicy);
-            mdp_returns[ind_outcome] = sol.total_return(initial_tran);
+            mdp_returns[iout] = sol.total_return(initial_tran);
 
-            // there may be a race here, but it is just a progress bar, no big deal
+            // RcppProg is safe with OpenMP
             progress.increment(1);
         }
     }
     if (progress.check_abort()) { Rcpp::stop("Computation aborted."); }
-    return Rcpp::DataFrame::create(Rcpp::_["idoutcome"] = idoutcome_unique,
+    return Rcpp::DataFrame::create(Rcpp::_["idoutcome"] = outcome_uniq,
                                    Rcpp::_["return"] = mdp_returns);
 }
 
@@ -1543,10 +1546,28 @@ void rcraam_set_threads(int n) {
 //' @examples
 //' gurobi_set_param("TimeLimit", "100.0")
 //'
+//' @param optimizer Which internal gurobi environment should be used. Should be one of
+//'                  c('nature', 'lp', 'nonconvex', 'other'). Any other string leads to an error.
+//' @param param The name (string) of the parameter to set
+//' @param value String value of the parameter (see examples)
 // [[Rcpp::export]]
-void gurobi_set_param(Rcpp::String param, Rcpp::String value) {
+void gurobi_set_param(Rcpp::String optimizer, Rcpp::String param, Rcpp::String value) {
 #ifdef GUROBI_USE
-    get_gurobi()->set(param, value);
+    craam::OptimizerType type = [](const Rcpp::String& optimizer_) {
+        if (optimizer_ == "nature") {
+            return OptimizerType::NatureUpdate;
+        } else if (optimizer_ == "lp") {
+            return OptimizerType::LinearProgramMDP;
+        } else if (optimizer_ == "nonconvex") {
+            return OptimizerType::NonconvexOptimization;
+        } else if (optimizer_ == "other") {
+            return OptimizerType::Other;
+        } else {
+            Rcpp::stop("Unknown optimizer type");
+        }
+    }(optimizer);
+
+    get_gurobi(type)->set(param, value);
 #else
     Rcpp::stop("Gurobi not supported.");
 #endif

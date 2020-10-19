@@ -15,12 +15,17 @@ if (OPENMP_FOUND AND NOT (CMAKE_BUILD_TYPE STREQUAL "Debug") )
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
+# enable gurobi support
+add_compile_definitions(GUROBI_USE)
+
 
 include_directories(../
                     ./inst/include
                     ~/R/x86_64-pc-linux-gnu-library/4.0/Rcpp/include/
                     ~/R/x86_64-pc-linux-gnu-library/4.0/RcppProgress/include
-                    /usr/include/R/)
+                    /usr/include/R/
+                    ~/Software/gurobi901/linux64/include
+                    )
 
 find_path(RCPP "Rcpp.h" PATHS "~/R/x86_64-pc-linux-gnu-library/4.0/Rcpp/include/")
 

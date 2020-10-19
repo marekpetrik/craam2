@@ -142,8 +142,7 @@ public:
 /**
  * Response that is a convex combination of expectation and value at risk:
  *
- *  beta * var_alpha[X] + (1-beta) * E[x]
- *
+ * beta * var_alpha[X] + (1-beta) * E[x]
  */
 class robust_var_exp_u {
 protected:
@@ -165,7 +164,7 @@ public:
 /**
  * Response that is a convex combination of expectation and average value at risk:
  *
- *  beta * avar_alpha[X] + (1-beta) * E[x]
+ * beta * avar_alpha[X] + (1-beta) * E[x]
  */
 class robust_avar_exp_u {
 protected:
@@ -175,9 +174,7 @@ protected:
 public:
     robust_avar_exp_u(prec_t alpha, prec_t beta) : alpha(alpha), beta(beta) {}
 
-    /**
-     * Implements SANature interface
-     */
+    /// Implements SANature interface
     pair<numvec, prec_t> operator()(long, long, const numvec& nominalprob,
                                     const numvec& zfunction) const {
         return avar_exp(zfunction, nominalprob, alpha, beta);
@@ -196,9 +193,7 @@ protected:
 public:
     optimistic_l1(vector<numvec> budgets) : budgets(move(budgets)) {}
 
-    /**
-   * @brief Implements SANature interface
-   */
+    /// Implements SANature interface
     pair<numvec, prec_t> operator()(long stateid, long actionid,
                                     const numvec& nominalprob,
                                     const numvec& zfunction) const {
@@ -225,9 +220,7 @@ protected:
 public:
     optimistic_l1u(prec_t budget) : budget(move(budget)){};
 
-    /**
-   * @brief Implements SANature interface
-   */
+    /// Implements SANature interface
     pair<numvec, prec_t> operator()(long, long, const numvec& nominalprob,
                                     const numvec& zfunction) const {
         assert(nominalprob.size() == zfunction.size());
@@ -241,9 +234,7 @@ public:
 
 /// Absolutely worst outcome
 struct robust_unbounded {
-    /**
-   * @brief Implements SANature interface
-   */
+    /// Implements SANature interface
     pair<numvec, prec_t> operator()(long, long, const numvec&,
                                     const numvec& zfunction) const {
         // assert(v.size() == p.size());
@@ -257,9 +248,7 @@ struct robust_unbounded {
 
 /// Absolutely best outcome
 struct optimistic_unbounded {
-    /**
-   * @brief Implements SANature interface
-   */
+    /// Implements SANature interface
     pair<numvec, prec_t> operator()(long, long, const numvec&,
                                     const numvec& zfunction) const {
         // assert(v.size() == p.size());
@@ -268,6 +257,28 @@ struct optimistic_unbounded {
             size_t(max_element(begin(zfunction), end(zfunction)) - begin(zfunction));
         dist[index] = 1;
         return make_pair(dist, zfunction[index]);
+    }
+};
+
+/// Picks a fixed outcome for each state. This can only be
+/// used if the number of outcomes (or next states) for each state is the same
+///
+/// NOTE: The limitation is that even if only one outcome / state is being used
+/// the zvalue must be computed for all, which is not efficient
+struct fixed_outcome {
+protected:
+    long idoutcome;
+
+public:
+    fixed_outcome(long idoutcome) : idoutcome(idoutcome) {
+        if (idoutcome < 0) throw std::runtime_error("idoutcome needs to be non-negative");
+    }
+
+    /// Implements SANature interface
+    std::pair<numvec, prec_t> operator()(long, long, const numvec&,
+                                         const numvec& zfunction) const {
+        // use "at" to check for the bounds
+        return make_pair(numvec(zfunction.size()), zfunction.at(idoutcome));
     }
 };
 
@@ -296,7 +307,7 @@ public:
    * @param budgets Budgets, with a single value for each MDP state and action
    */
     robust_l1w_gurobi(vector<numvec> budgets) : budgets(move(budgets)), weights(0) {
-        env = get_gurobi();
+        env = get_gurobi(OptimizerType::NatureUpdate);
         // possibly? make sure it is run in a single thread so it can be parallelized
         // but this interferes with other use of the environment
         // env->set(GRB_IntParam_Threads, 1);
@@ -311,7 +322,7 @@ public:
    */
     robust_l1w_gurobi(vector<numvec> budgets, vector<vector<numvec>> weights)
         : budgets(move(budgets)), weights(move(weights)) {
-        env = get_gurobi();
+        env = get_gurobi(OptimizerType::NatureUpdate);
         // make sure it is run in a single thread so it can be parallelized
         // env->set(GRB_IntParam_Threads, 1);
     };
@@ -573,7 +584,7 @@ public:
    * @param budgets Budgets, with a single value for each MDP state
    */
     robust_s_l1_gurobi(numvec budgets) : budgets(move(budgets)) {
-        env = get_gurobi();
+        env = get_gurobi(OptimizerType::NatureUpdate);
         // make sure it is run in a single thread so it can be parallelized
         //env->set(GRB_IntParam_Threads, 1);
     };
@@ -649,7 +660,7 @@ public:
 
         assert(this->weights.size() == this->budgets.size());
 
-        env = get_gurobi();
+        env = get_gurobi(OptimizerType::NatureUpdate);
         // make sure it is run in a single thread so it can be parallelized
         //env->set(GRB_IntParam_Threads, 1);
     };
@@ -727,7 +738,7 @@ public:
      *                  on the expectation term
      */
     robust_s_avar_exp_u_gurobi(prec_t alpha, prec_t beta) : alpha(alpha), beta(beta) {
-        env = get_gurobi();
+        env = get_gurobi(OptimizerType::NatureUpdate);
         // make sure it is run in a single thread so it can be parallelized
         //env->set(GRB_IntParam_Threads, 1);
     }
@@ -763,7 +774,7 @@ public:
      * @param budgets Budgets, with a single value for each MDP state
      */
     robust_s_linf_gurobi(numvec budgets) : budgets(move(budgets)) {
-        env = get_gurobi();
+        env = get_gurobi(OptimizerType::NatureUpdate);
         // make sure it is run in a single thread so it can be parallelized
         //env->set(GRB_IntParam_Threads, 1);
     };

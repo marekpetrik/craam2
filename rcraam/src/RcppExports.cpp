@@ -283,13 +283,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // gurobi_set_param
-void gurobi_set_param(Rcpp::String param, Rcpp::String value);
-RcppExport SEXP _rcraam_gurobi_set_param(SEXP paramSEXP, SEXP valueSEXP) {
+void gurobi_set_param(Rcpp::String optimizer, Rcpp::String param, Rcpp::String value);
+RcppExport SEXP _rcraam_gurobi_set_param(SEXP optimizerSEXP, SEXP paramSEXP, SEXP valueSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::String >::type optimizer(optimizerSEXP);
     Rcpp::traits::input_parameter< Rcpp::String >::type param(paramSEXP);
     Rcpp::traits::input_parameter< Rcpp::String >::type value(valueSEXP);
-    gurobi_set_param(param, value);
+    gurobi_set_param(optimizer, param, value);
     return R_NilValue;
 END_RCPP
 }
@@ -413,7 +414,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_rcraam_rsolve_mdpo_s", (DL_FUNC) &_rcraam_rsolve_mdpo_s, 13},
     {"_rcraam_revaluate_mdpo_rnd", (DL_FUNC) &_rcraam_revaluate_mdpo_rnd, 5},
     {"_rcraam_rcraam_set_threads", (DL_FUNC) &_rcraam_rcraam_set_threads, 1},
-    {"_rcraam_gurobi_set_param", (DL_FUNC) &_rcraam_gurobi_set_param, 2},
+    {"_rcraam_gurobi_set_param", (DL_FUNC) &_rcraam_gurobi_set_param, 3},
     {"_rcraam_mdp_from_samples", (DL_FUNC) &_rcraam_mdp_from_samples, 1},
     {"_rcraam_matrix_mdp_lp", (DL_FUNC) &_rcraam_matrix_mdp_lp, 2},
     {"_rcraam_matrix_mdp_transition", (DL_FUNC) &_rcraam_matrix_mdp_transition, 2},

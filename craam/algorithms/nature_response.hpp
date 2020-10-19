@@ -307,7 +307,7 @@ public:
    * @param budgets Budgets, with a single value for each MDP state and action
    */
     robust_l1w_gurobi(vector<numvec> budgets) : budgets(move(budgets)), weights(0) {
-        env = get_gurobi();
+        env = get_gurobi(OptimizerType::NatureUpdate);
         // possibly? make sure it is run in a single thread so it can be parallelized
         // but this interferes with other use of the environment
         // env->set(GRB_IntParam_Threads, 1);
@@ -322,7 +322,7 @@ public:
    */
     robust_l1w_gurobi(vector<numvec> budgets, vector<vector<numvec>> weights)
         : budgets(move(budgets)), weights(move(weights)) {
-        env = get_gurobi();
+        env = get_gurobi(OptimizerType::NatureUpdate);
         // make sure it is run in a single thread so it can be parallelized
         // env->set(GRB_IntParam_Threads, 1);
     };
@@ -584,7 +584,7 @@ public:
    * @param budgets Budgets, with a single value for each MDP state
    */
     robust_s_l1_gurobi(numvec budgets) : budgets(move(budgets)) {
-        env = get_gurobi();
+        env = get_gurobi(OptimizerType::NatureUpdate);
         // make sure it is run in a single thread so it can be parallelized
         //env->set(GRB_IntParam_Threads, 1);
     };
@@ -660,7 +660,7 @@ public:
 
         assert(this->weights.size() == this->budgets.size());
 
-        env = get_gurobi();
+        env = get_gurobi(OptimizerType::NatureUpdate);
         // make sure it is run in a single thread so it can be parallelized
         //env->set(GRB_IntParam_Threads, 1);
     };
@@ -738,7 +738,7 @@ public:
      *                  on the expectation term
      */
     robust_s_avar_exp_u_gurobi(prec_t alpha, prec_t beta) : alpha(alpha), beta(beta) {
-        env = get_gurobi();
+        env = get_gurobi(OptimizerType::NatureUpdate);
         // make sure it is run in a single thread so it can be parallelized
         //env->set(GRB_IntParam_Threads, 1);
     }
@@ -774,7 +774,7 @@ public:
      * @param budgets Budgets, with a single value for each MDP state
      */
     robust_s_linf_gurobi(numvec budgets) : budgets(move(budgets)) {
-        env = get_gurobi();
+        env = get_gurobi(OptimizerType::NatureUpdate);
         // make sure it is run in a single thread so it can be parallelized
         //env->set(GRB_IntParam_Threads, 1);
     };

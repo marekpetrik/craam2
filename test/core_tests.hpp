@@ -424,7 +424,7 @@ BOOST_AUTO_TEST_CASE(small_rmdp_portfolio_nonconvex) {
     numvec initdist(6, 0);
     initdist[0] = 1.0;
 
-    auto genv = get_gurobi();
+    auto genv = get_gurobi(OptimizerType::Other);
 
     auto sol1 = craam::statalgs::srsolve_avar_quad(*genv, mdpo, 0.5, 0.5, 0.9, initdist);
     BOOST_CHECK(sol1.status == 0);
@@ -1411,7 +1411,7 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_l1) {
     // uniform weights
     const vector<numvec> wu{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
 
-    auto genv = get_gurobi();
+    auto genv = get_gurobi(OptimizerType::Other);
     GRBEnv& env = *genv;
 
     for (double psi = 0.0; psi < 3.0; psi += 0.1) {
@@ -1445,7 +1445,7 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_linf) {
     // uniform weights
     const vector<numvec> wu{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
 
-    auto genv = get_gurobi();
+    auto genv = get_gurobi(OptimizerType::Other);
     GRBEnv& env = *genv;
 
     for (double psi = 0.0; psi < 3.0; psi += 0.1) {
@@ -1476,7 +1476,7 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_same) {
     const vector<numvec> p{{0.3, 0.2, 0.1, 0.4}, {0.3, 0.6, 0.1}, {0.1, 0.3, 0.6}};
     const vector<numvec> z{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 0.9}};
 
-    auto genv = get_gurobi();
+    auto genv = get_gurobi(OptimizerType::Other);
     //GRBEnv& env = *genv;
 
     for (double psi = 0.0; psi < 3.0; psi += 0.1) {
@@ -1499,7 +1499,7 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_cvar) {
     const prec_t alpha = 0.3;
     const prec_t beta = 1.0;
 
-    auto genv = get_gurobi();
+    auto genv = get_gurobi(OptimizerType::Other);
     GRBEnv& env = *genv;
 
     auto [obj, d, dist_lp] = srect_avar_exp(env, z, f, alpha, beta);
@@ -1538,7 +1538,7 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_cvar_pol) {
     const prec_t alpha = 0.3;
     const prec_t beta = 0.6;
 
-    auto genv = get_gurobi();
+    auto genv = get_gurobi(OptimizerType::Other);
     GRBEnv& env = *genv;
 
     auto [obj, d, dist_lp] = srect_avar_exp(env, z, f, alpha, beta, {0.1, 0.9});
@@ -1577,7 +1577,7 @@ BOOST_AUTO_TEST_CASE(test_solve_srect_cvar_exp) {
     const prec_t alpha = 0.3;
     const prec_t beta = 0.0;
 
-    auto genv = get_gurobi();
+    auto genv = get_gurobi(OptimizerType::Other);
     GRBEnv& env = *genv;
 
     auto [obj, d, dist_lp] = srect_avar_exp(env, z, f, alpha, beta);
@@ -1599,7 +1599,7 @@ BOOST_AUTO_TEST_CASE(test_responses) {
     const vector<numvec> wu{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
 
 #ifdef GUROBI_USE
-    auto genv = get_gurobi();
+    auto genv = get_gurobi(OptimizerType::Other);
     GRBEnv& env = *genv;
 #endif
 
@@ -1677,7 +1677,7 @@ BOOST_AUTO_TEST_CASE(test_responses_ties) {
     const vector<numvec> wu{{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
 
 #ifdef GUROBI_USE
-    auto genv = get_gurobi();
+    auto genv = get_gurobi(OptimizerType::Other);
     GRBEnv& env = *genv;
 #endif
 
@@ -1853,7 +1853,7 @@ BOOST_AUTO_TEST_CASE(inventory_failure_bug) {
     double xi = 0.2;
     //cout << GradientsL1_w(z, w).to_string() << endl;
     auto sol_fast = worstcase_l1_w(z, pbar, w, xi);
-    auto genv = get_gurobi();
+    auto genv = get_gurobi(OptimizerType::Other);
     GRBEnv& env = *genv;
     auto sol_gurobi = worstcase_l1_w_gurobi(env, z, pbar, w, xi);
     BOOST_CHECK_CLOSE(sol_fast.second, sol_gurobi.second, 1e-3);
@@ -1889,7 +1889,7 @@ BOOST_AUTO_TEST_CASE(test_srect_evaluation) {
     const vector<numvec> wu{
         {1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
 
-    auto genv = get_gurobi();
+    auto genv = get_gurobi(OptimizerType::Other);
     GRBEnv& env = *genv;
 
     for (const auto& pi : pis) {

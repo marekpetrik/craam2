@@ -193,9 +193,9 @@ solve_pi(const MDP& mdp, prec_t discount, numvec valuefunction = numvec(0),
  *
  * @return Solution
  */
-inline DetermSolution solve_lp(const MDP& mdp, prec_t discount,
-                               const indvec& policy = indvec(0),
-                               GRBEnv& env = *get_gurobi()) {
+inline DetermSolution
+solve_lp(const MDP& mdp, prec_t discount, const indvec& policy = indvec(0),
+         GRBEnv& env = *get_gurobi(OptimizerType::LinearProgramMDP)) {
 
     // TODO add support for this, the parameter is here only for
     // future signature compatibility

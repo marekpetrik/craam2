@@ -6,7 +6,7 @@
 
 cmake_minimum_required (VERSION 3.17.3 FATAL_ERROR) # Required for modern C++
 
-set(CRAAMVERSION "0.4.0")
+set(CRAAMVERSION "0.5.0")
 project (CRAAM)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -22,7 +22,6 @@ else()
     set (GUROBI_USE FALSE)
     message(WARNING "GUROBI_PATH is not set; compiling without Gurobi support.")
 endif()
-
 
 # enable colors in the output
 SET(CMAKE_COLOR_MAKEFILE ON)

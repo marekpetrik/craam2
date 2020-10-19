@@ -85,7 +85,6 @@ public:
      * @param probabilities The probabilities of transitions
      */
     Transition(const indvec& indices, const numvec& probabilities) : Transition() {
-
         if (indices.size() != probabilities.size())
             throw invalid_argument("All parameters for the constructor of Transition "
                                    "must have the same size.");
@@ -211,7 +210,7 @@ public:
         }
     }
 
-    /** \returns Whether the transition probabilities sum to 1. */
+    /// @returns Whether the transition probabilities sum to 1.
     bool is_normalized() const noexcept {
         if (indices.empty())
             return true;
@@ -251,9 +250,7 @@ public:
         return value;
     }
 
-    /**
-     * Returns the probability of transitioning to state idstate
-     */
+    /// Returns the probability of transitioning to state idstate
     prec_t probability_to(const long idstate) const {
         auto pointer = std::lower_bound(indices.cbegin(), indices.cend(), idstate);
         if (pointer != indices.cend() &&
