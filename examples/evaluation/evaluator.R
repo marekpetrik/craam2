@@ -10,17 +10,17 @@
 #
 
 suppressPackageStartupMessages({
-	library(rcraam)
-	library(dplyr)
-	library(readr)
-	library(progress)})
+  library(rcraam)
+  library(dplyr)
+  library(readr)
+  library(progress)})
 
 
 rm(list = ls())
 
 test_on_train <- FALSE
 if(test_on_train){
-	cat(" ***** Reporting test results on the training set ***********")
+  cat(" ***** Reporting test results on the training set ***********")
 }
 
 ## ------ Output file ---------
@@ -44,9 +44,9 @@ domains_source <- "http://data.rmdp.xyz/domains"   # no trailing "/"
 #   - training.csv.xz  (posterior optimization samples)
 #   - test.csv.xz      (posterior evaluation samples)
 domains <- list(
-  #riverswim = "riverswim"
-	pop_small = "population_small"
-	#, population = "population",
+  riverswim = "riverswim",
+  pop_small = "population_small",
+  population = "population"
 )
 
 domains_paths <- lapply(domains, function(d){file.path(domains_path, d)})
@@ -71,11 +71,11 @@ algorithms_path <- "algorithms"
 algorithms <- list(
   nominal = "nominal.R",
   bcr_l = "bcr_local.R",
-	bcr_g = "bcr_global.R",
-	rsvf2 = "rsvf2.R",
-	norbu_r = "norbu_r.R",
-	norbu_sr = "norbu_sr.R",
-	norbuv_r = "norbuv_r.R",
+  bcr_g = "bcr_global.R",
+  rsvf2 = "rsvf2.R",
+  norbu_r = "norbu_r.R",
+  norbu_sr = "norbu_sr.R",
+  norbuv_r = "norbuv_r.R",
   torbu = "torbu.R"
 )
 
@@ -88,28 +88,28 @@ cat("Checking if domains are available ...\n")
 
 if(!dir.exists(domains_path)) dir.create(domains_path)
 for(idpath in seq_along(domains_paths)){
-	if(dir.exists(domains_paths[[idpath]])){
-		cat("Domain", names(domains)[[idpath]], "available, using cached version.\n")
-	} else {
-		cat("Domain", names(domains)[[idpath]], "unavailable, downloading...\n")
-		cat("  Creating", domains_paths[[idpath]], "...\n")
-		dir.create(domains_paths[[idpath]])
-		withCallingHandlers({
-			domain_files <- c("parameters.csv", "true.csv.xz", "initial.csv.xz", 
-												"training.csv.xz","test.csv.xz")
-			for(dfile in domain_files){
-				urlf <- paste(domains_source, domains[[idpath]], dfile, sep = "/")
-				targetf <- file.path(domains_paths[[idpath]], dfile)
-				cat("Downloading", urlf, "to", targetf, "\n")
-				download.file(urlf, targetf)
-			}
-		}, 
-		error = function(e){
-			cat("Download error! Stopping.\n")
-			unlink(domains_paths[[idpath]], recursive = TRUE, force = TRUE)
-			stop(e)
-		})
-	}
+  if(dir.exists(domains_paths[[idpath]])){
+    cat("Domain", names(domains)[[idpath]], "available, using cached version.\n")
+  } else {
+    cat("Domain", names(domains)[[idpath]], "unavailable, downloading...\n")
+    cat("  Creating", domains_paths[[idpath]], "...\n")
+    dir.create(domains_paths[[idpath]])
+    withCallingHandlers({
+      domain_files <- c("parameters.csv", "true.csv.xz", "initial.csv.xz", 
+                        "training.csv.xz","test.csv.xz")
+      for(dfile in domain_files){
+        urlf <- paste(domains_source, domains[[idpath]], dfile, sep = "/")
+        targetf <- file.path(domains_paths[[idpath]], dfile)
+        cat("Downloading", urlf, "to", targetf, "\n")
+        download.file(urlf, targetf)
+      }
+    }, 
+    error = function(e){
+      cat("Download error! Stopping.\n")
+      unlink(domains_paths[[idpath]], recursive = TRUE, force = TRUE)
+      stop(e)
+    })
+  }
 }
 
 
@@ -118,10 +118,10 @@ for(idpath in seq_along(domains_paths)){
 # the algorithms can read and use these parameters
 params <- new.env()
 with(params, {
-	confidence <- 0.9							# value at risk confidence (1.0 is the worst case)
-	risk_weight <- 0.5			      # weight on the cvar when computing the soft-robust objective
-	
-	cat("Using confidence =", confidence, ", risk_weight =", risk_weight, "\n") 
+  confidence <- 0.9             # value at risk confidence (1.0 is the worst case)
+  risk_weight <- 0.5            # weight on the cvar when computing the soft-robust objective
+  
+  cat("Using confidence =", confidence, ", risk_weight =", risk_weight, "\n") 
 })
 
 ## ---- Helper Methods: Evaluation -----------
@@ -147,18 +147,18 @@ compute_true_return <- function(mdp_true, policy, initial, discount){
 #' @param mdp.bayesian MDP with outcomes representing Bayesian samples
 #' @param solution Output from the algorithm (policy and predicted)
 compute_statistics <- function(mdpo, mdp_true, solution, initial, discount){
-	# make sure that the policy is randomized (if no probabilities, just add the column)
-	policy <- solution$policy
-	if(!("probability" %in% names(policy)))
-		policy$probability <- 1.0
-	# compute the returns
-	bayes_returns <- revaluate_mdpo_rnd(mdpo, discount, policy, initial, TRUE)$return
-	
-	# assume a uniform distribution over the outcomes
+  # make sure that the policy is randomized (if no probabilities, just add the column)
+  policy <- solution$policy
+  if(!("probability" %in% names(policy)))
+    policy$probability <- 1.0
+  # compute the returns
+  bayes_returns <- revaluate_mdpo_rnd(mdpo, discount, policy, initial, TRUE)$return
+  
+  # assume a uniform distribution over the outcomes
   bayes_dst <- rep(1/length(bayes_returns), length(bayes_returns))
   true_return <- compute_true_return(mdp_true, solution$policy, initial, discount)
   
-	# compute cvar and other metrics
+  # compute cvar and other metrics
   cvar_val <- avar(bayes_returns, bayes_dst, 1 - params$confidence)$value
   mean_val <- mean(bayes_returns) 
   list(
@@ -166,9 +166,9 @@ compute_statistics <- function(mdpo, mdp_true, solution, initial, discount){
     true = true_return,
     var = unname(quantile(bayes_returns, 1 - params$confidence)),
     cvar = cvar_val,
-		mean = mean_val,
+    mean = mean_val,
     soft_rbst = (1 - params$risk_weight) * mean_val + 
-			params$risk_weight * cvar_val
+      params$risk_weight * cvar_val
   )
 }
 
@@ -192,46 +192,46 @@ load_domain <- function(dir_path){
   cat(s.count, "states \n")
   
   
-	# TRAINING
-	# unzip and save the raw csv file to speed up loading of the file
+  # TRAINING
+  # unzip and save the raw csv file to speed up loading of the file
   cat("    Loading training file ... ")
-	training_file <- file.path(dir_path, "training.csv.xz")
-	stopifnot(file.exists(training_file))
-	if(file.size(training_file) < 10e6){
-		training <- read_csv(training_file, col_types = cols())
-	} else {  
-		training_raw <- tools::file_path_sans_ext(training_file)
-		if(!file.exists(training_raw)) {
-		  cat("      Large, decompressing using pixz ... \n")
-			system2("pixz", paste("-d -k", training_file))
-		}
-		training <- read_csv(training_raw, col_types = cols())
-	}
-	# make sure that the training data is sorted with increasing idoutcome
-	training <- arrange(training, idoutcome)
+  training_file <- file.path(dir_path, "training.csv.xz")
+  stopifnot(file.exists(training_file))
+  if(file.size(training_file) < 10e6){
+    training <- read_csv(training_file, col_types = cols())
+  } else {  
+    training_raw <- tools::file_path_sans_ext(training_file)
+    if(!file.exists(training_raw)) {
+      cat("      Large, decompressing using pixz ... \n")
+      system2("pixz", paste("-d -k", training_file))
+    }
+    training <- read_csv(training_raw, col_types = cols())
+  }
+  # make sure that the training data is sorted with increasing idoutcome
+  training <- arrange(training, idoutcome)
 
   sa.count <- select(training, idstatefrom, idaction) %>% unique() %>% nrow()
   out.count <- select(training, idoutcome) %>% unique() %>% nrow()
   cat(sa.count, "state-actions,", out.count, "outcomes \n")
-	
+  
 
-	# TEST
-	# unzip and save the raw csv file to speed up loading of the file
-	cat("    Loading test file ... ")
-	test_file <- file.path(dir_path, "test.csv.xz")
-	stopifnot(file.exists(test_file))
-	if(file.size(test_file) < 10e6){
-		test <- read_csv(test_file, col_types = cols()) 
-	} else {
-		test_raw <- tools::file_path_sans_ext(test_file)
-		if(!file.exists(test_raw)) {
-		  cat("      Large, decompressing using pixz ... \n")
-			system2("pixz", paste("-d -k", test_file))
-		}
-		test <- read_csv(test_raw, col_types = cols() )
-	}
-	# make sure that the test data is sorted with increasing idoutcome
-	test <- arrange(test, idoutcome)
+  # TEST
+  # unzip and save the raw csv file to speed up loading of the file
+  cat("    Loading test file ... ")
+  test_file <- file.path(dir_path, "test.csv.xz")
+  stopifnot(file.exists(test_file))
+  if(file.size(test_file) < 10e6){
+    test <- read_csv(test_file, col_types = cols()) 
+  } else {
+    test_raw <- tools::file_path_sans_ext(test_file)
+    if(!file.exists(test_raw)) {
+      cat("      Large, decompressing using pixz ... \n")
+      system2("pixz", paste("-d -k", test_file))
+    }
+    test <- read_csv(test_raw, col_types = cols() )
+  }
+  # make sure that the test data is sorted with increasing idoutcome
+  test <- arrange(test, idoutcome)
   
   sa.count <- select(test, idstatefrom, idaction) %>% unique() %>% nrow()
   out.count <- select(test, idoutcome) %>% unique() %>% nrow()
@@ -288,7 +288,7 @@ main_eval <- function(domains_paths, algorithms_paths){
   
   cat("Running algorithms ... \n")
 
-	# iterate over all domains
+  # iterate over all domains
   for (i_dom in seq_along(domains_paths)) {
     domain_name <- names(domains_paths[i_dom])
     cat("*** Loading domain", domain_name, " ...\n")
@@ -308,30 +308,30 @@ main_eval <- function(domains_paths, algorithms_paths){
       solution <- with(alg_env, {
         algorithm_main(domain_spec$training_mdpo, domain_spec$initial_dist, 
                       domain_spec$discount) } )
-			stopifnot("policy" %in% names(solution))
-			stopifnot("estimate" %in% names(solution))
+      stopifnot("policy" %in% names(solution))
+      stopifnot("estimate" %in% names(solution))
 
-			if(!is.null(solution)){
-				cat("  Evaluating ... \n")
-				# compute and store stats
-				if(!test_on_train){
-					statistics <- with(domain_spec, { 
-						compute_statistics(test_mdpo, true_mdp, solution, initial_dist, discount) } )
-				} else {
-					statistics <- with(domain_spec, { 
-						compute_statistics(training_mdpo, true_mdp, solution, initial_dist, discount) } )
-				}
-				statistics$domain <- domain_name
-				statistics$algorithm <- algorithm_name
+      if(!is.null(solution)){
+        cat("  Evaluating ... \n")
+        # compute and store stats
+        if(!test_on_train){
+          statistics <- with(domain_spec, { 
+            compute_statistics(test_mdpo, true_mdp, solution, initial_dist, discount) } )
+        } else {
+          statistics <- with(domain_spec, { 
+            compute_statistics(training_mdpo, true_mdp, solution, initial_dist, discount) } )
+        }
+        statistics$domain <- domain_name
+        statistics$algorithm <- algorithm_name
 
-				results[[iteration]] <- statistics
-				# keep track of the iteration
-				iteration <- iteration + 1
-			} else {
-				cat("  No solution returned, skipping evaluation ...\n");
-			}
-			# TODO: It would be good to detach and better isolate the execution
-	    results_table <- bind_rows(results) %>% relocate(domain, algorithm)
+        results[[iteration]] <- statistics
+        # keep track of the iteration
+        iteration <- iteration + 1
+      } else {
+        cat("  No solution returned, skipping evaluation ...\n");
+      }
+      # TODO: It would be good to detach and better isolate the execution
+      results_table <- bind_rows(results) %>% relocate(domain, algorithm)
       if(print_partial){
         cat("Results so far (saving just in case): \n")
         print_results(results_table)
@@ -341,7 +341,7 @@ main_eval <- function(domains_paths, algorithms_paths){
   }
 
   cat("Done computing, formatting...\n")
-	results_table <- bind_rows(results) %>% relocate(domain, algorithm)
+  results_table <- bind_rows(results) %>% relocate(domain, algorithm)
   cat("Done.\n")
   return (results_table)
 }

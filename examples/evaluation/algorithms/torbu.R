@@ -33,7 +33,7 @@ algorithm_main <- function(mdpo, initial, discount){
   gurobi_set_param("nonconvex", "ConcurrentMIP", as.character(par_runs));  
 
   gurobi_set_param("nonconvex", "MIPGap", "0.05");
-  time_limit <- 60 * 15
+  time_limit <- 60 * 30
   cat("    Running with time limit", time_limit, "s ...\n")
   cat("    This computation cannot be terminated without killing the R process!\n")
   gurobi_set_param("nonconvex", "TimeLimit", as.character(time_limit))
