@@ -16,6 +16,9 @@ suppressPackageStartupMessages({
   library(progress)})
 
 
+# more space for the huxtable output
+options(width = 150)
+# for interactive bug reduction
 rm(list = ls())
 
 test_on_train <- FALSE
@@ -44,9 +47,9 @@ domains_source <- "http://data.rmdp.xyz/domains"   # no trailing "/"
 #   - training.csv.xz  (posterior optimization samples)
 #   - test.csv.xz      (posterior evaluation samples)
 domains <- list(
-  riverswim = "riverswim",
-  pop_small = "population_small",
-  population = "population"
+  #riverswim = "riverswim",
+  pop_small = "population_small"#,
+  #population = "population"
 )
 
 domains_paths <- lapply(domains, function(d){file.path(domains_path, d)})
