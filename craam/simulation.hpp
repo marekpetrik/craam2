@@ -481,7 +481,7 @@ public:
      *   while the MDP object is references internally.
      */
     ModelSimulator(const shared_ptr<const MDP>& mdp, const Transition& initial,
-                   random_device::result_type seed = random_device{}())
+                   unsigned int seed = random_device{}())
         : gen{seed}, mdp{mdp}, available_actions{mdp->size()}, initial{initial} {
 
         if (abs(initial.sum_probabilities() - 1) > SOLPREC)

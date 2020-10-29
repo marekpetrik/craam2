@@ -366,8 +366,8 @@ Rcpp::DataFrame output_policy(const numvecvec& policy) {
  * just an array because it serves as a reminder that the
  * first state is 0 and not 1
  *
- * @param value
- * @return
+ * @param value Value function for 0-based state space
+ * @return Dataframe with columns idstate and value
  */
 Rcpp::DataFrame output_value_fun(numvec value) {
     Rcpp::IntegerVector idstates(value.size());
@@ -377,14 +377,14 @@ Rcpp::DataFrame output_value_fun(numvec value) {
                                    Rcpp::_["value"] = value);
 }
 
-/**
- * Packs MDP actions to be consequitive.
- *
- * If there is a state with actions where idaction = 0 and idaction = 2 and these
- * actions have transition probabilities associated with them, and idaction = 1 has
- * no transition probabilities, then idaction = 2 is renamed to idaction = 1.
- *
- */
+//' Packs MDP actions to be consequtive.
+//'
+//' If there is a state with actions where idaction = 0 and idaction = 2 and these
+//' actions have transition probabilities associated with them, and idaction = 1 has
+//' no transition probabilities, then idaction = 2 is renamed to idaction = 1.
+//'
+//' @param mdp Dataframe representation of the MDP, with columns
+//'            idstatefrom, idaction, idstateto, probability, reward
 //[[Rcpp::export]]
 Rcpp::List pack_actions(Rcpp::DataFrame mdp) {
     Rcpp::List result;
@@ -396,15 +396,16 @@ Rcpp::List pack_actions(Rcpp::DataFrame mdp) {
     return result;
 }
 
-/**
- * Cleans the MDP dataframe
- *
- * Makes cosmetic changes to the MDP. It mostly aggregates transition probabilities
- * to the same state. When there are multiple rows that represent the same transition,
- * then it sums the probabilities and computes a weighted average of the rewards.
- *
- * The method achieves this by parsing and de-parsing the MDP definition.
- */
+//' Cleans the MDP dataframe
+//'
+//' Makes cosmetic changes to the MDP. It mostly aggregates transition probabilities
+//' to the same state. When there are multiple rows that represent the same transition,
+//' then it sums the probabilities and computes a weighted average of the rewards.
+//'
+//' The method achieves this by parsing and de-parsing the MDP definition.
+//'
+//' @param mdp Dataframe representation of the MDP, with columns
+//'            idstatefrom, idaction, idstateto, probability, reward
 //[[Rcpp::export]]
 Rcpp::DataFrame mdp_clean(Rcpp::DataFrame mdp) {
     return mdp_to_dataframe(mdp_from_dataframe(mdp));
@@ -447,9 +448,9 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
                      Rcpp::Nullable<Rcpp::DataFrame> value_init = R_NilValue,
                      bool pack_actions = false, int show_progress = 1) {
     if (policy_fixed.isNotNull() && pack_actions) {
-        Rcpp::warning(
-            "Providing a policy_fixed and packing actions is a bad idea. When the "
-            "actions are re-indexed, the provided policy may become invalid.");
+        Rcpp::warning("Providing a policy_fixed and setting pack_actions = true is a bad "
+                      "idea. When the "
+                      "actions are re-indexed, the provided policy may become invalid.");
     }
 
     // parse MDP from the dataframe

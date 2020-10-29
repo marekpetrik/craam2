@@ -79,8 +79,8 @@ The options for nature and the corresponding nature_par are:
                 transition probabilites. Uniform over states
                 nature_par is a list with parameters (alpha, beta). The worst-case
                 response is computed as:
-                beta * var [z] + (1-beta) * E[z], where
-                var is \eqn{AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )}
+                beta * avar [z] + (1-beta) * E[z], where
+                avar is \eqn{AVaR(z,alpha) =  1/alpha * ( E[X I{X <= x_a} ] + x_a (alpha - P[X <= x_a] )}
                 where I is the indicator function and
                 \eqn{x_a = \inf{x \in R : P[X <= x] >= \alpha}} being the
                 worst-case.

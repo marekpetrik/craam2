@@ -380,7 +380,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // simulate_mdp
-Rcpp::DataFrame simulate_mdp(Rcpp::DataFrame mdp, int initial_state, Rcpp::DataFrame policy, int horizon, int episodes, Rcpp::Nullable<long> seed);
+Rcpp::DataFrame simulate_mdp(Rcpp::DataFrame mdp, int initial_state, Rcpp::DataFrame policy, int horizon, int episodes, Rcpp::Nullable<unsigned int> seed);
 RcppExport SEXP _rcraam_simulate_mdp(SEXP mdpSEXP, SEXP initial_stateSEXP, SEXP policySEXP, SEXP horizonSEXP, SEXP episodesSEXP, SEXP seedSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -390,7 +390,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type policy(policySEXP);
     Rcpp::traits::input_parameter< int >::type horizon(horizonSEXP);
     Rcpp::traits::input_parameter< int >::type episodes(episodesSEXP);
-    Rcpp::traits::input_parameter< Rcpp::Nullable<long> >::type seed(seedSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<unsigned int> >::type seed(seedSEXP);
     rcpp_result_gen = Rcpp::wrap(simulate_mdp(mdp, initial_state, policy, horizon, episodes, seed));
     return rcpp_result_gen;
 END_RCPP

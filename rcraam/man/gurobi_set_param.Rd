@@ -4,7 +4,15 @@
 \alias{gurobi_set_param}
 \title{Sets a gurobi parameter. Even numeric values may be provided as strings}
 \usage{
-gurobi_set_param(param, value)
+gurobi_set_param(optimizer, param, value)
+}
+\arguments{
+\item{optimizer}{Which internal gurobi environment should be used. Should be one of
+c('nature', 'lp', 'nonconvex', 'other'). Any other string leads to an error.}
+
+\item{param}{The name (string) of the parameter to set}
+
+\item{value}{String value of the parameter (see examples)}
 }
 \description{
 See https://www.gurobi.com/wp-content/plugins/hd_documentations/documentation/9.0/refman.pdf

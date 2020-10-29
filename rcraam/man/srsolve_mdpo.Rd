@@ -38,7 +38,15 @@ to a uniform distribution. The columns should be idstate, and probablity.}
   .mps, .rew, .lp, or .rlp for writing the model itself.
 If it is an empty string, then it does not write the file.}
 }
+\value{
+Returns a list with policy, objective (return), time (computation),
+              status (whether it is optimal, directly passed from gurobi)
+}
 \description{
 The objective is:
  \deqn{\max_{\pi} \beta * CVaR_{P \sim f}^\alpha [return(\pi,P)] + (1-\beta) * E_{P \sim f}^\alpha [return(\pi,P)]}
+}
+\details{
+The parameters for the optimizer (such as the time to run, or the outputs to show) can be set
+by calling `gurobi_set_param` and passing the value "nonconvex" to the `optimizer` argument.
 }

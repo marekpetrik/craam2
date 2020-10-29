@@ -193,7 +193,7 @@ Rcpp::DataFrame samples_to_dtf(const craam::msen::DiscreteSamples& samples) {
 // [[Rcpp::export]]
 Rcpp::DataFrame simulate_mdp(Rcpp::DataFrame mdp, int initial_state,
                              Rcpp::DataFrame policy, int horizon, int episodes,
-                             Rcpp::Nullable<long> seed = R_NilValue) {
+                             Rcpp::Nullable<unsigned int> seed = R_NilValue) {
 
     craam::MDP m = mdp_from_dataframe(mdp);
     craam::numvecvec rpolicy_par = parse_sa_values(m, policy, 0.0, "probability");
@@ -205,8 +205,8 @@ Rcpp::DataFrame simulate_mdp(Rcpp::DataFrame mdp, int initial_state,
     init.add_sample(initial_state, 1.0, 0.0);
 
     // construct the simulator with the given random seed
-    std::random_device::result_type cseed =
-        seed.isSet() ? Rcpp::as<long>(seed.get()) : std::random_device{}();
+    unsigned int cseed =
+        seed.isNotNull() ? Rcpp::as<unsigned int>(seed.get()) : std::random_device{}();
 
     auto sim_model =
         craam::msen::ModelSimulator(std::make_shared<const craam::MDP>(m), init, cseed);

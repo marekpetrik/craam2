@@ -47,9 +47,9 @@ domains_source <- "http://data.rmdp.xyz/domains"   # no trailing "/"
 #   - training.csv.xz  (posterior optimization samples)
 #   - test.csv.xz      (posterior evaluation samples)
 domains <- list(
-  #riverswim = "riverswim",
-  pop_small = "population_small"#,
-  #population = "population"
+#  riverswim = "riverswim",
+#  pop_small = "population_small",
+  population = "population"
 )
 
 domains_paths <- lapply(domains, function(d){file.path(domains_path, d)})
@@ -72,13 +72,13 @@ domains_paths <- lapply(domains, function(d){file.path(domains_path, d)})
 algorithms_path <- "algorithms"
 
 algorithms <- list(
-  nominal = "nominal.R",
-  bcr_l = "bcr_local.R",
-  bcr_g = "bcr_global.R",
-  rsvf2 = "rsvf2.R",
-  norbu_r = "norbu_r.R",
-  norbu_sr = "norbu_sr.R",
-  norbuv_r = "norbuv_r.R",
+  #nominal = "nominal.R",
+  #bcr_l = "bcr_local.R",
+  #bcr_g = "bcr_global.R",
+  #rsvf2 = "rsvf2.R",
+  #norbu_r = "norbu_r.R",
+  #norbu_sr = "norbu_sr.R",
+  #norbuv_r = "norbuv_r.R",
   torbu = "torbu.R"
 )
 
@@ -294,7 +294,7 @@ main_eval <- function(domains_paths, algorithms_paths){
   # iterate over all domains
   for (i_dom in seq_along(domains_paths)) {
     domain_name <- names(domains_paths[i_dom])
-    cat("*** Loading domain", domain_name, " ...\n")
+    cat("*** Processing domain", domain_name, " ...\n")
     domain_spec <- load_domain(domains_paths[[i_dom]])
     
     # iterate over all algorithms
