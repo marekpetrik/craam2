@@ -521,7 +521,11 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
         craam::indvec mapped_policy(sol.policy.size(), -1);
         // policy has the id of the action for each state
         for (std::size_t istate = 0; istate < sol.policy.size(); ++istate) {
-            mapped_policy[istate] = (actionmap->at(istate)).at(sol.policy[istate]);
+            // make sure to handle policy values -1 for terminal states!
+            if (sol.policy[istate] >= 0) // not terminal
+                mapped_policy[istate] = (actionmap->at(istate)).at(sol.policy[istate]);
+            else
+                mapped_policy[istate] = -1; // terminal
         }
         result["policy"] = output_policy(mapped_policy);
     } else {
