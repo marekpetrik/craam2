@@ -583,3 +583,26 @@ sasnature_todataframe(const craam::MDP& mdp,
         Rcpp::_["idstatefrom"] = out_statefrom, Rcpp::_["idaction"] = out_action,
         Rcpp::_["idstateto"] = out_stateto, Rcpp::_["probability"] = out_prob);
 }
+
+/**
+ * Maps the output from craam::pack_actions to a datafram
+ * @param actionmap Output from pack_actions (a list for each state of old action indices)
+ * @return Dataframe with idstate, idaction_old, idaction_new where _old is before packing
+ *  and _new is after packing
+ */
+Rcpp::DataFrame actionmap2df(const std::vector<craam::indvec>& actionmap) {
+    craam::indvec idstate, idaction_old, idaction_new;
+
+    for (std::size_t istate = 0; istate < actionmap.size(); ++istate) {
+        const auto& state_alist = actionmap[istate];
+        for (std::size_t iaction_new; iaction_new < state_alist.size(); ++iaction_new) {
+            idstate.push_back(istate);
+            idaction_new.push_back(iaction_new);
+            idaction_old.push_back(actionmap[istate][iaction_new]);
+        }
+    }
+
+    return Rcpp::DataFrame::create(Rcpp::_["idstate"] = idstate,
+                                   Rcpp::_["idaction_old"] = idaction_old,
+                                   Rcpp::_["idaction_new"] = idaction_new);
+}

@@ -383,17 +383,17 @@ Rcpp::DataFrame output_value_fun(numvec value) {
 //' actions have transition probabilities associated with them, and idaction = 1 has
 //' no transition probabilities, then idaction = 2 is renamed to idaction = 1.
 //'
+//' The result contains a mapping (action_mapping) dataframe that for
+//' each state (idstate) contains an idaction_old which is the action before packing
+//' and an idaction_new which is the id of the action after packing
+//'
 //' @param mdp Dataframe representation of the MDP, with columns
 //'            idstatefrom, idaction, idstateto, probability, reward
 //[[Rcpp::export]]
 Rcpp::List pack_actions(Rcpp::DataFrame mdp) {
-    Rcpp::List result;
-
     MDP m = mdp_from_dataframe(mdp);
-    result["action_mapping"] = m.pack_actions();
-
-    result["mdp"] = mdp_to_dataframe(m);
-    return result;
+    return Rcpp::List::create(Rcpp::_["action_mapping"] = actionmap2df(m.pack_actions()),
+                              Rcpp::_["mdp"] = mdp_to_dataframe(m));
 }
 
 //' Cleans the MDP dataframe
@@ -416,6 +416,10 @@ Rcpp::DataFrame mdp_clean(Rcpp::DataFrame mdp) {
 //' This method supports only deterministic policies. See solve_mdp_rand for a
 //' method that supports randomized policies.
 //'
+//' If the actions are packed then the mapping used internaly can be
+//' computed by calling the function pack_actions on the dataframe passed
+//' to this MDP
+//'
 //' @param mdp A dataframe representation of the MDP. Each row
 //'            represents a single transition from one state to another
 //'            after taking an action a. The columns are:
@@ -436,7 +440,7 @@ Rcpp::DataFrame mdp_clean(Rcpp::DataFrame mdp) {
 //' @param pack_actions Whether to remove actions with no transition probabilities,
 //'          and rename others for the same state to prevent gaps. The policy
 //'          for the original actions can be recovered using ``action_map'' frame
-//'          in the result
+//'          in the result. The output policy is automatically remapped.
 //' @param show_progress Whether to show a progress bar during the computation.
 //'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 //' @return A list with value function policy and other values
@@ -449,8 +453,8 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
                      bool pack_actions = false, int show_progress = 1) {
     if (policy_fixed.isNotNull() && pack_actions) {
         Rcpp::warning("Providing a policy_fixed and setting pack_actions = true is a bad "
-                      "idea. When the "
-                      "actions are re-indexed, the provided policy may become invalid.");
+                      "idea. When the actions are re-indexed, the provided policy may "
+                      "become invalid.");
     }
 
     // parse MDP from the dataframe
@@ -459,8 +463,13 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
 
     // Construct the output (to get the output from pack actions)
     Rcpp::List result;
+    std::optional<std::vector<craam::indvec>> actionmap;
     // remove actions that are not being used
-    if (pack_actions) { result["action_map"] = m.pack_actions(); }
+    if (pack_actions) {
+        actionmap = m.pack_actions();
+        // do not report the value to prevent confusion
+        //result["action_map"] = actionmap2df(m.pack_actions());
+    }
 
     // Solution to be constructed and returned
     DetermSolution sol;
@@ -507,10 +516,21 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
         Rcpp::stop("Unknown or unsupported algorithm type.");
     }
 
+    // check if we need to remap the actions if they were packed
+    if (actionmap.has_value()) {
+        craam::indvec mapped_policy(sol.policy.size(), -1);
+        // policy has the id of the action for each state
+        for (std::size_t istate = 0; istate < sol.policy.size(); ++istate) {
+            mapped_policy[istate] = (actionmap->at(istate)).at(sol.policy[istate]);
+        }
+        result["policy"] = mapped_policy;
+    } else {
+        result["policy"] = output_policy(sol.policy);
+    }
+
     result["iters"] = sol.iterations;
     result["residual"] = sol.residual;
     result["time"] = sol.time;
-    result["policy"] = output_policy(sol.policy);
     result["valuefunction"] = output_value_fun(move(sol.valuefunction));
     result["status"] = sol.status;
     report_solution_status(sol);
@@ -1575,6 +1595,8 @@ void gurobi_set_param(Rcpp::String optimizer, Rcpp::String param, Rcpp::String v
 }
 
 //'  Builds an MDP from samples
+//'
+//' @param samples_frame Dataframe with columns idstatefrom, idaction, idstateto, reward
 //'
 // [[Rcpp::export]]
 Rcpp::DataFrame mdp_from_samples(Rcpp::DataFrame samples_frame) {
