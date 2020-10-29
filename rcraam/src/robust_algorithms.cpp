@@ -523,7 +523,7 @@ Rcpp::List solve_mdp(Rcpp::DataFrame mdp, double discount, Rcpp::String algorith
         for (std::size_t istate = 0; istate < sol.policy.size(); ++istate) {
             mapped_policy[istate] = (actionmap->at(istate)).at(sol.policy[istate]);
         }
-        result["policy"] = mapped_policy;
+        result["policy"] = output_policy(mapped_policy);
     } else {
         result["policy"] = output_policy(sol.policy);
     }
