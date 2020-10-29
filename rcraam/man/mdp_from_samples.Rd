@@ -6,6 +6,9 @@
 \usage{
 mdp_from_samples(samples_frame)
 }
+\arguments{
+\item{samples_frame}{Dataframe with columns idstatefrom, idaction, idstateto, reward}
+}
 \description{
 Builds an MDP from samples
 }

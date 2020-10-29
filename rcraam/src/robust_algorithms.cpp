@@ -1522,7 +1522,7 @@ Rcpp::DataFrame revaluate_mdpo_rnd(Rcpp::DataFrame mdpo, double discount,
     numvec mdp_returns(outcome_uniq.size(), numeric_limits<craam::prec_t>::quiet_NaN());
 
     // create a progress bar and use to interrupt the computation
-    RcppProg::Progress progress(outcome_uniq.size(), true);
+    RcppProg::Progress progress(outcome_uniq.size(), show_progress);
 
     // check that all states and actions have the same number of outcomes
     // skip the first element, because that one is already parsed
@@ -1598,22 +1598,31 @@ void gurobi_set_param(Rcpp::String optimizer, Rcpp::String param, Rcpp::String v
 #endif
 }
 
-//'  Builds an MDP from samples
+//' Builds an MDP from samples
 //'
-//' @param samples_frame Dataframe with columns idstatefrom, idaction, idstateto, reward
+//' The samples can be weighted using a column weights. If the column is not provided
+//' then value 1.0 is used instead
+//'
+//' @param samples_frame Dataframe with columns idstatefrom, idaction, idstateto, reward, weight.
+//'        The column weight is optional
+//'
 //'
 // [[Rcpp::export]]
 Rcpp::DataFrame mdp_from_samples(Rcpp::DataFrame samples_frame) {
-    Rcpp::IntegerVector idstatefrom = samples_frame["idstatefrom"],
-                        idaction = samples_frame["idaction"],
-                        idstateto = samples_frame["idstateto"];
-    Rcpp::NumericVector reward = samples_frame["reward"];
+    craam::indvec idstatefrom = samples_frame["idstatefrom"],
+                  idaction = samples_frame["idaction"],
+                  idstateto = samples_frame["idstateto"];
+    craam::numvec reward = samples_frame["reward"];
+
+    craam::numvec weight(0); // it is length 0 by default (not used)
+    if (samples_frame.containsElementNamed("weight"))
+        weight = craam::numvec(samples_frame["weight"]);
 
     craam::msen::DiscreteSamples samples;
 
     for (int i = 0; i < samples_frame.nrows(); ++i) {
-        samples.add_sample(idstatefrom[i], idaction[i], idstateto[i], reward[i], 1.0, i,
-                           0);
+        samples.add_sample(idstatefrom[i], idaction[i], idstateto[i], reward[i],
+                           weight.empty() ? 1.0 : weight[i], i, 0);
     }
 
     craam::msen::SampledMDP smdp;

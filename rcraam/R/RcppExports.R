@@ -68,10 +68,32 @@ avar <- function(value, reference_dst, alpha) {
     .Call(`_rcraam_avar`, value, reference_dst, alpha)
 }
 
+#' Packs MDP actions to be consequtive.
+#'
+#' If there is a state with actions where idaction = 0 and idaction = 2 and these
+#' actions have transition probabilities associated with them, and idaction = 1 has
+#' no transition probabilities, then idaction = 2 is renamed to idaction = 1.
+#'
+#' The result contains a mapping (action_mapping) dataframe that for
+#' each state (idstate) contains an idaction_old which is the action before packing
+#' and an idaction_new which is the id of the action after packing
+#'
+#' @param mdp Dataframe representation of the MDP, with columns
+#'            idstatefrom, idaction, idstateto, probability, reward
 pack_actions <- function(mdp) {
     .Call(`_rcraam_pack_actions`, mdp)
 }
 
+#' Cleans the MDP dataframe
+#'
+#' Makes cosmetic changes to the MDP. It mostly aggregates transition probabilities
+#' to the same state. When there are multiple rows that represent the same transition,
+#' then it sums the probabilities and computes a weighted average of the rewards.
+#'
+#' The method achieves this by parsing and de-parsing the MDP definition.
+#'
+#' @param mdp Dataframe representation of the MDP, with columns
+#'            idstatefrom, idaction, idstateto, probability, reward
 mdp_clean <- function(mdp) {
     .Call(`_rcraam_mdp_clean`, mdp)
 }
@@ -80,6 +102,10 @@ mdp_clean <- function(mdp) {
 #'
 #' This method supports only deterministic policies. See solve_mdp_rand for a
 #' method that supports randomized policies.
+#'
+#' If the actions are packed then the mapping used internaly can be
+#' computed by calling the function pack_actions on the dataframe passed
+#' to this MDP
 #'
 #' @param mdp A dataframe representation of the MDP. Each row
 #'            represents a single transition from one state to another
@@ -101,7 +127,7 @@ mdp_clean <- function(mdp) {
 #' @param pack_actions Whether to remove actions with no transition probabilities,
 #'          and rename others for the same state to prevent gaps. The policy
 #'          for the original actions can be recovered using ``action_map'' frame
-#'          in the result
+#'          in the result. The output policy is automatically remapped.
 #' @param show_progress Whether to show a progress bar during the computation.
 #'         0 means no progress, 1 is progress bar, and 2 is a detailed report
 #' @return A list with value function policy and other values
@@ -467,7 +493,9 @@ gurobi_set_param <- function(optimizer, param, value) {
     invisible(.Call(`_rcraam_gurobi_set_param`, optimizer, param, value))
 }
 
-#'  Builds an MDP from samples
+#' Builds an MDP from samples
+#'
+#' @param samples_frame Dataframe with columns idstatefrom, idaction, idstateto, reward
 #'
 mdp_from_samples <- function(samples_frame) {
     .Call(`_rcraam_mdp_from_samples`, samples_frame)

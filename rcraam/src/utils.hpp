@@ -590,7 +590,7 @@ sasnature_todataframe(const craam::MDP& mdp,
  * @return Dataframe with idstate, idaction_old, idaction_new where _old is before packing
  *  and _new is after packing
  */
-Rcpp::DataFrame actionmap2df(const std::vector<craam::indvec>& actionmap) {
+inline Rcpp::DataFrame actionmap2df(const std::vector<craam::indvec>& actionmap) {
     craam::indvec idstate, idaction_old, idaction_new;
 
     for (std::size_t istate = 0; istate < actionmap.size(); ++istate) {

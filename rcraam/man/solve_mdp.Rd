@@ -46,7 +46,7 @@ Any states that are not provided are initialized to 0.}
 \item{pack_actions}{Whether to remove actions with no transition probabilities,
 and rename others for the same state to prevent gaps. The policy
 for the original actions can be recovered using ``action_map'' frame
-in the result}
+in the result. The output policy is automatically remapped.}
 
 \item{show_progress}{Whether to show a progress bar during the computation.
 0 means no progress, 1 is progress bar, and 2 is a detailed report}
@@ -57,4 +57,9 @@ A list with value function policy and other values
 \description{
 This method supports only deterministic policies. See solve_mdp_rand for a
 method that supports randomized policies.
+}
+\details{
+If the actions are packed then the mapping used internaly can be
+computed by calling the function pack_actions on the dataframe passed
+to this MDP
 }
