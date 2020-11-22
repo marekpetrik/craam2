@@ -56,7 +56,7 @@ therefore it is important that they are lightweight objects.
 
 A simulator should have the following methods:
 \code
-/// This class represents a stateless simular, but the non-constant
+/// This class represents a stateless simulator, but the non-constant
 /// functions may change the state of the random number generator
 class Simulator{
 public:
@@ -98,15 +98,15 @@ public:
 }
 \endcode
 
-\tparam Sim Simulator class used in the simulation. See the main description for
+@tparam Sim Simulator class used in the simulation. See the main description for
 the methods that the simulator must provide. \tparam SampleType Class used to
 hold the samples.
 
-\param sim Simulator that holds the properties needed by the simulator
-\param samples Add the result of the simulation to this object
-\param policy Policy function
-\param horizon Number of steps
-\param prob_term The probability of termination in each step
+@param sim Simulator that holds the properties needed by the simulator
+@param samples Add the result of the simulation to this object
+@param policy Policy function
+@param horizon Number of steps
+@param prob_term The probability of termination in each step
  */
 template <class Sim,
           class SampleType = Samples<typename Sim::State, typename Sim::Action>>
