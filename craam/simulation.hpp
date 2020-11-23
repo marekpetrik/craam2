@@ -632,9 +632,48 @@ using ModelStochasticPolicy = StochasticPolicy<ModelSimulator>;
  */
 template <class S> inline MDP build_mdp(S& sim, unsigned int sample_count) {
 
-    MDP result;
+    MDP result(sim.state_count());
     // the problem with parallelizing this loop is that it may affect the random
-    // number generator in an inpredictable way
+    // number generator in an unpredictable way
+    for (long statefrom = 0; statefrom < sim.state_count(); ++statefrom) {
+        // check if the state is terminal and include no actions for it
+        // if true (meaning it is terminal)
+        if (sim.end_condition(statefrom)) continue;
+        for (long action = 0; action < sim.action_count(statefrom); ++action) {
+            for (long i = 0; i < sample_count; ++i) {
+                // simulate a single step of the transition probabilities
+                long stateto;
+                prec_t reward;
+                std::tie(reward, stateto) = sim.transition(statefrom, action);
+                const prec_t probability = 1.0 / prec_t(sample_count);
+                // add transition probability,
+                // should be aggregated automatically
+                add_transition(result, statefrom, action, stateto, probability, reward);
+            }
+        }
+    }
+    return result;
+}
+
+
+/**
+ * Builds an MDP from a simulator and builds states in parallel.
+ *
+ * Requires that the states and actions have discrete numbers starting with 0.
+ * 
+ * This runs the construction in parallel, which could mess up the random number generator
+ * or cause other unpredictable problems.
+ *
+ * @param sim Simulator. This is passed not as a constant because simulation
+ *                       affects the random number generator.
+ * @param sample_count Number of samples to take for each state and action
+ */
+template <class S> inline MDP build_mdp_par(S& sim, unsigned int sample_count) {
+
+    // it is important to initialize the state size in the beginning to avoid issues with
+    // parallel access while the simulation is running
+    MDP result(sim.state_count());
+#pragma omp parallel for
     for (long statefrom = 0; statefrom < sim.state_count(); ++statefrom) {
         // check if the state is terminal and include no actions for it
         // if true (meaning it is terminal)

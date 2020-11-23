@@ -14,6 +14,10 @@
 #include "craam/simulation.hpp"
 #include "rcraam_utils.hpp"
 
+
+// a limit on the absolute value of all of the values
+constexpr double val_limit = 1000.0;
+
 using uint_t = std::uint_fast32_t;
 using numvec = std::vector<double>;
 
@@ -38,6 +42,10 @@ struct CancerState {
         P = state["P"];
         Q = state["Q"];
         Q_p = state["Q_p"];
+    }
+
+    bool in_bounds() const noexcept {
+        return abs(C) < val_limit && abs(P) < val_limit && abs(Q) < val_limit && abs(Q_p) < val_limit;
     }
 
     /// Converts the state to a list
@@ -65,7 +73,7 @@ struct Config {
 
     Config() = default;
 
-    Config(Rcpp::List conf){
+    Config(Rcpp::List conf) {
         kde = conf["kde"];
         lambda_p = conf["lambda_p"];
         k_qpp = conf["k_qpp"];
@@ -75,8 +83,9 @@ struct Config {
         dose_penalty = conf["dose_penalty"];
         transition_noise = conf["transition_noise"];
     }
-    
-    operator Rcpp::List () const {
+
+
+    operator Rcpp::List() const {
         return Rcpp::List::create(
             Rcpp::_["kde"] = kde,
             Rcpp::_["lambda_p"] = lambda_p,
@@ -90,7 +99,6 @@ struct Config {
         );
     }
 };
-
 
 /// Computes the next transition and the reward
 /// the noise should be generated from a normal distribution
@@ -106,14 +114,14 @@ next_state(const CancerState& state, bool action, const Config& config) noexcept
 
     const double C = (1 - config.kde) * (state.C + action ? 1.0 : 0.0);
 
-    const double P = (state.P + config.lambda_p * state.P * (1.0 - P_star / config.k) + config.k_qpp * state.Q_p
-         - config.k_pq * state.P - config.gamma * C * config.kde * state.P);
+    const double P = state.P + config.lambda_p * state.P * (1.0 - P_star / config.k) 
+        + config.k_qpp * state.Q_p
+        - config.k_pq * state.P - config.gamma * C * config.kde * state.P;
 
     const double Q = state.Q + config.k_pq * P - config.gamma * C * config.kde * state.Q;
     
     const double Q_p = (state.Q_p + config.gamma * C * config.kde * Q - config.k_qpp * state.Q_p
            - config.delta_qp * state.Q_p);
-
 
     const double P_star_new = P + Q + Q_p;
     const double reward = (P_star - P_star_new) - config.dose_penalty * C;
@@ -152,10 +160,10 @@ double state_distance(const CancerState& s1, const CancerState& s2) noexcept {
 }
 
 /// This is a dumb exhaustive search, replace by some KNN techniques for improved performance
+/// 
 size_t closest_state(const CancerState& state, const std::vector<CancerState> rep_states) noexcept {
 
     std::vector<double> distances(rep_states.size());
-#pragma omp parallel for
     for(size_t i = 0; i < rep_states.size(); ++i){
         distances[i] = state_distance(state, rep_states[i]);
     }
@@ -163,7 +171,10 @@ size_t closest_state(const CancerState& state, const std::vector<CancerState> re
 }
 
 /**
- * Simulator used to construct an MDP of the problem. This simulator assumes discretized states
+ * Simulator used to construct an MDP of the problem. This simulator assumes 
+ * discretized states
+ * 
+ * State 0 is considered to be terminal. The representative state indexes are 1-based
  */
 class CancerSimulatorDisc {
 protected:
@@ -175,35 +186,37 @@ public:
     using Action = uint_t;
 
     CancerSimulatorDisc(Config config, std::vector<CancerState> states) :
-        config(config), rep_states(rep_states) {}
-
+        config(config), rep_states(states) {
+        //std::cout << "in constructor" << std::endl;
+    }
 
     /// Returns a sample of the reward and a decision state following
     /// an expectation state
     std::pair<double, State> transition(State state, Action action) const {
+        //std::cout << "transition" << std::endl;
         if(action > 1) throw std::runtime_error("unknown action");
 
-        const CancerState& cstate = rep_states.at(state);
+        const CancerState& cstate = rep_states.at(state - 1);
 
         const auto [reward, cnextstate] = next_state(cstate, bool(action), config);
-        const State next_s = closest_state(cstate, rep_states);
+        const State next_s = cstate.in_bounds() ? 1 + closest_state(cstate, rep_states) : 0;
         return {reward, next_s};
     }
 
     /// Checks whether the decision state is terminal
-    bool end_condition(State s) const noexcept {
-        return false;
+    bool end_condition(const State& s) const noexcept {
+        return (s == 0);
     }
 
     /// State dependent actions, with discrete number of actions
     /// (long id each action)
     /// use -1 if infinite number of actions are available
-    Action action_count(State state) const noexcept {
-        return 2;
+    Action action_count(const State& state) const noexcept {
+        return (state == 0) ? 0 : 2;
     }
 
     /// State dependent action with the given index
-    Action action(State state, uint_t index) const noexcept {
+    Action action(const State& state, uint_t index) const noexcept {
         return index;
     }
 
@@ -214,7 +227,8 @@ public:
     }
 };
 
-std::vector<CancerState> parse_states(const Rcpp::List& rep_states){
+std::vector<CancerState> parse_states(const Rcpp::DataFrame& rep_states){
+    //std::cout << "parsing" << std::endl;
     craam::numvec 
         vC = rep_states["C"], vQ = rep_states["Q"], 
         vP = rep_states["P"], vQ_p = rep_states["Q_p"];
@@ -222,7 +236,7 @@ std::vector<CancerState> parse_states(const Rcpp::List& rep_states){
     std::vector<CancerState> states;
     states.reserve(vC.size());
 
-    for(size_t i = 0; i < states.size(); ++i){
+    for(size_t i = 0; i < vC.size(); ++i){
         states.push_back(CancerState(vC[i], vP[i], vQ[i], vQ_p[i]));
     }
     return states;
@@ -233,25 +247,26 @@ std::vector<CancerState> parse_states(const Rcpp::List& rep_states){
 /// @param rep_states Representative states (centers of aggregate states)
 /// @param state_samplecount How many samples to get from each state
 // [[Rcpp::export]]
-Rcpp::List cancer_mdp(Rcpp::List config, Rcpp::DataFrame rep_states, size_t state_samplecount) {
-    
+Rcpp::List cancer_mdp(Rcpp::List config, Rcpp::DataFrame rep_states, 
+                      size_t state_samplecount, bool parallel = true) {
     const CancerSimulatorDisc simulator(config, parse_states(rep_states));
-
-    const craam::MDP mdp = craam::msen::build_mdp(simulator, state_samplecount);
-
+    const craam::MDP mdp = parallel ? 
+        craam::msen::build_mdp_par(simulator, state_samplecount) :
+        craam::msen::build_mdp(simulator, state_samplecount);
     return mdp_to_dataframe(mdp);
 }
 
 
+/// actions valid in the simulator
 const static std::vector<uint_t> valid_actions{0,1};
+const static std::vector<uint_t> valid_actions_empty(0);
 
 /**
  * Simulator used to construct an MDP of the problem. This simulator assumes true continuous states
  */
-class CancerSimulator{
+class CancerSimulator {
 protected:
     Config config;                          ///< Configuration  of the simulator
-
 public:
     using State = CancerState;
     using Action = uint_t;
@@ -259,12 +274,10 @@ public:
     CancerSimulator(Config config) :
         config(config) {}
 
-
     /// Returns a sample of the reward and a decision state following
     /// an expectation state
     std::pair<double, State> transition(State state, Action action) const {
         if(action > 1) throw std::runtime_error("unknown action");
-
         const auto [reward, nextstate] = next_state(state, bool(action), config);
         return {reward, nextstate};
     }
@@ -274,20 +287,20 @@ public:
     }
 
     const std::vector<uint_t>& get_valid_actions(const State& state) const noexcept {
-        return valid_actions;
+        // returns an empty set for the terminal state
+        return state.in_bounds() ? valid_actions : valid_actions_empty;
     }
 
-
     /// Checks whether the decision state is terminal
-    bool end_condition(State s) const noexcept {
-        return false;
+    bool end_condition(const State& state) const noexcept {
+        return !state.in_bounds();
     }
 
     /// State dependent actions, with discrete number of actions
     /// (long id each action)
     /// use -1 if infinite number of actions are available
     Action action_count(const State& state) const noexcept {
-        return 2;
+        return state.in_bounds() ? 2 : 0;
     }
 
     /// State dependent action with the given index
@@ -326,16 +339,16 @@ Rcpp::DataFrame states2df(const std::vector<CancerState>& states){
 
 /// Simulates a random policy
 // [[Rcpp::export]]
-Rcpp::List simulate_random(uint_t episodes, uint_t horizon, Rcpp::List config){
-    
+Rcpp::List simulate_random(Rcpp::List config, uint_t episodes, uint_t horizon){
     CancerSimulator simulator(config);
+    
     // saves the samples in here
     craam::msen::Samples<CancerSimulator::State, CancerSimulator::Action> samples;
-
+    
     // simulate
     craam::msen::simulate(simulator, samples, craam::msen::RandomPolicy(simulator), horizon, episodes);
-   
-    return Rcpp::List::create(
+
+        return Rcpp::List::create(
         Rcpp::_["states_from"] = states2df(samples.get_states_from()),
         Rcpp::_["states_to"] = states2df(samples.get_states_to()),
         Rcpp::_["actions"] = samples.get_rewards(),

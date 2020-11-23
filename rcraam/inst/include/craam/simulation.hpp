@@ -56,7 +56,7 @@ therefore it is important that they are lightweight objects.
 
 A simulator should have the following methods:
 \code
-/// This class represents a stateless simular, but the non-constant
+/// This class represents a stateless simulator, but the non-constant
 /// functions may change the state of the random number generator
 class Simulator{
 public:
@@ -98,15 +98,15 @@ public:
 }
 \endcode
 
-\tparam Sim Simulator class used in the simulation. See the main description for
+@tparam Sim Simulator class used in the simulation. See the main description for
 the methods that the simulator must provide. \tparam SampleType Class used to
 hold the samples.
 
-\param sim Simulator that holds the properties needed by the simulator
-\param samples Add the result of the simulation to this object
-\param policy Policy function
-\param horizon Number of steps
-\param prob_term The probability of termination in each step
+@param sim Simulator that holds the properties needed by the simulator
+@param samples Add the result of the simulation to this object
+@param policy Policy function
+@param horizon Number of steps
+@param prob_term The probability of termination in each step
  */
 template <class Sim,
           class SampleType = Samples<typename Sim::State, typename Sim::Action>>
@@ -481,7 +481,7 @@ public:
      *   while the MDP object is references internally.
      */
     ModelSimulator(const shared_ptr<const MDP>& mdp, const Transition& initial,
-                   random_device::result_type seed = random_device{}())
+                   unsigned int seed = random_device{}())
         : gen{seed}, mdp{mdp}, available_actions{mdp->size()}, initial{initial} {
 
         if (abs(initial.sum_probabilities() - 1) > SOLPREC)
@@ -632,9 +632,48 @@ using ModelStochasticPolicy = StochasticPolicy<ModelSimulator>;
  */
 template <class S> inline MDP build_mdp(S& sim, unsigned int sample_count) {
 
-    MDP result;
+    MDP result(sim.state_count());
     // the problem with parallelizing this loop is that it may affect the random
-    // number generator in an inpredictable way
+    // number generator in an unpredictable way
+    for (long statefrom = 0; statefrom < sim.state_count(); ++statefrom) {
+        // check if the state is terminal and include no actions for it
+        // if true (meaning it is terminal)
+        if (sim.end_condition(statefrom)) continue;
+        for (long action = 0; action < sim.action_count(statefrom); ++action) {
+            for (long i = 0; i < sample_count; ++i) {
+                // simulate a single step of the transition probabilities
+                long stateto;
+                prec_t reward;
+                std::tie(reward, stateto) = sim.transition(statefrom, action);
+                const prec_t probability = 1.0 / prec_t(sample_count);
+                // add transition probability,
+                // should be aggregated automatically
+                add_transition(result, statefrom, action, stateto, probability, reward);
+            }
+        }
+    }
+    return result;
+}
+
+
+/**
+ * Builds an MDP from a simulator and builds states in parallel.
+ *
+ * Requires that the states and actions have discrete numbers starting with 0.
+ * 
+ * This runs the construction in parallel, which could mess up the random number generator
+ * or cause other unpredictable problems.
+ *
+ * @param sim Simulator. This is passed not as a constant because simulation
+ *                       affects the random number generator.
+ * @param sample_count Number of samples to take for each state and action
+ */
+template <class S> inline MDP build_mdp_par(S& sim, unsigned int sample_count) {
+
+    // it is important to initialize the state size in the beginning to avoid issues with
+    // parallel access while the simulation is running
+    MDP result(sim.state_count());
+#pragma omp parallel for
     for (long statefrom = 0; statefrom < sim.state_count(); ++statefrom) {
         // check if the state is terminal and include no actions for it
         // if true (meaning it is terminal)
