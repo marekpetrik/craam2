@@ -16,7 +16,7 @@
 
 
 // a limit on the absolute value of all of the values
-constexpr double val_limit = 1000.0;
+constexpr double val_limit = 500.0;
 
 using uint_t = std::uint_fast32_t;
 using numvec = std::vector<double>;
@@ -84,7 +84,6 @@ struct Config {
         transition_noise = conf["transition_noise"];
     }
 
-
     operator Rcpp::List() const {
         return Rcpp::List::create(
             Rcpp::_["kde"] = kde,
@@ -109,7 +108,7 @@ next_state(const CancerState& state, bool action, const Config& config) noexcept
 
     std::array<float, 4> noise;
     for(size_t i = 0; i < 4; ++i){
-        noise[i] = 1 + R::rnorm(0,1);
+        noise[i] = 1 + config.transition_noise * R::rnorm(0,1);
     }
 
     const double C = (1 - config.kde) * (state.C + action ? 1.0 : 0.0);
@@ -198,8 +197,9 @@ public:
 
         const CancerState& cstate = rep_states.at(state - 1);
 
-        const auto [reward, cnextstate] = next_state(cstate, bool(action), config);
-        const State next_s = cstate.in_bounds() ? 1 + closest_state(cstate, rep_states) : 0;
+        const auto [reward, cnextstate] = next_state(cstate, action == 0 ? false : true, config);
+        const State next_s = cstate.in_bounds() ? 
+                                1 + closest_state(cnextstate, rep_states) : 0;
         return {reward, next_s};
     }
 
