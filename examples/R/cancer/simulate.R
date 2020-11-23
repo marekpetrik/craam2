@@ -3,7 +3,7 @@ library(rcraam)
 library(ggplot2)
 library(dplyr)
 
-state_count <- 1000
+state_count <- 5000
 
 sourceCpp("cancer_sim.cpp")
 
@@ -27,7 +27,7 @@ init_state <- class::knn1(samples_rep, samples_all$states_from[1,], 1:nrow(sampl
 # note: the state indexes are 1-based because state 0 is assumed to be the terminal state
 
 cat("Building the MDP ... \n")
-system.time(mdp <- cancer_mdp(def_config, samples_rep, 500, TRUE))
+mdp <- cancer_mdp(def_config, samples_rep, 500, TRUE)
 cat("MDP building complete. ")
 sol <- solve_mdp(mdp, 0.8)
 
