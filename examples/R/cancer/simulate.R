@@ -6,7 +6,8 @@ library(tidyr)
 
 theme_set(theme_light())
 
-state_count <- 10000
+state_count <- 500
+discount <- 0.8
 
 sourceCpp("cancer_sim.cpp")
 
@@ -26,9 +27,11 @@ samples_all <- simulate_random(def_config, state_count, 50)
 
 #plot distributions from random policy
 
-print(ggplot(pivot_longer(samples_all$states_from, c(C,P,Q,Q_p), "predictor"), 
-       aes(x = value)) + stat_density() + facet_wrap(vars(predictor)) +
-        lims( x = c(-10,10)))
+plot_density <- function() {
+    ggplot(pivot_longer(samples_all$states_from, c(C,P,Q,Q_p), "predictor"), 
+           aes(x = value)) + stat_density() + facet_wrap(vars(predictor)) +
+            lims( x = c(-10,10))
+}
 
 samples_rep <- sample_n(samples_all$states_from, state_count)
 samples_rep_state <- mutate(samples_rep, idstate = row_number())
@@ -40,9 +43,9 @@ init_state_num <- as.integer(class::knn1(samples_rep, samples_all$states_from[1,
 # *** construct the MDP of the simulator
 
 cat("Building the MDP ... \n")
-mdp <- cancer_mdp(def_config, samples_rep, 500, TRUE)
-cat("MDP building complete. ")
-sol <- solve_mdp(mdp, 0.8)
+mdp <- cancer_mdp(def_config, samples_rep, 100, TRUE)
+cat("MDP building complete. \n")
+sol <- solve_mdp(mdp, discount, show_progress = 0)
 
 ret_value <- sol$valuefunction %>% filter(idstate == init_state_num)
 
@@ -50,12 +53,23 @@ cat("*******\n")
 cat("Computed return: ", ret_value$value, "\n")
 cat("*******\n\n")
 
-
-# print(sol$policy %>% filter(idaction == 0))
+# **** Simulate the return
 
 # join state features and actions and strips the terminal state idstate = 0
 state_policy <- inner_join(sol$policy, samples_rep_state, by = "idstate") %>%
-    mutate(idaction = as.factor(idaction))
+    mutate(idaction = idaction) %>% filter(idaction >= 0)
+
+sim_runs <- 1000
+
+simulated_policy <- simulate_proximity(def_config, select(state_policy, C, P, Q, Q_p), 
+                   as.integer(state_policy$idaction), sim_runs, 100)
+
+cat("*******\n")
+cat("Simulated return: ", sum(simulated_policy$rewards * discount^simulated_policy$steps) / sim_runs, "\n")
+cat("*******\n\n")
+
+
+# print(sol$policy %>% filter(idaction == 0))
 
 
 ff <- function(){
@@ -70,10 +84,8 @@ ff <- function(){
     rpart_c <- rpart(idaction ~ C + P + Q + Q_p, data = state_policy)
     prp(rpart_c)
 }
-ff()
 
 
-mdp %>% filter(idstatefrom == init_state_num)
-
-unlist(cancer_transition(samples_rep[init_state_num,], T, def_config)$state)
-unlist(cancer_transition(samples_rep[init_state_num,], F, def_config)$state)
+#mdp %>% filter(idstatefrom == init_state_num)
+#unlist(cancer_transition(samples_rep[init_state_num,], T, def_config)$state)
+#unlist(cancer_transition(samples_rep[init_state_num,], F, def_config)$state)

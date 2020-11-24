@@ -10,13 +10,14 @@
 #include <array>
 #include <utility>
 #include <algorithm>
+#include <string>
 
 #include "craam/simulation.hpp"
 #include "rcraam_utils.hpp"
 
 
 // a limit on the absolute value of all of the values
-constexpr double val_limit = 500.0;
+constexpr double val_limit = 1000.0;
 
 using uint_t = std::uint_fast32_t;
 using numvec = std::vector<double>;
@@ -193,7 +194,7 @@ public:
     /// an expectation state
     std::pair<double, State> transition(State state, Action action) const {
         //std::cout << "transition" << std::endl;
-        if(action > 1) throw std::runtime_error("unknown action");
+        if(action > 1) throw std::runtime_error("`unknown action " + std::to_string(action));
 
         const CancerState& cstate = rep_states.at(state - 1);
 
@@ -277,7 +278,7 @@ public:
     /// Returns a sample of the reward and a decision state following
     /// an expectation state
     std::pair<double, State> transition(State state, Action action) const {
-        if(action > 1) throw std::runtime_error("unknown action");
+        if(action > 1) throw std::runtime_error("`unknown action " + std::to_string(action));
         const auto [reward, nextstate] = next_state(state, bool(action), config);
         return {reward, nextstate};
     }
@@ -353,6 +354,55 @@ Rcpp::List simulate_random(Rcpp::List config, uint_t episodes, uint_t horizon){
         Rcpp::_["states_to"] = states2df(samples.get_states_to()),
         Rcpp::_["actions"] = samples.get_rewards(),
         Rcpp::_["rewards"] = samples.get_rewards()
+    );
+}
+
+
+/// Takes the action that corresponds to action provided for the closest state
+/// State 0 is assume to be terminal and its action is ignored
+class ProximityPolicy{
+    
+    std::vector<CancerState> states;
+    std::vector<uint_t> policy;
+    
+    
+public:
+    
+    ProximityPolicy(std::vector<CancerState> states, std::vector<uint_t> policy) :
+        states(states), policy(policy)
+    {
+        if(states.size() != policy.size())
+            throw std::runtime_error("states and policy sizes must match.");
+    }
+    
+    /// returns the action for the closest discretized state
+    uint_t operator()(const CancerState& state) noexcept {
+        const size_t idstate = closest_state(state, states);
+        return policy.at(idstate);
+    }
+};
+
+/// Simulates a random policy
+// [[Rcpp::export]]
+Rcpp::List simulate_proximity(Rcpp::List config, Rcpp::DataFrame rep_states,
+                              std::vector<uint_t> policy, 
+                              uint_t episodes, uint_t horizon){
+    CancerSimulator simulator(config);
+    
+    const ProximityPolicy policy_run(parse_states(rep_states), policy);
+    
+    // saves the samples in here
+    craam::msen::Samples<CancerSimulator::State, CancerSimulator::Action> samples;
+    
+    // simulate
+    craam::msen::simulate(simulator, samples, policy_run, horizon, episodes);
+    
+    return Rcpp::List::create(
+        Rcpp::_["states_from"] = states2df(samples.get_states_from()),
+        Rcpp::_["states_to"] = states2df(samples.get_states_to()),
+        Rcpp::_["actions"] = samples.get_rewards(),
+        Rcpp::_["rewards"] = samples.get_rewards(),
+        Rcpp::_["steps"] = samples.get_steps()
     );
 }
 
