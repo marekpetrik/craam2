@@ -352,7 +352,7 @@ Rcpp::List simulate_random(Rcpp::List config, uint_t episodes, uint_t horizon){
         return Rcpp::List::create(
         Rcpp::_["states_from"] = states2df(samples.get_states_from()),
         Rcpp::_["states_to"] = states2df(samples.get_states_to()),
-        Rcpp::_["actions"] = samples.get_rewards(),
+        Rcpp::_["actions"] = samples.get_actions(),
         Rcpp::_["rewards"] = samples.get_rewards()
     );
 }
@@ -400,7 +400,7 @@ Rcpp::List simulate_proximity(Rcpp::List config, Rcpp::DataFrame rep_states,
     return Rcpp::List::create(
         Rcpp::_["states_from"] = states2df(samples.get_states_from()),
         Rcpp::_["states_to"] = states2df(samples.get_states_to()),
-        Rcpp::_["actions"] = samples.get_rewards(),
+        Rcpp::_["actions"] = samples.get_actions(),
         Rcpp::_["rewards"] = samples.get_rewards(),
         Rcpp::_["steps"] = samples.get_steps()
     );

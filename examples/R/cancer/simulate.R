@@ -43,7 +43,7 @@ init_state_num <- as.integer(class::knn1(samples_rep, samples_all$states_from[1,
 # *** construct the MDP of the simulator
 
 cat("Building the MDP ... \n")
-mdp <- cancer_mdp(def_config, samples_rep, 100, TRUE)
+mdp <- cancer_mdp(def_config, samples_rep, 200, TRUE)
 cat("MDP building complete. \n")
 sol <- solve_mdp(mdp, discount, show_progress = 0)
 
@@ -89,3 +89,31 @@ ff <- function(){
 #mdp %>% filter(idstatefrom == init_state_num)
 #unlist(cancer_transition(samples_rep[init_state_num,], T, def_config)$state)
 #unlist(cancer_transition(samples_rep[init_state_num,], F, def_config)$state)
+
+
+
+sim_data <- with(simulated_policy, {
+    cbind(
+        states_from %>% rename_all(function(x){paste0("from_",x)}),
+        states_to %>% rename_all(function(x){paste0("to_",x)}),
+        idaction = actions)
+})
+
+cat("Model fitting statistics: \n")
+
+lr <- lm(to_P ~ from_C + from_P + from_Q + from_Q_p, 
+         data = sim_data %>% filter(idaction == 1))
+cat("P R2:", summary(lr)$r.squared, "\n")
+cat("Coefficients:", lr$coefficients, "\n\n")
+
+lr <- lm(to_Q ~ from_C + from_P + from_Q + from_Q_p, 
+         data = sim_data %>% filter(idaction == 1))
+cat("Q R2:", summary(lr)$r.squared, "\n")
+cat("Coefficients:", lr$coefficients, "\n\n")
+
+lr <- lm(to_Q_p ~ from_C + from_P + from_Q + from_Q_p, 
+         data = sim_data %>% filter(idaction == 1))
+cat("Q_p R2:", summary(lr)$r.squared, "\n")
+cat("Coefficients:", lr$coefficients, "\n\n")
+
+
