@@ -13,7 +13,7 @@ sourceCpp("cancer_sim.cpp")
 
 def_config <- default_config()
 
-def_config$transition_noise <- 2
+def_config$transition_noise <- 0
 
 state <- init_state()
 
@@ -93,13 +93,13 @@ ff <- function(){
 
 
 sim_data <- with(simulated_policy, {
-    cbind(
-        states_from %>% rename_all(function(x){paste0("from_",x)}),
-        states_to %>% rename_all(function(x){paste0("to_",x)}),
-        idaction = actions)
+  cbind(
+      states_from %>% rename_all(function(x){paste0("from_",x)}),
+      states_to %>% rename_all(function(x){paste0("to_",x)}),
+      idaction = actions)
 })
 
-cat("Model fitting statistics: \n")
+cat("Linear model fitting statistics: \n")
 
 lr <- lm(to_P ~ from_C + from_P + from_Q + from_Q_p, 
          data = sim_data %>% filter(idaction == 1))
@@ -115,5 +115,25 @@ lr <- lm(to_Q_p ~ from_C + from_P + from_Q + from_Q_p,
          data = sim_data %>% filter(idaction == 1))
 cat("Q_p R2:", summary(lr)$r.squared, "\n")
 cat("Coefficients:", lr$coefficients, "\n\n")
+
+
+# stan linear model
+
+library(rstan)
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+
+X <- model.matrix(to_P ~ from_C + from_P + from_Q + from_Q_p - 1,
+             data = sim_data %>% filter(idaction == 1))
+X <- X[1:200,]
+
+y <- (sim_data %>% filter(idaction == 1))$to_P
+y <- y[1:200]
+
+
+standata <- list( N = nrow(X), K = ncol(X), x = X, y = y)
+
+fit <- stan(file = 'linear_model.stan', data = standata)
+print(fit)
 
 
