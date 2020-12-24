@@ -110,6 +110,9 @@ next_state(const CancerState& state, bool action, const Config& config) noexcept
     std::array<float, 4> noise;
     for(size_t i = 0; i < 4; ++i){
         noise[i] = 1 + config.transition_noise * R::rnorm(0,1);
+
+        // try a gamma distribution
+        //noise[i] = R::rgamma(1 / config.transition_noise, config.transition_noise);
     }
 
     const double C = (1 - config.kde) * (state.C + action ? 1.0 : 0.0);

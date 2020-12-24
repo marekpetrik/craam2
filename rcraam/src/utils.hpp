@@ -59,7 +59,7 @@ inline Rcpp::NumericMatrix as_matrix(const Eigen::MatrixXd& matrix) {
 }
 
 /**
- * Constructs an R vector from an Eigen vector.
+ * Constructs an R vector from an Eigen vector. May be slow.
  */
 inline Rcpp::NumericVector as_vector(const Eigen::VectorXd& vector) {
     Rcpp::NumericVector result(vector.size());
@@ -222,14 +222,15 @@ inline craam::numvecvec frame2matrix(const Rcpp::DataFrame& frame, size_t dim1,
  * @returns A vector over states with the included values
  */
 template <class T>
-inline std::vector<T> parse_s_values(size_t statecount, const Rcpp::DataFrame& frame,
+inline std::vector<T> parse_s_values(std::size_t statecount, const Rcpp::DataFrame& frame,
                                      T def_value = 0,
                                      const std::string& value_column = "value",
                                      const std::string& param_name = "") {
     std::vector<T> result(statecount);
     Rcpp::IntegerVector idstates = frame["idstate"];
     Rcpp::NumericVector values = frame[value_column];
-    for (long i = 0; i < idstates.size(); i++) {
+
+    for (std::size_t i = 0; i < idstates.size(); i++) {
         long idstate = idstates[i];
 
         if (idstate < 0) {

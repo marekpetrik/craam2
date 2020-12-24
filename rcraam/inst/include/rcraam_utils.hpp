@@ -1,6 +1,6 @@
 
 // This file is part of CRAAM, a C++ library for solving plain
-// and robust Markov decision processes.
+// and robust v decision processes.
 //
 // MIT License
 //
@@ -28,7 +28,6 @@
 #include "craam/MDP.hpp"
 #include "craam/MDPO.hpp"
 
-
 /**
  * Constructs a data frame from the MDP definition
  */
@@ -36,17 +35,17 @@ inline Rcpp::DataFrame mdp_to_dataframe(const craam::MDP& mdp) {
     craam::indvec idstatefrom, idaction, idstateto;
     craam::numvec probability, reward;
 
-    for (size_t i = 0; i < mdp.size(); i++) {
+    for (std::size_t i = 0; i < mdp.size(); i++) {
         const auto& state = mdp[i];
         //idaction
-        for (size_t j = 0; j < state.size(); j++) {
+        for (std::size_t j = 0; j < state.size(); j++) {
             const auto& tran = state[j];
 
             auto& indices = tran.get_indices();
             const auto& rewards = tran.get_rewards();
             const auto& probabilities = tran.get_probabilities();
             //idstateto
-            for (size_t l = 0; l < tran.size(); l++) {
+            for (std::size_t l = 0; l < tran.size(); l++) {
                 //std::cout << "processing " << i << ", " << j << ", " << l << std::endl;
 
                 idstatefrom.push_back(i);
@@ -62,4 +61,3 @@ inline Rcpp::DataFrame mdp_to_dataframe(const craam::MDP& mdp) {
         Rcpp::Named("idstateto") = idstateto, Rcpp::Named("probability") = probability,
         Rcpp::Named("reward") = reward);
 }
-

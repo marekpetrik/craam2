@@ -6,14 +6,14 @@ library(tidyr)
 
 theme_set(theme_light())
 
-state_count <- 500
+state_count <- 5000
 discount <- 0.8
 
 sourceCpp("cancer_sim.cpp")
 
 def_config <- default_config()
 
-def_config$transition_noise <- 0
+def_config$transition_noise <- 0.0 #8
 
 state <- init_state()
 
@@ -43,7 +43,7 @@ init_state_num <- as.integer(class::knn1(samples_rep, samples_all$states_from[1,
 # *** construct the MDP of the simulator
 
 cat("Building the MDP ... \n")
-mdp <- cancer_mdp(def_config, samples_rep, 200, TRUE)
+mdp <- cancer_mdp(def_config, samples_rep, 1000, TRUE)
 cat("MDP building complete. \n")
 sol <- solve_mdp(mdp, discount, show_progress = 0)
 
@@ -106,6 +106,8 @@ lr <- lm(to_P ~ from_C + from_P + from_Q + from_Q_p,
 cat("P R2:", summary(lr)$r.squared, "\n")
 cat("Coefficients:", lr$coefficients, "\n\n")
 
+# Coefficients: 0.002791915 0.01800951 0.9654105 -0.01137875 0.0007189314
+
 lr <- lm(to_Q ~ from_C + from_P + from_Q + from_Q_p, 
          data = sim_data %>% filter(idaction == 1))
 cat("Q R2:", summary(lr)$r.squared, "\n")
@@ -116,6 +118,8 @@ lr <- lm(to_Q_p ~ from_C + from_P + from_Q + from_Q_p,
 cat("Q_p R2:", summary(lr)$r.squared, "\n")
 cat("Coefficients:", lr$coefficients, "\n\n")
 
+
+stop("all done")
 
 # stan linear model
 
@@ -130,10 +134,11 @@ X <- X[1:200,]
 y <- (sim_data %>% filter(idaction == 1))$to_P
 y <- y[1:200]
 
-
 standata <- list( N = nrow(X), K = ncol(X), x = X, y = y)
 
-fit <- stan(file = 'linear_model.stan', data = standata)
+inits <- lapply(1:1, function(i){list(true_y = y, sigma = 20, sigma2 = 20, alpha = mean(y),
+      beta = rep(0, ncol(X)), noise = rep(1, nrow(X) )) } )
+fit <- stan(file = 'linear_model.stan', data = standata, init = inits, chains = 1)
 print(fit)
 
 

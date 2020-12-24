@@ -47,9 +47,9 @@ domains_source <- "http://data.rmdp.xyz/domains"   # no trailing "/"
 #   - training.csv.xz  (posterior optimization samples)
 #   - test.csv.xz      (posterior evaluation samples)
 domains <- list(
-#  riverswim = "riverswim",
+  riverswim = "riverswim"
 #  pop_small = "population_small",
-  population = "population"
+#  population = "population"
 )
 
 domains_paths <- lapply(domains, function(d){file.path(domains_path, d)})
@@ -79,7 +79,8 @@ algorithms <- list(
   #norbu_r = "norbu_r.R",
   #norbu_sr = "norbu_sr.R",
   #norbuv_r = "norbuv_r.R",
-  torbu = "torbu.R"
+  #torbu = "torbu.R",
+  torbu_c = "torbu_c.R"
 )
 
 # construct paths to algorithms

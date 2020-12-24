@@ -979,10 +979,10 @@ Rcpp::List rsolve_mdpo_sa(Rcpp::DataFrame mdpo, double discount, Rcpp::String na
     if (pack_actions) { result["action_map"] = m.pack_actions(); }
 
     // policy: the method can be used to compute the robust solution for a policy
-    indvec policy =
-        policy_fixed.isNotNull()
-            ? parse_s_values<long>(m.size(), policy_fixed, -1, "idaction", "policy_fixed")
-            : indvec(0);
+    indvec policy = policy_fixed.isNotNull()
+                        ? parse_s_values<long>(m.size(), policy_fixed.get(), -1,
+                                               "idaction", "policy_fixed")
+                        : indvec(0);
 
     // initialized value function from the parameters
     numvec vf_init =
@@ -1095,10 +1095,11 @@ Rcpp::List srsolve_mdpo(Rcpp::DataFrame mdpo, Rcpp::DataFrame init_distribution,
 
     const ProbDst init_dst = parse_s_values(m.size(), init_distribution, 0.0,
                                             "probability", "init_distribution");
-    const ProbDst model_dst = model_distribution.isNotNull()
-                                  ? parse_s_values(m.size(), model_distribution, 0.0,
-                                                   "probability", "model_distribution")
-                                  : ProbDst(0);
+    const ProbDst model_dst =
+        model_distribution.isNotNull()
+            ? parse_s_values(m.size(), model_distribution.get(), 0.0, "probability",
+                             "model_distribution")
+            : ProbDst(0);
 
     auto grb = craam::get_gurobi(craam::OptimizerType::NonconvexOptimization);
     if (algorithm == "milp") {
@@ -1246,7 +1247,7 @@ Rcpp::List rsolve_mdp_s(Rcpp::DataFrame mdp, double discount, Rcpp::String natur
     // rpolicy stands for randomize policy and NOT robust policy
     numvecvec rpolicy =
         policy_fixed.isNotNull()
-            ? parse_sa_values(m, policy_fixed, 0.0, "probability", "policy_fixed")
+            ? parse_sa_values(m, policy_fixed.get(), 0.0, "probability", "policy_fixed")
             : numvecvec(0);
 
     // initialized value function from the parameters
@@ -1406,7 +1407,7 @@ Rcpp::List rsolve_mdpo_s(Rcpp::DataFrame mdpo, double discount, Rcpp::String nat
     // rpolicy stands for randomized policy and NOT robust policy
     numvecvec rpolicy =
         policy_fixed.isNotNull()
-            ? parse_sa_values(m, policy_fixed, 0.0, "probability", "policy_fixed")
+            ? parse_sa_values(m, policy_fixed.get(), 0.0, "probability", "policy_fixed")
             : numvecvec(0);
 
     // initialized value function from the parameters
@@ -1496,7 +1497,7 @@ Rcpp::DataFrame revaluate_mdpo_rnd(Rcpp::DataFrame mdpo, double discount,
     craam::numvec probability = mdpo["probability"], reward = mdpo["reward"];
 
     // parse the data for the first outcome
-    if (!std::ranges::is_sorted(idoutcome)) {
+    if (!std::is_sorted(idoutcome.cbegin(), idoutcome.cend())) {
         Rcpp::stop("The function requires that the outcomes are sorted increasingly.");
     }
 
@@ -1698,8 +1699,7 @@ Rcpp::List matrix_mdp_transition(Rcpp::DataFrame mdp, Rcpp::DataFrame policy) {
 
     if (policy.containsElementNamed("probability")) {
         // randomized policy
-        numvecvec policy_rand = parse_sa_values(m, Rcpp::as<Rcpp::DataFrame>(policy), 0.0,
-                                                "probability", "policy");
+        numvecvec policy_rand = parse_sa_values(m, policy, 0.0, "probability", "policy");
 
         auto pb = craam::algorithms::PlainBellmanRand(m);
         auto tmat = craam::algorithms::transition_mat(pb, policy_rand);

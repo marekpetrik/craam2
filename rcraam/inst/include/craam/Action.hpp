@@ -77,7 +77,7 @@ public:
     /** Returns a json representation of the action
         @param actionid Whether to include action id*/
     string to_json(long actionid = -1) const {
-        stringstream result;
+        std::stringstream result;
         result << "{";
         result << "\"actionid\" : ";
         result << std::to_string(actionid);

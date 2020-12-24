@@ -4,11 +4,11 @@ CXX_STD = CXX20
 
 ifdef GUROBI_PATH
     # release configuration
-    PKG_CXXFLAGS = -I. -I../inst/include -I$(GUROBI_PATH)/include ${SHLIB_OPENMP_CXXFLAGS} -DNDEBUG -march=native -DGUROBI_USE
+    PKG_CXXFLAGS = -I. -isystem ../inst/include -I$(GUROBI_PATH)/include ${SHLIB_OPENMP_CXXFLAGS} -DNDEBUG -march=native -DGUROBI_USE
     # debug configuration
-    # PKG_CXXFLAGS = -I. -I../inst/include -I$(GUROBI_PATH)/include -UNDEBUG -g
+    # PKG_CXXFLAGS = -I. -isystem ../inst/include -I$(GUROBI_PATH)/include -UNDEBUG -g
 else
-    PKG_CXXFLAGS = -I. -I../inst/include ${SHLIB_OPENMP_CXXFLAGS} -DNDEBUG -march=native
+    PKG_CXXFLAGS = -I. -isystem ../inst/include ${SHLIB_OPENMP_CXXFLAGS} -DNDEBUG -march=native
 endif
 
 

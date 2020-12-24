@@ -11,25 +11,27 @@ parameters {
   real alpha;           // intercept
   vector[K] beta;       // coefficients
   real<lower=0> sigma;    // noise standard deviation
+  vector[N] true_y;
+  real<lower=0> sigma2;
 }
 
+
 transformed parameters {
-  vector[N] errors;
-  vector[N] predictions;
-  
-  predictions = (alpha + x * beta);
+  vector[N] noise;
 
-  errors = y ./ predictions;
-
+  noise = y ./ true_y;
 }
 
 model {
   //beta ~ normal(0,1);
   //alpha ~ normal(0,1);
-  sigma ~ normal(0, 1);
+  //sigma ~ normal(0, 1);
   
-  errors ~ normal(1, sigma) ; // this is the additive version for now
-  target += -2 * sum(log(predictions));
+  true_y ~ normal(alpha + x * beta, sigma2);
+
+  noise ~ normal(1, sigma) ; 
+  
+  target += -2 * sum(log(true_y));
 } 
 
 
