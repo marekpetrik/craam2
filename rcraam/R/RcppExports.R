@@ -453,17 +453,18 @@ rsolve_mdpo_s <- function(mdpo, discount, nature, nature_par, algorithm = "mppi"
     .Call(`_rcraam_rsolve_mdpo_s`, mdpo, discount, nature, nature_par, algorithm, policy_fixed, maxresidual, iterations, timeout, value_init, pack_actions, output_tran, show_progress)
 }
 
-#' Evaluates a randomized policy for many Bayesian samples
+#' Evaluates a randomized policy or computes the optimal policy for many Bayesian samples (MDPO)
 #'
 #' @param mdpo Dataframe with `idstatefrom`, `idaction`, `idstateto`, `idoutcome`, `probability`, `reward`.
 #'             Each `idoutcome` represents a sample. The outcomes must be sorted increasingly.
 #' @param discount Discount rate in [0,1) (or = 1 at the risk of divergence)
-#' @param policy_rand Randomized policy with columns `idstate`, `idaction`, `probability`
-#' @param initial Initial distribution with columns `idstate` and `probability`
+#' @param policy_rand Randomized policy with columns `idstate`, `idaction`, `probability`.
+#' @param initial Initial distribution with columns `idstate` and `probability`. If null
+#'                 then the function returns the value functions instead of the returns
 #' @param show_progress Whether to show a progress bar
 #'
-#' @return List of returns for all outcomes
-revaluate_mdpo_rnd <- function(mdpo, discount, policy_rnd, initial, show_progress = TRUE) {
+#' @return List of return values / or solutions for all outcomes
+revaluate_mdpo_rnd <- function(mdpo, discount, policy_rnd = NULL, initial = NULL, show_progress = TRUE) {
     .Call(`_rcraam_revaluate_mdpo_rnd`, mdpo, discount, policy_rnd, initial, show_progress)
 }
 
@@ -495,7 +496,12 @@ gurobi_set_param <- function(optimizer, param, value) {
 
 #' Builds an MDP from samples
 #'
-#' @param samples_frame Dataframe with columns idstatefrom, idaction, idstateto, reward
+#' The samples can be weighted using a column weights. If the column is not provided
+#' then value 1.0 is used instead
+#'
+#' @param samples_frame Dataframe with columns idstatefrom, idaction, idstateto, reward, weight.
+#'        The column weight is optional
+#'
 #'
 mdp_from_samples <- function(samples_frame) {
     .Call(`_rcraam_mdp_from_samples`, samples_frame)

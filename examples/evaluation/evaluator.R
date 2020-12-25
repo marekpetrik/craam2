@@ -17,7 +17,7 @@ suppressPackageStartupMessages({
 
 
 # more space for the huxtable output
-options(width = 150)
+options(width = 100)
 # for interactive bug reduction
 rm(list = ls())
 
@@ -74,7 +74,7 @@ algorithms_path <- "algorithms"
 algorithms <- list(
   #nominal = "nominal.R",
   #bcr_l = "bcr_local.R",
-  #bcr_g = "bcr_global.R",
+  #bcr_g = "bcr_global.R"
   #rsvf2 = "rsvf2.R",
   #norbu_r = "norbu_r.R",
   #norbu_sr = "norbu_sr.R",
@@ -260,7 +260,7 @@ print_results <- function(results_frame) {
       huxtable::print_screen(huxtable::hux(results_frame) %>% 
                              huxtable::set_all_borders() %>% 
                              huxtable::set_bold(row=1, col=huxtable::everywhere, value=TRUE),
-                   colnames = FALSE, color = TRUE, compact = FALSE)
+                   colnames = FALSE, color = TRUE, compact = TRUE)
       cat("\n")
     } else {
       cat("Install huxtable to get pretty results!\n")

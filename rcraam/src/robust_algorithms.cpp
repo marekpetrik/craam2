@@ -44,6 +44,7 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <variant>
 
 // [[Rcpp::depends(RcppProgress)]]
 namespace RcppProg {
@@ -317,9 +318,8 @@ Rcpp::List avar(Rcpp::NumericVector value, Rcpp::NumericVector reference_dst,
  * @return Dataframe with idstate, idaction columns (idstate is the index)
  */
 Rcpp::DataFrame output_policy(const indvec& policy) {
-    Rcpp::IntegerVector states(policy.size());
-    std::iota(states.begin(), states.end(), 0);
-    auto result = Rcpp::DataFrame::create(Rcpp::Named("idstate") = states,
+    craam::indvec states(policy.size(), 0);
+    auto result = Rcpp::DataFrame::create(Rcpp::Named("idstate") = as_intvec(states),
                                           Rcpp::Named("idaction") = as_intvec(policy));
     return result;
 }
@@ -334,8 +334,9 @@ Rcpp::DataFrame output_policy(const indvec& policy) {
  *          (idstate, idaction are the index)
  */
 Rcpp::DataFrame output_sa_values(const numvecvec& values, const string& value_column) {
-    Rcpp::IntegerVector states, actions;
-    Rcpp::NumericVector values_c;
+    craam::indvec states, actions;
+    craam::numvec values_c;
+
     for (size_t s = 0; s < values.size(); ++s) {
         for (size_t a = 0; a < values[s].size(); ++a) {
             states.push_back(s);
@@ -343,8 +344,8 @@ Rcpp::DataFrame output_sa_values(const numvecvec& values, const string& value_co
             values_c.push_back(values[s][a]);
         }
     }
-    auto result = Rcpp::DataFrame::create(Rcpp::Named("idstate") = states,
-                                          Rcpp::Named("idaction") = actions,
+    auto result = Rcpp::DataFrame::create(Rcpp::Named("idstate") = as_intvec(states),
+                                          Rcpp::Named("idaction") = as_intvec(actions),
                                           Rcpp::Named(value_column) = values_c);
     return result;
 }
@@ -370,9 +371,7 @@ Rcpp::DataFrame output_policy(const numvecvec& policy) {
  * @return Dataframe with columns idstate and value
  */
 Rcpp::DataFrame output_value_fun(numvec value) {
-    Rcpp::IntegerVector idstates(value.size());
-    std::iota(idstates.begin(), idstates.end(), 0);
-
+    craam::indvec idstates(value.size(), 0);
     return Rcpp::DataFrame::create(Rcpp::_["idstate"] = idstates,
                                    Rcpp::_["value"] = value);
 }
@@ -1475,20 +1474,23 @@ Rcpp::List rsolve_mdpo_s(Rcpp::DataFrame mdpo, double discount, Rcpp::String nat
 #endif
 }
 
-//' Evaluates a randomized policy for many Bayesian samples
+//' Evaluates a randomized policy or computes the optimal policy for many Bayesian samples (MDPO)
 //'
 //' @param mdpo Dataframe with `idstatefrom`, `idaction`, `idstateto`, `idoutcome`, `probability`, `reward`.
 //'             Each `idoutcome` represents a sample. The outcomes must be sorted increasingly.
 //' @param discount Discount rate in [0,1) (or = 1 at the risk of divergence)
-//' @param policy_rand Randomized policy with columns `idstate`, `idaction`, `probability`
-//' @param initial Initial distribution with columns `idstate` and `probability`
+//' @param policy_rand Randomized policy with columns `idstate`, `idaction`, `probability`.
+//' @param initial Initial distribution with columns `idstate` and `probability`. If null
+//'                 then the function returns the value functions instead of the returns
 //' @param show_progress Whether to show a progress bar
 //'
-//' @return List of returns for all outcomes
+//' @return List of return values / or solutions for all outcomes
 // [[Rcpp::export]]
-Rcpp::DataFrame revaluate_mdpo_rnd(Rcpp::DataFrame mdpo, double discount,
-                                   Rcpp::DataFrame policy_rnd, Rcpp::DataFrame initial,
-                                   bool show_progress = true) {
+Rcpp::DataFrame
+revaluate_mdpo_rnd(Rcpp::DataFrame mdpo, double discount,
+                   Rcpp::Nullable<Rcpp::DataFrame> policy_rnd = R_NilValue,
+                   Rcpp::Nullable<Rcpp::DataFrame> initial = R_NilValue,
+                   bool show_progress = true) {
 
     if (mdpo.nrow() == 0) return Rcpp::List();
 
@@ -1514,13 +1516,25 @@ Rcpp::DataFrame revaluate_mdpo_rnd(Rcpp::DataFrame mdpo, double discount,
 
     // policy: the method can be used to compute the robust solution for a policy
     // rpolicy stands for randomized policy and NOT robust policy
-    craam::numvecvec rpolicy =
-        parse_sa_values(mdp_init, policy_rnd, 0.0, "probability", "policy_fixed");
+    const craam::numvecvec rpolicy =
+        policy_rnd.isNotNull()
+            ? parse_sa_values(mdp_init, policy_rnd, 0.0, "probability", "policy_fixed")
+            : craam::numvecvec(0);
 
-    const auto initial_tran =
-        craam::Transition(parse_s_values(mdp_init.size(), initial, 0.0, "probability"));
+    // initial distribution
+    const craam::Transition initial_tran =
+        initial.isNotNull() ? craam::Transition(parse_s_values(mdp_init.size(), initial,
+                                                               0.0, "probability"))
+                            : craam::Transition();
 
-    numvec mdp_returns(outcome_uniq.size(), numeric_limits<craam::prec_t>::quiet_NaN());
+    //  whether to compute value functions
+    std::variant<craam::numvec, craam::numvecvec> mdp_returns;
+    if (initial.isNotNull()) {
+        mdp_returns = craam::numvec(outcome_uniq.size(),
+                                    numeric_limits<craam::prec_t>::quiet_NaN());
+    } else {
+        mdp_returns = craam::numvecvec(outcome_uniq.size());
+    }
 
     // create a progress bar and use to interrupt the computation
     RcppProg::Progress progress(outcome_uniq.size(), show_progress);
@@ -1528,7 +1542,7 @@ Rcpp::DataFrame revaluate_mdpo_rnd(Rcpp::DataFrame mdpo, double discount,
     // check that all states and actions have the same number of outcomes
     // skip the first element, because that one is already parsed
 #pragma omp parallel for
-    for (long iout = 0; iout < long(outcome_uniq.size()); ++iout) {
+    for (size_t iout = 0; iout < outcome_uniq.size(); ++iout) {
 
         // check if an abort was called; do not stop or bad things happen because of openMP
         if (!progress.check_abort()) {
@@ -1537,16 +1551,53 @@ Rcpp::DataFrame revaluate_mdpo_rnd(Rcpp::DataFrame mdpo, double discount,
                 mdp_from_mdpo_dataframe(idstatefrom, idaction, idoutcome, idstateto,
                                         probability, reward, outcome_uniq[iout], false);
             // solve the MDP
-            auto sol = solve_mpi_r(mdp, discount, craam::numvec(0), rpolicy);
-            mdp_returns[iout] = sol.total_return(initial_tran);
+            { // make sure sol cannot be used elsewhe since we modev the value function
+                auto sol = solve_mpi_r(mdp, discount, craam::numvec(0), rpolicy);
+                if (std::holds_alternative<craam::numvec>(mdp_returns)) {
+                    std::get<craam::numvec>(mdp_returns)[iout] =
+                        sol.total_return(initial_tran);
+                } else {
+                    std::get<craam::numvecvec>(mdp_returns)[iout] =
+                        move(sol.valuefunction);
+                }
+            }
 
             // RcppProg is safe with OpenMP
             progress.increment(1);
         }
     }
     if (progress.check_abort()) { Rcpp::stop("Computation aborted."); }
-    return Rcpp::DataFrame::create(Rcpp::_["idoutcome"] = outcome_uniq,
-                                   Rcpp::_["return"] = mdp_returns);
+
+    if (std::holds_alternative<craam::numvec>(mdp_returns)) {
+        return Rcpp::DataFrame::create(Rcpp::_["idoutcome"] = as_intvec(outcome_uniq),
+                                       Rcpp::_["return"] =
+                                           std::get<craam::numvec>(mdp_returns));
+    } else {
+        const craam::numvecvec& valuefunctions = std::get<craam::numvecvec>(mdp_returns);
+        // returns an empty dataframe: the code below assumes non-empty results
+        if (valuefunctions.empty()) { return Rcpp::DataFrame(); }
+
+        // aggregate all values into a single array
+        // reserve, just in case that all mdps are not of the same size
+        const size_t state_count = valuefunctions.front().size();
+
+        craam::indvec idoutcome;
+        idoutcome.reserve(outcome_uniq.size() * state_count);
+        craam::indvec idstate;
+        idstate.reserve(outcome_uniq.size() * state_count);
+        craam::numvec value;
+        value.reserve(outcome_uniq.size() * state_count);
+        for (std::size_t iout = 0; iout < valuefunctions.size(); ++iout) {
+            for (size_t is = 0; is < valuefunctions[iout].size(); ++is) {
+                idoutcome.push_back(iout);
+                idstate.push_back(is);
+                value.push_back(valuefunctions[iout][is]);
+            }
+        }
+        return Rcpp::DataFrame::create(Rcpp::_["idoutcome"] = as_intvec(idoutcome),
+                                       Rcpp::_["idstate"] = as_intvec(idstate),
+                                       Rcpp::_["value"] = value);
+    }
 }
 
 //'
@@ -1665,9 +1716,10 @@ Rcpp::List matrix_mdp_lp(Rcpp::DataFrame mdp, double discount) {
     indvec row_index(idstate.size(), -1);
     std::iota(row_index.begin(), row_index.end(), 1);
 
-    Rcpp::DataFrame df_idsa = Rcpp::DataFrame::create(Rcpp::_["row_index"] = row_index,
-                                                      Rcpp::_["idstate"] = idstate,
-                                                      Rcpp::_["idaction"] = idaction);
+    Rcpp::DataFrame df_idsa =
+        Rcpp::DataFrame::create(Rcpp::_["row_index"] = as_intvec(row_index),
+                                Rcpp::_["idstate"] = as_intvec(idstate),
+                                Rcpp::_["idaction"] = as_intvec(idaction));
     result["idstateaction"] = df_idsa;
 
     return result;

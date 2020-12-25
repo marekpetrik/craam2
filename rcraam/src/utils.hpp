@@ -445,9 +445,10 @@ inline Rcpp::DataFrame sanature_todataframe(const craam::MDP& mdp,
         }
     }
 
-    return Rcpp::DataFrame::create(
-        Rcpp::_["idstatefrom"] = out_statefrom, Rcpp::_["idaction"] = out_action,
-        Rcpp::_["idstateto"] = out_stateto, Rcpp::_["probability"] = out_prob);
+    return Rcpp::DataFrame::create(Rcpp::_["idstatefrom"] = as_intvec(out_statefrom),
+                                   Rcpp::_["idaction"] = as_intvec(out_action),
+                                   Rcpp::_["idstateto"] = as_intvec(out_stateto),
+                                   Rcpp::_["probability"] = out_prob);
 }
 
 /**
@@ -495,9 +496,10 @@ inline Rcpp::DataFrame sanature_out_todataframe(const craam::MDPO& mdpo,
         }
     }
 
-    return Rcpp::DataFrame::create(
-        Rcpp::_["idstatefrom"] = out_statefrom, Rcpp::_["idaction"] = out_action,
-        Rcpp::_["idoutcome"] = out_outcome, Rcpp::_["probability"] = out_prob);
+    return Rcpp::DataFrame::create(Rcpp::_["idstatefrom"] = as_intvec(out_statefrom),
+                                   Rcpp::_["idaction"] = as_intvec(out_action),
+                                   Rcpp::_["idoutcome"] = as_intvec(out_outcome),
+                                   Rcpp::_["probability"] = out_prob);
 }
 
 /**
@@ -533,8 +535,8 @@ inline Rcpp::DataFrame output_snature(const craam::MDPO& mdpo,
         }
     }
 
-    return Rcpp::DataFrame::create(Rcpp::_["idstatefrom"] = out_statefrom,
-                                   Rcpp::_["idoutcome"] = out_outcome,
+    return Rcpp::DataFrame::create(Rcpp::_["idstatefrom"] = as_intvec(out_statefrom),
+                                   Rcpp::_["idoutcome"] = as_intvec(out_outcome),
                                    Rcpp::_["probability"] = out_prob);
 }
 
@@ -580,9 +582,10 @@ sasnature_todataframe(const craam::MDP& mdp,
         }
     }
 
-    return Rcpp::DataFrame::create(
-        Rcpp::_["idstatefrom"] = out_statefrom, Rcpp::_["idaction"] = out_action,
-        Rcpp::_["idstateto"] = out_stateto, Rcpp::_["probability"] = out_prob);
+    return Rcpp::DataFrame::create(Rcpp::_["idstatefrom"] = as_intvec(out_statefrom),
+                                   Rcpp::_["idaction"] = as_intvec(out_action),
+                                   Rcpp::_["idstateto"] = as_intvec(out_stateto),
+                                   Rcpp::_["probability"] = out_prob);
 }
 
 /**
@@ -603,7 +606,7 @@ inline Rcpp::DataFrame actionmap2df(const std::vector<craam::indvec>& actionmap)
         }
     }
 
-    return Rcpp::DataFrame::create(Rcpp::_["idstate"] = idstate,
-                                   Rcpp::_["idaction_old"] = idaction_old,
-                                   Rcpp::_["idaction_new"] = idaction_new);
+    return Rcpp::DataFrame::create(Rcpp::_["idstate"] = as_intvec(idstate),
+                                   Rcpp::_["idaction_old"] = as_intvec(idaction_old),
+                                   Rcpp::_["idaction_new"] = as_intvec(idaction_new));
 }

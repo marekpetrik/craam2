@@ -258,15 +258,15 @@ BEGIN_RCPP
 END_RCPP
 }
 // revaluate_mdpo_rnd
-Rcpp::DataFrame revaluate_mdpo_rnd(Rcpp::DataFrame mdpo, double discount, Rcpp::DataFrame policy_rnd, Rcpp::DataFrame initial, bool show_progress);
+Rcpp::DataFrame revaluate_mdpo_rnd(Rcpp::DataFrame mdpo, double discount, Rcpp::Nullable<Rcpp::DataFrame> policy_rnd, Rcpp::Nullable<Rcpp::DataFrame> initial, bool show_progress);
 RcppExport SEXP _rcraam_revaluate_mdpo_rnd(SEXP mdpoSEXP, SEXP discountSEXP, SEXP policy_rndSEXP, SEXP initialSEXP, SEXP show_progressSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Rcpp::DataFrame >::type mdpo(mdpoSEXP);
     Rcpp::traits::input_parameter< double >::type discount(discountSEXP);
-    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type policy_rnd(policy_rndSEXP);
-    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type initial(initialSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::DataFrame> >::type policy_rnd(policy_rndSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::DataFrame> >::type initial(initialSEXP);
     Rcpp::traits::input_parameter< bool >::type show_progress(show_progressSEXP);
     rcpp_result_gen = Rcpp::wrap(revaluate_mdpo_rnd(mdpo, discount, policy_rnd, initial, show_progress));
     return rcpp_result_gen;
