@@ -372,7 +372,7 @@ Rcpp::DataFrame output_policy(const numvecvec& policy) {
  */
 Rcpp::DataFrame output_value_fun(numvec value) {
     craam::indvec idstates(value.size(), 0);
-    return Rcpp::DataFrame::create(Rcpp::_["idstate"] = idstates,
+    return Rcpp::DataFrame::create(Rcpp::_["idstate"] = as_intvec(idstates),
                                    Rcpp::_["value"] = value);
 }
 
