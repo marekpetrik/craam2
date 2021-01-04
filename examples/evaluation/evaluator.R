@@ -186,15 +186,17 @@ load_domain <- function(dir_path){
   parameters <- read_csv(file.path(dir_path, "parameters.csv"), col_types = cols())
   
   cat("    Loading true MDP ... ")
-  true_mdp <- read_csv(file.path(dir_path, "true.csv.xz"), col_types = cols())
+  true_mdp <- read_csv(file.path(dir_path, "true.csv.xz"), col_types = 
+                       cols(idstatefrom = "i", idaction = "i", idstateto = "i", 
+                            probability = "d", reward = "d"))
   sa.count <- select(true_mdp, idstatefrom, idaction) %>% unique() %>% nrow()
   cat(sa.count, "state-actions \n")
     
   cat("    Loading initial distribution ... ")
-  initial <- read_csv(file.path(dir_path, "initial.csv.xz"), col_types = cols())
+  initial <- read_csv(file.path(dir_path, "initial.csv.xz"), col_types = 
+                      cols(idstate= "i", probability = "d"))
   s.count <- select(initial, idstate) %>% unique() %>% nrow()
   cat(s.count, "states \n")
-  
   
   # TRAINING
   # unzip and save the raw csv file to speed up loading of the file
@@ -202,14 +204,18 @@ load_domain <- function(dir_path){
   training_file <- file.path(dir_path, "training.csv.xz")
   stopifnot(file.exists(training_file))
   if(file.size(training_file) < 10e6){
-    training <- read_csv(training_file, col_types = cols())
+    training <- read_csv(training_file, col_types = 
+                         cols(idstatefrom = "i", idaction = "i", idstateto = "i", 
+                              idoutcome = "i", probability = "d", reward = "d"))
   } else {  
     training_raw <- tools::file_path_sans_ext(training_file)
     if(!file.exists(training_raw)) {
       cat("      Large, decompressing using pixz ... \n")
       system2("pixz", paste("-d -k", training_file))
     }
-    training <- read_csv(training_raw, col_types = cols())
+    training <- read_csv(training_raw, col_types = 
+                         cols(idstatefrom = "i", idaction = "i", idstateto = "i", 
+                              idoutcome = "i", probability = "d", reward = "d"))
   }
   # make sure that the training data is sorted with increasing idoutcome
   training <- arrange(training, idoutcome)
@@ -225,14 +231,18 @@ load_domain <- function(dir_path){
   test_file <- file.path(dir_path, "test.csv.xz")
   stopifnot(file.exists(test_file))
   if(file.size(test_file) < 10e6){
-    test <- read_csv(test_file, col_types = cols()) 
+    test <- read_csv(test_file, col_types = 
+                     cols(idstatefrom = "i", idaction = "i", idstateto = "i", 
+                          idoutcome = "i", probability = "d", reward = "d")) 
   } else {
     test_raw <- tools::file_path_sans_ext(test_file)
     if(!file.exists(test_raw)) {
       cat("      Large, decompressing using pixz ... \n")
       system2("pixz", paste("-d -k", test_file))
     }
-    test <- read_csv(test_raw, col_types = cols() )
+    test <- read_csv(test_raw, col_types = 
+                     cols(idstatefrom = "i", idaction = "i", idstateto = "i", 
+                          idoutcome = "i", probability = "d", reward = "d"))
   }
   # make sure that the test data is sorted with increasing idoutcome
   test <- arrange(test, idoutcome)
