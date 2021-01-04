@@ -319,6 +319,7 @@ Rcpp::List avar(Rcpp::NumericVector value, Rcpp::NumericVector reference_dst,
  */
 Rcpp::DataFrame output_policy(const indvec& policy) {
     craam::indvec states(policy.size(), 0);
+    std::iota(states.begin(), states.end(), 0);
     auto result = Rcpp::DataFrame::create(Rcpp::Named("idstate") = as_intvec(states),
                                           Rcpp::Named("idaction") = as_intvec(policy));
     return result;
@@ -372,6 +373,7 @@ Rcpp::DataFrame output_policy(const numvecvec& policy) {
  */
 Rcpp::DataFrame output_value_fun(numvec value) {
     craam::indvec idstates(value.size(), 0);
+    std::iota(idstates.begin(), idstates.end(), 0);
     return Rcpp::DataFrame::create(Rcpp::_["idstate"] = as_intvec(idstates),
                                    Rcpp::_["value"] = value);
 }

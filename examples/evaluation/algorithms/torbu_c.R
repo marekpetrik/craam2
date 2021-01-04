@@ -17,7 +17,7 @@ algorithm_main <- function(mdpo, initial, discount){
     # the maximum time allowed to run (algorithm fails if this time limit expires)
     # in seconds
     time_limit <- 60 *  5
-    cat("    Running with a time limit:", time_limit, "s")
+    cat("    Running with a time limit:", time_limit, "s.\n")
 
     # read the global confidence
     confidence <- params$confidence
@@ -34,7 +34,7 @@ algorithm_main <- function(mdpo, initial, discount){
     # make sure that there can be at least 3 elements lower than 
     # the value at risk 
     nclusters <- min(3/(1 - params$confidence), 50)
-    cat("    Clustering outcomes to", ncluster, "clusters.\n");
+    cat("    Clustering outcomes to", nclusters, "clusters.\n");
 
     cat("    Computing clairvoyant solution to cluster outcomes.\n")
     # compute optimal state value functions
@@ -73,7 +73,7 @@ algorithm_main <- function(mdpo, initial, discount){
             select(-ncount, -probability_sum, -reward_sum, -idoutcome_new) %>%
             na.fail()
 
-    cat("    Done clustering. Starting MILP.")
+    cat("    Done clustering. Starting MILP.\n")
     # code to check that the probabilities sum to 1
     #max((mdpo_c %>% group_by(idstatefrom, idaction, idoutcome) %>%
     #    summarize(s = sum(probability)))$s)
@@ -97,17 +97,7 @@ algorithm_main <- function(mdpo, initial, discount){
     cat("    This computation cannot be terminated without killing the R process!\n")
     gurobi_set_param("nonconvex", "TimeLimit", as.character(time_limit))
 
-    # trim the number of outcomes used depending on the number of states and actions
-    sa.count <- nrow(unique(mdpo %>% select(idstatefrom, idaction)))
-    out.count <- nrow(unique(mdpo %>% select(idoutcome)))
-
-    # assume that outcomes identifiers start with 0 and are contiguous
-    out.use <- max(1, min(out.count - 1, 200e3 / sa.count))  # at least 2
-    cat("    Trimming outcomes to", out.use + 1, " in the interest of speed. \n")
-    mdpo.trim <- mdpo %>% filter(idoutcome <= out.use)
-
-    solution <- srsolve_mdpo(mdpo.trim, initial, discount, 
-            alpha = 1 - confidence, beta = risk_weight)
+    solution <- srsolve_mdpo(mdpo_c, initial, discount, alpha = 1 - confidence, beta = risk_weight)
 
     list(policy = solution$policy, estimate = solution$objective)
 }
