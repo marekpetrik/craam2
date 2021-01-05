@@ -13,7 +13,7 @@ suppressPackageStartupMessages({
     library(rcraam)
     library(dplyr)
     library(readr)
-    library(progress)})
+    library(progress) })
 
 
 # more space for the huxtable output
@@ -23,7 +23,7 @@ rm(list = ls())
 
 test_on_train <- FALSE
 if(test_on_train){
-    cat(" ***** Reporting test results on the training set ***********")
+    cat(" ***** WARNING: Reporting test results on the training set ***********")
 }
 
 ## ------ Output file ---------
@@ -32,6 +32,19 @@ if(test_on_train){
 output_file <- "eval_results.csv"        
 # whether to print partial results during the computation
 print_partial <- TRUE
+
+## ----- Parameters --------
+
+# the algorithms can read and use these parameters
+params <- new.env()
+with(params, {
+    confidence <- 0.9                         # value at risk confidence (1.0 is the worst case)
+    risk_weight <- 0.5                        # weight on the cvar when computing the soft-robust objective
+    time_limit <- 3600                        # time limit on computing the solution
+
+    cat("Using confidence =", confidence, ", risk_weight =", risk_weight, "\n") 
+})
+
 
 ## ------ Define domains ------
 
@@ -47,7 +60,7 @@ domains_source <- "http://data.rmdp.xyz/domains"     # no trailing "/"
 #     - training.csv.xz    (posterior optimization samples)
 #     - test.csv.xz            (posterior evaluation samples)
 domains <- list(
-    riverswim = "riverswim",
+#    riverswim = "riverswim",
     pop_small = "population_small"
 #    population = "population"
 )
@@ -117,17 +130,6 @@ for(idpath in seq_along(domains_paths)){
 }
 
 
-## ----- Parameters --------
-
-# the algorithms can read and use these parameters
-params <- new.env()
-with(params, {
-    confidence <- 0.9                         # value at risk confidence (1.0 is the worst case)
-    risk_weight <- 0.5                        # weight on the cvar when computing the soft-robust objective
-    
-    cat("Using confidence =", confidence, ", risk_weight =", risk_weight, "\n") 
-})
-
 ## ---- Helper Methods: Evaluation -----------
 
 
@@ -182,6 +184,18 @@ compute_statistics <- function(mdpo, mdp_true, solution, initial, discount){
         mean = mean_val,
         soft = (1 - params$risk_weight) * mean_val + 
             params$risk_weight * cvar_val
+    )
+}
+
+#' Constructs an empty statistics entry (used when the solution is not computed)
+empty_statistics <- function(){
+    list(
+        obj = NA,
+        true = NA,
+        var = NA,
+        cvar = NA,
+        mean = NA,
+        soft = NA
     )
 }
 
@@ -326,9 +340,18 @@ main_eval <- function(domains_paths, algorithms_paths){
             sys.source(algorithms_paths[[i_alg]], alg_env, keep.source = TRUE, chdir = TRUE)        
             
             # call algorithm
-            solution <- with(alg_env, {
-                algorithm_main(domain_spec$training_mdpo, domain_spec$initial_dist, 
-                                            domain_spec$discount) } )
+            # TODO: It would be good to detach and better isolate the execution
+            time_start <- Sys.time()
+            solution <- tryCatch(
+                {with(alg_env, {
+                    algorithm_main(domain_spec$training_mdpo, domain_spec$initial_dist, 
+                                   domain_spec$discount) } ) },
+                error = function(e) {
+                    cat(" *** Error executing algorithm ****\n"); print(e)
+                    NULL
+                })
+            time_end <- Sys.time()
+            runtime <- as.numeric(time_end - time_start)
 
             if(!is.null(solution) && !anyNA(solution, recursive = TRUE)){
                 stopifnot("policy" %in% names(solution))
@@ -343,19 +366,25 @@ main_eval <- function(domains_paths, algorithms_paths){
                     statistics <- with(domain_spec, { 
                         compute_statistics(training_mdpo, true_mdp, solution, initial_dist, discount) } )
                 }
-                statistics$domain <- domain_name
-                statistics$algorithm <- algorithm_name
 
-                results[[iteration]] <- statistics
-                # keep track of the iteration
-                iteration <- iteration + 1
             } else {
                 cat("    No valid solution returned, skipping evaluation ...\n");
                 if(anyNA(solution, recursive = TRUE)){
                     cat("    Solution contains NA values.\n")
                 }
+
+                statistics <- empty_statistics()
             }
-            # TODO: It would be good to detach and better isolate the execution
+
+            # add generic information to the statistics and include it in the results
+            # keep track of the iteration
+            statistics$domain <- domain_name
+            statistics$algorithm <- algorithm_name
+            statistics$runtime <- runtime
+            results[[iteration]] <- statistics
+            iteration <- iteration + 1
+
+            # print and save partial results
             results_table <- bind_rows(results) %>% relocate(domain, algorithm)
             if(print_partial){
                 cat("Results so far (saving just in case): \n")

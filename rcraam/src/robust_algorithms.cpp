@@ -1553,7 +1553,7 @@ revaluate_mdpo_rnd(Rcpp::DataFrame mdpo, double discount,
                 mdp_from_mdpo_dataframe(idstatefrom, idaction, idoutcome, idstateto,
                                         probability, reward, outcome_uniq[iout], false);
             // solve the MDP
-            { // make sure sol cannot be used elsewhe since we modev the value function
+            { // make sure sol cannot be used elsewhere since we move the value function
                 auto sol = solve_mpi_r(mdp, discount, craam::numvec(0), rpolicy);
                 if (std::holds_alternative<craam::numvec>(mdp_returns)) {
                     std::get<craam::numvec>(mdp_returns)[iout] =

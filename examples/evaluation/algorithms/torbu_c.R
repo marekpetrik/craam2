@@ -16,7 +16,7 @@ algorithm_main <- function(mdpo, initial, discount){
     
     # the maximum time allowed to run (algorithm fails if this time limit expires)
     # in seconds
-    time_limit <- 60 *  5
+    time_limit <- params$time_limit
     cat("    Running with a time limit:", time_limit, "s.\n")
 
     # read the global confidence
@@ -33,7 +33,7 @@ algorithm_main <- function(mdpo, initial, discount){
     # number of clusters computed based on the confidence level
     # make sure that there can be at least 3 elements lower than 
     # the value at risk 
-    nclusters <- min(3/(1 - params$confidence), 50)
+    nclusters <- min(5/(1 - params$confidence), 50)
     cat("    Clustering outcomes to", nclusters, "clusters.\n");
 
     cat("    Computing clairvoyant solution to cluster outcomes.\n")
