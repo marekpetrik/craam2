@@ -176,18 +176,22 @@ public:
 
         const long current_inventory = current_state - max_backlog;
 
+        // Make sure to adjust the maximum possible order based on available inventory storage
+        // recall that the order arrives before any of the demand
+        const long adjusted_order =
+            std::min(action_order, max_inventory - current_inventory);
+
         // Compute the next inventory level.
-        long next_inventory =
-            max(action_order + current_inventory - demand, -max_backlog);
+        const long next_inventory =
+            std::max(adjusted_order + current_inventory - demand, -max_backlog);
+        assert(next_inventory <= max_inventory);
         // Back-calculate how many items were sold
-        const long sold_amount = current_inventory - next_inventory + action_order;
-        // Clamp the inventory from above to make sure that anything unsold that does not fit is discarded
-        next_inventory = min(next_inventory, max_inventory);
+        const long sold_amount = current_inventory - next_inventory + adjusted_order;
         // Compute the obtained revenue
         const prec_t revenue = sold_amount * sale_price;
         // Compute the expense of purchase, holding cost, and backlog cost
-        const prec_t expense = action_order * purchase_cost +
-                               (action_order > 0 ? delivery_cost : 0.0) +
+        const prec_t expense = adjusted_order * purchase_cost +
+                               (adjusted_order > 0 ? delivery_cost : 0.0) +
                                holding_cost * max(next_inventory, 0l) +
                                backlog_cost * -min(next_inventory, 0l);
         // Reward is equivalent to the profit & obtained from revenue & total expense
@@ -200,7 +204,7 @@ public:
     long state_count() const noexcept { return max_inventory + 1 + max_backlog; }
 
     /// Returns the number of actions
-    long action_count() const noexcept { return max_order; }
+    long action_count() const noexcept { return max_order + 1; }
 
     /// Returns an element that supports size and []
     LightArray get_valid_actions(State s) const noexcept {

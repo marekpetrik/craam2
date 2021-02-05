@@ -17,7 +17,7 @@ suppressPackageStartupMessages({
 
 
 # more space for the huxtable output
-options(width = 99)
+options(width = 110)
 # for interactive bug reduction
 rm(list = ls())
 
@@ -60,7 +60,7 @@ domains_source <- "http://data.rmdp.xyz/domains"     # no trailing "/"
 #     - training.csv.xz    (posterior optimization samples)
 #     - test.csv.xz            (posterior evaluation samples)
 domains <- list(
-#    riverswim = "riverswim",
+    riverswim = "riverswim",
     pop_small = "population_small"
 #    population = "population"
 )
@@ -351,7 +351,7 @@ main_eval <- function(domains_paths, algorithms_paths){
                     NULL
                 })
             time_end <- Sys.time()
-            runtime <- as.numeric(time_end - time_start)
+            runtime <- as.numeric(time_end - time_start, units = "secs")
 
             if(!is.null(solution) && !anyNA(solution, recursive = TRUE)){
                 stopifnot("policy" %in% names(solution))
