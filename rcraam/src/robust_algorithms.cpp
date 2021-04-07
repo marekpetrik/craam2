@@ -1671,7 +1671,7 @@ Rcpp::DataFrame mdp_from_samples(Rcpp::DataFrame samples_frame) {
     craam::numvec weight(0); // it is length 0 by default (not used)
     if (samples_frame.containsElementNamed("weight")){
         craam::numvec temp = samples_frame["weight"];
-        weight = temp; //weight.assign(temp.begin(), temp.end());
+        weight = std::move(temp); // Directly assign Rcpp["weight"] variable will cause type issue.
     }
 
     craam::msen::DiscreteSamples samples;
