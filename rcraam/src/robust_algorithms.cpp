@@ -1669,8 +1669,10 @@ Rcpp::DataFrame mdp_from_samples(Rcpp::DataFrame samples_frame) {
     craam::numvec reward = samples_frame["reward"];
 
     craam::numvec weight(0); // it is length 0 by default (not used)
-    // if (samples_frame.containsElementNamed("weight"))
-    //     weight = craam::numvec(samples_frame["weight"]);
+    if (samples_frame.containsElementNamed("weight")){
+        craam::numvec temp = samples_frame["weight"];
+        weight = temp; //weight.assign(temp.begin(), temp.end());
+    }
 
     craam::msen::DiscreteSamples samples;
 

@@ -99,25 +99,6 @@ inline craam::MDP mdp_from_dataframe(const Rcpp::DataFrame& data, bool force = f
 }
 
 /**
- * 
-added by Monkie to avoid using range.
- *
- */
-inline long bound_bisect(craam::indvec nums, long target, bool lower=true){
-    long low = 0;
-    long high = nums.size();
-    while (low < high){
-        long mid = (high + low)/2;
-        if (nums[mid] > target || (lower && (nums[mid] == target))){
-            high = mid;
-        } else {
-            low = mid+1;
-        }
-    }
-    return low;
-}
-
-/**
  * Parses a MDPO dataframe  to an MDP.
  *
  * IMPORTANT: Assumes that the outcomes are sorted increasingly!
@@ -141,11 +122,11 @@ mdp_from_mdpo_dataframe(const craam::indvec& idstatefrom, const craam::indvec id
                         const craam::numvec probability, const craam::numvec reward,
                         long outcome_act, bool force) {
     // idstatefrom, idaction, idstateto, probability, reward
-    const auto start = &idoutcome[bound_bisect(idoutcome, outcome_act,true)];
-    const auto end = &idoutcome[bound_bisect(idoutcome, outcome_act,false)];
+    const auto start = std::lower_bound(idoutcome.begin(), idoutcome.end(), outcome_act);
+    const auto end = std::upper_bound(idoutcome.begin(), idoutcome.end(), outcome_act);
 
-    const auto istart = std::distance(&idoutcome[0], start);
-    const auto iend = std::distance(&idoutcome[0], end);
+    const auto istart = std::distance(idoutcome.begin(), start); // start - idoutcome.begin()
+    const auto iend = std::distance(idoutcome.begin(), end); // end - idoutcome.begin()
 
     craam::MDP m;
     for (size_t i = istart; i < iend; i++) {
