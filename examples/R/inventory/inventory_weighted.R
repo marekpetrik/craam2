@@ -75,28 +75,28 @@ budgets_s <- mdp %>% select(idstate=idstatefrom) %>%
     unique() %>% mutate(budget=budget_s)
 
 report(rsolve_mdp_s(mdp, discount, "l1", budgets_s, algorithm = "vi_j",
-                    iterations = 50000, show_progress=FALSE, timeout = time_limit,
+                    iterations = 50000, show_progress = FALSE, timeout = time_limit,
                     maxresidual = 0.1), "s_vi_l1_nw")
 
 report(rsolve_mdp_s(mdp, discount, "l1", budgets_s, algorithm = "mppi",
-                    iterations = 50000, show_progress=FALSE, timeout = time_limit,
+                    iterations = 50000, show_progress = FALSE, timeout = time_limit,
                     maxresidual = 0.1), "s_mppi_l1_nw")
 
 report(rsolve_mdp_s(mdp, discount, "l1", budgets_s, algorithm = "vppi",
-                    iterations = 50000, show_progress=FALSE, timeout = time_limit,
+                    iterations = 50000, show_progress = FALSE, timeout = time_limit,
                     maxresidual = 0.1), "s_vppi_l1_nw")
 
 report(rsolve_mdp_s(mdp, discount, "l1", budgets_s, algorithm = "ppi",
-                    iterations = 50000, show_progress=FALSE, timeout = time_limit,
+                    iterations = 50000, show_progress = FALSE, timeout = time_limit,
                     maxresidual = 0.1), "s_ppi_l1_nw")
 
 if(compare_gurobi){
     suppressWarnings(report(rsolve_mdp_s(mdp, discount, "l1", budgets_s, algorithm = "vi_j",
-                                         iterations = bell_iters, show_progress=FALSE, timeout = time_limit,
+                                         iterations = bell_iters, show_progress = FALSE, timeout = time_limit,
                                          maxresidual = 0, ), "s_bell_l1_nw"))
 
     suppressWarnings(report(rsolve_mdp_s(mdp, discount, "l1_g", budgets_s, algorithm = "vi_j",
-                                         iterations = bell_iters, show_progress=FALSE, timeout = time_limit,
+                                         iterations = bell_iters, show_progress = FALSE, timeout = time_limit,
                                          maxresidual = 0), "s_bell_l1g_nw"))
 }
 
@@ -116,22 +116,22 @@ weights.df <- data.frame(idstate = solmdp$valuefunction$idstate,
 cat("\n\n")
 report(rsolve_mdp_sa(mdp, discount, "l1w", list(budgets = budgets_sa, weights = weights.df),
                      algorithm = "vi_j",
-                     iterations = 50000, show_progress=FALSE, timeout = time_limit,
+                     iterations = 50000, show_progress = FALSE, timeout = time_limit,
                      maxresidual = 0.1), "sa_vi_l1_w")
 
 report(rsolve_mdp_sa(mdp, discount, "l1w", list(budgets = budgets_sa, weights = weights.df),
                      algorithm = "mppi",
-                     iterations = 50000, show_progress=FALSE, timeout = time_limit,
+                     iterations = 50000, show_progress = FALSE, timeout = time_limit,
                      maxresidual = 0.1), "sa_mppi_l1_w")
 
 report(rsolve_mdp_sa(mdp, discount, "l1w", list(budgets = budgets_sa, weights = weights.df),
                      algorithm = "vppi",
-                     iterations = 50000, show_progress=FALSE, timeout = time_limit,
+                     iterations = 50000, show_progress = FALSE, timeout = time_limit,
                      maxresidual = 0.1), "sa_vppi_l1_w")
 
 report(rsolve_mdp_sa(mdp, discount, "l1w", list(budgets = budgets_sa, weights = weights.df),
                      algorithm = "ppi",
-                     iterations = 50000, show_progress=FALSE, timeout = time_limit,
+                     iterations = 50000, show_progress = FALSE, timeout = time_limit,
                      maxresidual = 0.1), "sa_ppi_l1_w")
 
 if(compare_gurobi){
@@ -148,31 +148,31 @@ if(compare_gurobi){
 cat("\n\n")
 report(rsolve_mdp_s(mdp, discount, "l1w", list(budgets = budgets_s, weights = weights.df),
                     algorithm = "vi_j",
-                    iterations = 50000, show_progress=FALSE, timeout = time_limit,
+                    iterations = 50000, show_progress = FALSE, timeout = time_limit,
                     maxresidual = 0.1), "s_vi_l1_w")
 
 report(rsolve_mdp_s(mdp, discount, "l1w", list(budgets = budgets_s, weights = weights.df),
                     algorithm = "mppi",
-                    iterations = 50000, show_progress=FALSE, timeout = time_limit,
+                    iterations = 50000, show_progress = FALSE, timeout = time_limit,
                     maxresidual = 0.1), "s_mppi_l1_w")
 
 report(rsolve_mdp_s(mdp, discount, "l1w", list(budgets = budgets_s, weights = weights.df),
                     algorithm = "vppi",
-                    iterations = 50000, show_progress=FALSE, timeout = time_limit,
+                    iterations = 50000, show_progress = FALSE, timeout = time_limit,
                     maxresidual = 0.1), "s_vppi_l1_w")
 
 report(rsolve_mdp_s(mdp, discount, "l1w", list(budgets = budgets_s, weights = weights.df),
                     algorithm = "ppi",
-                    iterations = 50000, show_progress=FALSE, timeout = time_limit,
+                    iterations = 50000, show_progress = FALSE, timeout = time_limit,
                     maxresidual = 0.1), "s_ppi_l1_w")
 
 if(compare_gurobi){
     suppressWarnings(report(rsolve_mdp_s(mdp, discount, "l1w", list(budgets = budgets_s, weights = weights.df), algorithm = "vi_j",
-                                         iterations = bell_iters, show_progress=FALSE, timeout = time_limit,
+                                         iterations = bell_iters, show_progress = FALSE, timeout = time_limit,
                                          maxresidual = 0), "s_bell_l1_w"))
 
     suppressWarnings(report(rsolve_mdp_s(mdp, discount, "l1w_g", list(budgets = budgets_s, weights = weights.df), algorithm = "vi_j",
-                                         iterations = bell_iters, show_progress=FALSE, timeout = time_limit,
+                                         iterations = bell_iters, show_progress = FALSE, timeout = time_limit,
                                          maxresidual = 0), "s_bell_l1g_w"))
 }
 

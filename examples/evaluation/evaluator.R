@@ -5,9 +5,7 @@
 # 
 # The script is flexible and works with pre-built domains 
 #
-#
 # Use the command browser() for debugging the methods (in their source)
-#
 
 suppressPackageStartupMessages({
     library(rcraam)
@@ -17,32 +15,28 @@ suppressPackageStartupMessages({
 
 
 # more space for the huxtable output
-options(width = 110)
+options(width = 100)
 # for interactive bug reduction
 rm(list = ls())
-
-test_on_train <- FALSE
-if(test_on_train){
-    cat(" ***** WARNING: Reporting test results on the training set ***********")
-}
 
 ## ------ Output file ---------
 
 # where to save the final result
 output_file <- "eval_results.csv"        
 # whether to print partial results during the computation
-print_partial <- TRUE
+print_partial <- FALSE
 
 ## ----- Parameters --------
+
+# weight on the risk measure used for evaluation
+risk_weight_eval <- 0.5
 
 # the algorithms can read and use these parameters
 params <- new.env()
 with(params, {
-    confidence <- 0.9                         # value at risk confidence (1.0 is the worst case)
-    risk_weight <- 0.5                        # weight on the cvar when computing the soft-robust objective
-    time_limit <- 3600                        # time limit on computing the solution
-
-    cat("Using confidence =", confidence, ", risk_weight =", risk_weight, "\n") 
+    confidence <- 0.9      # value at risk confidence (1.0 is the worst case)
+    time_limit <- 700      # time limit on computing the solution
+    cat("Using confidence =", confidence, ", risk_weight =", risk_weight_eval, "\n") 
 })
 
 
@@ -60,8 +54,8 @@ domains_source <- "http://data.rmdp.xyz/domains"     # no trailing "/"
 #     - training.csv.xz    (posterior optimization samples)
 #     - test.csv.xz            (posterior evaluation samples)
 domains <- list(
-    riverswim = "riverswim",
-    pop_small = "population_small"
+    riverswim = "riverswim"
+#    pop_small = "population_small"
 #    population = "population"
 )
 
@@ -85,16 +79,20 @@ domains_paths <- lapply(domains, function(d){file.path(domains_path, d)})
 algorithms_path <- "algorithms"
 
 algorithms <- list(
-    #nominal = "nominal.R",
-    #bcr_l = "bcr_local.R",
-    #bcr_g = "bcr_global.R"
-    #rsvf2 = "rsvf2.R",
-    #norbu_r = "norbu_r.R",
-    #norbu_sr = "norbu_sr.R",
-    #norbuv_r = "norbuv_r.R",
-    torbu = "torbu.R",
-    torbu_c = "torbu_c.R"
+    nominal = "nominal.R",
+    bcr_l = "bcr_local.R",
+    bcr_g = "bcr_global.R",
+    rsvf2 = "rsvf2.R",
+    norbu_r = "norbu_r.R",
+    norbu_sr = "norbu_sr.R",
+    norbuv_r = "norbuv_r.R",
+    torbu = "torbu.R"
 )
+
+# Determines which parameter are used to optimize the risk for all algorithms
+risk_weights_optimize <- 
+    c(0, 0.25, 0.5, 0.75, 1.0)
+    #c(0.5)
 
 # construct paths to algorithms
 algorithms_paths <- lapply(algorithms, function(a){file.path(algorithms_path, a)} ) 
@@ -129,9 +127,7 @@ for(idpath in seq_along(domains_paths)){
     }
 }
 
-
 ## ---- Helper Methods: Evaluation -----------
-
 
 #' Evaluate a policy with respect to the true model
 #' 
@@ -162,10 +158,18 @@ compute_statistics <- function(mdpo, mdp_true, solution, initial, discount){
     if(!("probability" %in% names(policy)))
         policy$probability <- 1.0
     
-    # TODO: Should check to make sure that no non-terminal states have a policy
+    # Check to make sure that no non-terminal states have a policy
     #       with a negative idaction. Such actions will be optimized, which is
     #       clearly undesirable.
-
+    nonterminal_randomized <- 
+        policy %>%
+        filter(idaction < 0) %>%
+        inner_join(mdpo, by = c(idstate = 'idstatefrom'))
+    if(nrow(nonterminal_randomized) > 0){
+        stop("Bug: Policy is to take action -1 in a non-terminal state.")
+        #print(nonterminal_randomized)
+    }
+        
     # compute the returns
     bayes_returns <- revaluate_mdpo_rnd(mdpo, discount, policy, initial, TRUE)$return
 
@@ -182,8 +186,8 @@ compute_statistics <- function(mdpo, mdp_true, solution, initial, discount){
         var = unname(quantile(bayes_returns, 1 - params$confidence)),
         cvar = cvar_val,
         mean = mean_val,
-        soft = (1 - params$risk_weight) * mean_val + 
-            params$risk_weight * cvar_val
+        soft = (1 - risk_weight_eval) * mean_val + 
+            risk_weight_eval * cvar_val
     )
 }
 
@@ -321,6 +325,23 @@ main_eval <- function(domains_paths, algorithms_paths){
     results <- list()
     iteration <- 1
     
+    if(file.exists(output_file)){
+        results_old <- read_csv(output_file, col_types = cols())
+    }else{
+        results_old <- NULL
+    }
+    
+    # check if the result already is in the csv file
+    has_result <- function(domain_n, algorithm_n, risk_w_n){
+        if (is.null(results_old)){
+            FALSE
+        }else{
+            nrow(results_old %>% 
+                 filter(domain == domain_n, algorithm == algorithm_n,
+                        risk_w == risk_w_n)) > 0   
+        }
+    }
+    
     cat("Running algorithms ... \n")
 
     # iterate over all domains
@@ -329,73 +350,104 @@ main_eval <- function(domains_paths, algorithms_paths){
         cat("*** Processing domain", domain_name, " ...\n")
         domain_spec <- load_domain(domains_paths[[i_dom]])
         
-        # iterate over all algorithms
-        for (i_alg in seq_along(algorithms_paths)) {
-
-            algorithm_name <- names(algorithms_paths[i_alg])
-            cat("    Running algorithm", algorithm_name, " ... \n")
+        # iterate over all risk weights
+        for (i_risk in seq_along(risk_weights_optimize)){
             
-            # load the algorithm into its own separate environment
-            alg_env <- new.env() # make sure that algorithm runs are isolated as much as possible
-            sys.source(algorithms_paths[[i_alg]], alg_env, keep.source = TRUE, chdir = TRUE)        
+            # set the risk being used by the algorithm
+            params$risk_weight <- risk_weights_optimize[[i_risk]]
             
-            # call algorithm
-            # TODO: It would be good to detach and better isolate the execution
-            time_start <- Sys.time()
-            solution <- tryCatch(
-                {with(alg_env, {
-                    algorithm_main(domain_spec$training_mdpo, domain_spec$initial_dist, 
-                                   domain_spec$discount) } ) },
-                error = function(e) {
-                    cat(" *** Error executing algorithm ****\n"); print(e)
-                    NULL
-                })
-            time_end <- Sys.time()
-            runtime <- as.numeric(time_end - time_start, units = "secs")
+            # iterate over all algorithms
+            for (i_alg in seq_along(algorithms_paths)) {
+                algorithm_name <- names(algorithms_paths[i_alg])
+                
+                if (has_result(domain_name, algorithm_name, params$risk_weight) ){
+                    cat("    Skipping algorithm", algorithm_name, " ... \n")
+                    next
+                }
+                cat("    Running algorithm", algorithm_name, " ... \n")
+                
+                # load the algorithm into its own separate environment
+                alg_env <- new.env() # make sure that algorithm runs are isolated as much as possible
+                sys.source(algorithms_paths[[i_alg]], alg_env, keep.source = TRUE, chdir = TRUE)        
+                
+                # call algorithm
+                # TODO: It would be good to detach and better isolate the execution
+                time_start <- Sys.time()
+                solution <- tryCatch(
+                    {with(alg_env, {
+                        algorithm_main(domain_spec$training_mdpo, domain_spec$initial_dist, 
+                                       domain_spec$discount) } ) },
+                    error = function(e) {
+                        cat(" *** Error executing algorithm ****\n"); print(e)
+                        NULL
+                    })
+                time_end <- Sys.time()
+                runtime <- as.numeric(time_end - time_start, units = "secs")
+    
+                if(!is.null(solution) && !anyNA(solution, recursive = TRUE)){
+                    stopifnot("policy" %in% names(solution))
+                    stopifnot("estimate" %in% names(solution))
+                    cat("    Evaluating ... \n")
 
-            if(!is.null(solution) && !anyNA(solution, recursive = TRUE)){
-                stopifnot("policy" %in% names(solution))
-                stopifnot("estimate" %in% names(solution))
-
-                cat("    Evaluating ... \n")
-                # compute and store stats
-                if(!test_on_train){
+                    # -- compute stats on test data
                     statistics <- with(domain_spec, { 
-                        compute_statistics(test_mdpo, true_mdp, solution, initial_dist, discount) } )
+                        compute_statistics(test_mdpo, true_mdp, solution, 
+                                           initial_dist, discount) } )
+                    
+                    # add generic information to the statistics and include it in the results
+                    # keep track of the iteration
+                    statistics$domain <- domain_name
+                    statistics$algorithm <- algorithm_name
+                    statistics$risk_w <- params$risk_weight
+                    statistics$runtime <- runtime
+                    statistics$test_eval <- TRUE
+                    results[[iteration]] <- statistics
+                    iteration <- iteration + 1
+                    
+                    # -- compute stats on training data
+                    statistics <- with(domain_spec, { 
+                        compute_statistics(training_mdpo, true_mdp, solution, 
+                                           initial_dist, discount) } )
+                    
+                    # add generic information to the statistics and include it in the results
+                    # keep track of the iteration
+                    statistics$domain <- domain_name
+                    statistics$algorithm <- algorithm_name
+                    statistics$risk_w <- params$risk_weight
+                    statistics$runtime <- runtime
+                    statistics$test_eval <- FALSE
+                    results[[iteration]] <- statistics
+                    iteration <- iteration + 1
+                    
+                        
                 } else {
-                    statistics <- with(domain_spec, { 
-                        compute_statistics(training_mdpo, true_mdp, solution, initial_dist, discount) } )
+                    cat("    No valid solution returned, skipping evaluation ...\n");
+                    if(anyNA(solution, recursive = TRUE)){
+                        cat("    Solution contains NA values.\n")
+                    }
+                    statistics <- empty_statistics()
                 }
-
-            } else {
-                cat("    No valid solution returned, skipping evaluation ...\n");
-                if(anyNA(solution, recursive = TRUE)){
-                    cat("    Solution contains NA values.\n")
+    
+                
+    
+                # print and save partial results
+                results_table <- bind_rows(results) %>% relocate(domain, algorithm, risk_w)
+                if(print_partial){
+                    cat("Results so far (saving just in case): \n")
+                    print_results(results_table)
                 }
-
-                statistics <- empty_statistics()
+                write_csv(results_table, "/tmp/output_file")
             }
-
-            # add generic information to the statistics and include it in the results
-            # keep track of the iteration
-            statistics$domain <- domain_name
-            statistics$algorithm <- algorithm_name
-            statistics$runtime <- runtime
-            results[[iteration]] <- statistics
-            iteration <- iteration + 1
-
-            # print and save partial results
-            results_table <- bind_rows(results) %>% relocate(domain, algorithm)
-            if(print_partial){
-                cat("Results so far (saving just in case): \n")
-                print_results(results_table)
-            }
-            write_csv(results_table, output_file)
         }
     }
 
     cat("Done computing, formatting...\n")
-    results_table <- bind_rows(results) %>% relocate(domain, algorithm)
+    results_table <- bind_rows(results) 
+    if (!is.null(results_old)) {
+        results_table <- rbind(results_table, results_old)
+    }
+    results_table <- relocate(results_table, domain, algorithm, risk_w) 
+    
     cat("Done.\n")
     return (results_table)
 }
@@ -403,5 +455,7 @@ main_eval <- function(domains_paths, algorithms_paths){
 results <- main_eval(domains_paths, algorithms_paths)
 
 cat("*** Results: \n")
-print_results(results)
+print_results(results %>% filter(test_eval) %>% select(-true, -runtime, -test_eval))
 write_csv(results, output_file)
+
+View(results)

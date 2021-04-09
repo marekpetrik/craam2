@@ -125,7 +125,7 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
                     "Number of outcomes is not uniform across all states and actions", is,
                     ia);
 
-    if (!model_dist.empty() && model_dist.size())
+    if (!(model_dist.empty() || model_dist.size() == noutcomes))
         throw ModelError("Model distribution must either be empty or have the "
                          "same length as the number of outcomes.");
     // assume a uniform distribution if not provided
@@ -300,26 +300,56 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
     int status = model.get(GRB_IntAttr_Status);
 
     /*
-     * LOADED       1 	Model is loaded, but no solution information is available.
-     * OPTIMAL      2 	Model was solved to optimality (subject to tolerances),
-     *                  and an optimal solution is available.
-     * INFEASIBLE 	3 	Model was proven to be infeasible.
-     * INF_OR_UNBD 	4 	Model was proven to be either infeasible or unbounded.
-     *                  To obtain a more definitive conclusion, set
-     *                  the DualReductions parameter to 0 and reoptimize.
-     * UNBOUNDED 	5 	Model was proven to be unbounded. Important note:
-     *                  an unbounded status indicates the presence of an unbounded ray
-     *                  that allows the objective to improve without limit.
-     *                  It says nothing about whether the model has a feasible solution.
-     *                  If you require information on feasibility, you should set the
-     *                  objective to zero and reoptimize.
-     * CUTOFF       6 	Optimal objective for model was proven to be worse than
-     *                  the value specified in the Cutoff parameter.
-     *                  No solution information is available.
+     * LOADED       1 			Model is loaded, but no solution information is available.
+     * OPTIMAL      2 			Model was solved to optimality (subject to tolerances),
+     *                  		and an optimal solution is available.
+     * INFEASIBLE 	3 			Model was proven to be infeasible.
+     * INF_OR_UNBD 	4 			Model was proven to be either infeasible or unbounded.
+     *                  		To obtain a more definitive conclusion, set
+     *                  		the DualReductions parameter to 0 and reoptimize.
+     * UNBOUNDED 	5 			Model was proven to be unbounded. Important note:
+     *                  		an unbounded status indicates the presence of an unbounded ray
+     *                  		that allows the objective to improve without limit.
+     *                  		It says nothing about whether the model has a feasible solution.
+     *                  		If you require information on feasibility, you should set the
+     *                  		objective to zero and reoptimize.
+     * CUTOFF       6 	     	Optimal objective for model was proven to be worse than
+     *                     		the value specified in the Cutoff parameter.
+     *                  		No solution information is available.
+     * ITERATION_LIMIT 	7 		Optimization terminated because the total number of simplex
+     * 							iterations performed exceeded the value specified in the IterationLimit
+     * 							parameter, or because the total number of barrier iterations exceeded
+     *							the value specified in the BarIterLimit parameter.
+     * NODE_LIMIT 		8 		Optimization terminated because the total number of branch-and-cut nodes
+     * 							explored exceeded the value specified in the NodeLimit parameter.
+     * TIME_LIMIT 		9 		Optimization terminated because the time expended exceeded the value
+     * 							specified in the TimeLimit parameter.
+     * SOLUTION_LIMIT 	10 		Optimization terminated because the number of solutions found reached
+     * 							the value specified in the SolutionLimit parameter.
+     * INTERRUPTED 		11 		Optimization was terminated by the user.
+     * NUMERIC 			12 		Optimization was terminated due to unrecoverable numerical difficulties.
+     * SUBOPTIMAL 		13 		Unable to satisfy optimality tolerances; a sub-optimal solution is available.
+     * INPROGRESS 		14 		An asynchronous optimization call was made, but the associated optimization
+     * 							run is not yet complete.
+     * USER_OBJ_LIMIT 	15 		User specified an objective limit (a bound on either the best objective or
+     * 							the best bound), and that limit has been reached.
      */
-    if (status != GRB_OPTIMAL) {
-        return {.message = "Solution infeasible or unbounded."};
-        //throw runtime_error("Failed to solve the optimization problem.");
+    string message = "";
+    switch (status) {
+    case GRB_OPTIMAL: break;
+    case GRB_INFEASIBLE: return {.message = "Solution infeasible."};
+    case GRB_INF_OR_UNBD: return {.message = "Solution infeasible or unbounded."};
+    case GRB_UNBOUNDED: return {.message = "Solution unbounded."};
+    case GRB_CUTOFF: return {.message = "Cutoff reached."};
+    case GRB_NUMERIC: return {.message = "Numerical issues. Computation terminated."};
+    case GRB_INTERRUPTED:
+    case GRB_SUBOPTIMAL:
+    case GRB_ITERATION_LIMIT:
+    case GRB_NODE_LIMIT:
+    case GRB_TIME_LIMIT:
+    case GRB_SOLUTION_LIMIT:
+        message = "Time or other limit reached. The solution may be suboptimal";
+        break;
     }
 
     numvecvec policy(nstates);
@@ -332,10 +362,11 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
 
     auto finish = chrono::steady_clock::now();
     chrono::duration<double> duration = finish - start;
-    return {.policy = move(policy),
+    return {.policy = std::move(policy),
             .objective = objective.getValue(),
             .time = duration.count(),
-            .status = 0};
+            .status = 0,
+            .message = std::move(message)};
 }
 
 /**
@@ -362,7 +393,7 @@ inline RandStaticSolution srsolve_avar_quad(const GRBEnv& env, const MDPO& mdpo,
  *      sum_a u(s,a,omega) = gamma * sum_{s',a'} u(s',a',omega) * P^omega(s',a',s) +
  *                      f(omega) p_0(s), for each omega and NONTERMINAL s
  *      sum_a pi(s,a) = 1  for each s
- *      u(s,a,omega) <= pi(s,a) * 1/(1-gamma)  for each s and a
+ *      u(s,a,omega) <= pi(s,a) * f(omega) * 1/(1-gamma)  for each s and a
  *      pi(s,a) >= 0 for each s and a
  *      d(s,omega) >= 0 for each s and omega
  * Here, p0 is the initial distribution and f is the nominal distribution over the models
@@ -427,7 +458,7 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
                     "Number of outcomes must be uniform across all states and actions",
                     is, ia);
 
-    if (!model_dist.empty() && model_dist.size())
+    if (!(model_dist.empty() || model_dist.size() == noutcomes))
         throw ModelError("Model distribution must either be empty or have the "
                          "same length as the number of outcomes.");
     // assume a uniform distribution if not provided
@@ -595,11 +626,11 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
     }
 
     // constraint:
-    //  pi(s,a) * 1/(1-gamma) - u(s,a,omega) >= 0
+    //  pi(s,a) * f(omega) * 1/(1-gamma) - u(s,a,omega) >= 0
     for (size_t iw = 0; iw < noutcomes; ++iw)                 // omega
         for (size_t is = 0; is < nstates; ++is)               // state s
             for (size_t ia = 0; ia < mdpo[is].size(); ++ia) { // action a
-                const prec_t upper_bound = (1.0 / (1.0 - gamma));
+                const prec_t upper_bound = model_dist_aug(iw) * (1.0 / (1.0 - gamma));
                 model.addConstr(
                     pi[index_sa(is, ia)] * upper_bound - u[index_saw(is, ia, iw)] >= 0,
                     "c-y-pi[" + std::to_string(is) + "," + std::to_string(ia) + "," +
@@ -617,26 +648,60 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
     // solve the optimization problem
     model.optimize();
 
-    /*
-     * LOADED       1 	Model is loaded, but no solution information is available.
-     * OPTIMAL      2 	Model was solved to optimality (subject to tolerances),
-     *                  and an optimal solution is available.
-     * INFEASIBLE 	3 	Model was proven to be infeasible.
-     * INF_OR_UNBD 	4 	Model was proven to be either infeasible or unbounded.
-     *                  To obtain a more definitive conclusion, set
-     *                  the DualReductions parameter to 0 and reoptimize.
-     * UNBOUNDED 	5 	Model was proven to be unbounded. Important note:
-     *                  an unbounded status indicates the presence of an unbounded ray
-     *                  that allows the objective to improve without limit.
-     *                  It says nothing about whether the model has a feasible solution.
-     *                  If you require information on feasibility, you should set the
-     *                  objective to zero and reoptimize.
-     * CUTOFF       6 	Optimal objective for model was proven to be worse than
-     *                  the value specified in the Cutoff parameter.
-     *                  No solution information is available.
-     */
     const int status = model.get(GRB_IntAttr_Status);
-    if (status != GRB_OPTIMAL) return {.message = "Solution infeasible or unbounded."};
+
+    /*
+     * LOADED       1 			Model is loaded, but no solution information is available.
+     * OPTIMAL      2 			Model was solved to optimality (subject to tolerances),
+     *                  		and an optimal solution is available.
+     * INFEASIBLE 	3 			Model was proven to be infeasible.
+     * INF_OR_UNBD 	4 			Model was proven to be either infeasible or unbounded.
+     *                  		To obtain a more definitive conclusion, set
+     *                  		the DualReductions parameter to 0 and reoptimize.
+     * UNBOUNDED 	5 			Model was proven to be unbounded. Important note:
+     *                  		an unbounded status indicates the presence of an unbounded ray
+     *                  		that allows the objective to improve without limit.
+     *                  		It says nothing about whether the model has a feasible solution.
+     *                  		If you require information on feasibility, you should set the
+     *                  		objective to zero and reoptimize.
+     * CUTOFF       6 	     	Optimal objective for model was proven to be worse than
+     *                     		the value specified in the Cutoff parameter.
+     *                  		No solution information is available.
+     * ITERATION_LIMIT 	7 		Optimization terminated because the total number of simplex
+     * 							iterations performed exceeded the value specified in the IterationLimit
+     * 							parameter, or because the total number of barrier iterations exceeded
+     *							the value specified in the BarIterLimit parameter.
+     * NODE_LIMIT 		8 		Optimization terminated because the total number of branch-and-cut nodes
+     * 							explored exceeded the value specified in the NodeLimit parameter.
+     * TIME_LIMIT 		9 		Optimization terminated because the time expended exceeded the value
+     * 							specified in the TimeLimit parameter.
+     * SOLUTION_LIMIT 	10 		Optimization terminated because the number of solutions found reached
+     * 							the value specified in the SolutionLimit parameter.
+     * INTERRUPTED 		11 		Optimization was terminated by the user.
+     * NUMERIC 			12 		Optimization was terminated due to unrecoverable numerical difficulties.
+     * SUBOPTIMAL 		13 		Unable to satisfy optimality tolerances; a sub-optimal solution is available.
+     * INPROGRESS 		14 		An asynchronous optimization call was made, but the associated optimization
+     * 							run is not yet complete.
+     * USER_OBJ_LIMIT 	15 		User specified an objective limit (a bound on either the best objective or
+     * 							the best bound), and that limit has been reached.
+     */
+    string message = "";
+    switch (status) {
+    case GRB_OPTIMAL: break;
+    case GRB_INFEASIBLE: return {.message = "Solution infeasible."};
+    case GRB_INF_OR_UNBD: return {.message = "Solution infeasible or unbounded."};
+    case GRB_UNBOUNDED: return {.message = "Solution unbounded."};
+    case GRB_CUTOFF: return {.message = "Cutoff reached."};
+    case GRB_NUMERIC: return {.message = "Numerical issues. Computation terminated."};
+    case GRB_INTERRUPTED:
+    case GRB_SUBOPTIMAL:
+    case GRB_ITERATION_LIMIT:
+    case GRB_NODE_LIMIT:
+    case GRB_TIME_LIMIT:
+    case GRB_SOLUTION_LIMIT:
+        message = "Time or other limit reached. The solution may be suboptimal";
+        break;
+    }
 
     indvec policy(nstates);
     for (size_t is = 0; is < nstates; ++is) {
@@ -653,7 +718,8 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
     return {.policy = move(policy),
             .objective = objective.getValue(),
             .time = duration.count(),
-            .status = 0};
+            .status = 0,
+            .message = std::move(message)};
 }
 
 } // namespace craam::statalgs
