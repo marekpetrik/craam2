@@ -110,7 +110,7 @@ inline craam::MDP mdp_from_dataframe(const Rcpp::DataFrame& data, bool force = f
  * @param idstatefrom These are columns from the dataframe. The function takes processed inputs
  *                    in order to be more efficient.
  *
- * @param force Whether transitions with probability 0 should be focibly added to the transitions.
+ * @param force Whether transitions with probability 0 should be forcibly added to the transitions.
  *              This makes a difference with robust MDPs.
  * @param outcome_act Which outcome should be used
  *
