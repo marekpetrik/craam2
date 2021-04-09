@@ -34,8 +34,8 @@ risk_weight_eval <- 0.5
 # the algorithms can read and use these parameters
 params <- new.env()
 with(params, {
-    confidence <- 0.9      # value at risk confidence (1.0 is the worst case)
-    time_limit <- 700      # time limit on computing the solution
+    confidence <- 0.7      # value at risk confidence (1.0 is the worst case)
+    time_limit <- 3600     # time limit on computing the solution
     cat("Using confidence =", confidence, ", risk_weight =", risk_weight_eval, "\n") 
 })
 
@@ -54,8 +54,9 @@ domains_source <- "http://data.rmdp.xyz/domains"     # no trailing "/"
 #     - training.csv.xz    (posterior optimization samples)
 #     - test.csv.xz            (posterior evaluation samples)
 domains <- list(
-    riverswim = "riverswim"
+#    riverswim = "riverswim",
 #    pop_small = "population_small"
+    inventory = "inventory"
 #    population = "population"
 )
 
@@ -101,18 +102,18 @@ algorithms_paths <- lapply(algorithms, function(a){file.path(algorithms_path, a)
 
 cat("Checking if domains are available ...\n")
 
-if(!dir.exists(domains_path)) dir.create(domains_path)
-for(idpath in seq_along(domains_paths)){
-    if(dir.exists(domains_paths[[idpath]])){
-        cat("Domain", names(domains)[[idpath]], "available, using cached version.\n")
+if (!dir.exists(domains_path)) dir.create(domains_path)
+for (idpath in seq_along(domains_paths)) {
+    if (dir.exists(domains_paths[[idpath]])) {
+        cat("Domain:", names(domains)[[idpath]], "available, using cached version.\n")
     } else {
-        cat("Domain", names(domains)[[idpath]], "unavailable, downloading...\n")
+        cat("Domain:", names(domains)[[idpath]], "unavailable, downloading...\n")
         cat("    Creating", domains_paths[[idpath]], "...\n")
         dir.create(domains_paths[[idpath]])
         withCallingHandlers({
             domain_files <- c("parameters.csv", "true.csv.xz", "initial.csv.xz", 
                                                 "training.csv.xz","test.csv.xz")
-            for(dfile in domain_files){
+            for (dfile in domain_files) {
                 urlf <- paste(domains_source, domains[[idpath]], dfile, sep = "/")
                 targetf <- file.path(domains_paths[[idpath]], dfile)
                 cat("Downloading", urlf, "to", targetf, "\n")
@@ -155,7 +156,7 @@ compute_true_return <- function(mdp_true, policy, initial, discount){
 compute_statistics <- function(mdpo, mdp_true, solution, initial, discount){
     # make sure that the policy is randomized (if no probabilities, just add the column)
     policy <- solution$policy
-    if(!("probability" %in% names(policy)))
+    if (!("probability" %in% names(policy)))
         policy$probability <- 1.0
     
     # Check to make sure that no non-terminal states have a policy
@@ -165,7 +166,7 @@ compute_statistics <- function(mdpo, mdp_true, solution, initial, discount){
         policy %>%
         filter(idaction < 0) %>%
         inner_join(mdpo, by = c(idstate = 'idstatefrom'))
-    if(nrow(nonterminal_randomized) > 0){
+    if (nrow(nonterminal_randomized) > 0) {
         stop("Bug: Policy is to take action -1 in a non-terminal state.")
         #print(nonterminal_randomized)
     }
@@ -221,7 +222,7 @@ load_domain <- function(dir_path){
         
     cat("        Loading initial distribution ... ")
     initial <- read_csv(file.path(dir_path, "initial.csv.xz"), col_types = 
-                                            cols(idstate= "i", probability = "d"))
+                                            cols(idstate = "i", probability = "d"))
     s.count <- select(initial, idstate) %>% unique() %>% nrow()
     cat(s.count, "states \n")
     
@@ -230,13 +231,13 @@ load_domain <- function(dir_path){
     cat("        Loading training file ... ")
     training_file <- file.path(dir_path, "training.csv.xz")
     stopifnot(file.exists(training_file))
-    if(file.size(training_file) < 10e6){
+    if (file.size(training_file) < 10e6) {
         training <- read_csv(training_file, col_types = 
                                                  cols(idstatefrom = "i", idaction = "i", idstateto = "i", 
                                                             idoutcome = "i", probability = "d", reward = "d"))
     } else {    
         training_raw <- tools::file_path_sans_ext(training_file)
-        if(!file.exists(training_raw)) {
+        if (!file.exists(training_raw)) {
             cat("            Large, decompressing using pixz ... \n")
             system2("pixz", paste("-d -k", training_file))
         }
@@ -257,13 +258,13 @@ load_domain <- function(dir_path){
     cat("        Loading test file ... ")
     test_file <- file.path(dir_path, "test.csv.xz")
     stopifnot(file.exists(test_file))
-    if(file.size(test_file) < 10e6){
+    if (file.size(test_file) < 10e6) {
         test <- read_csv(test_file, col_types = 
                                          cols(idstatefrom = "i", idaction = "i", idstateto = "i", 
                                                     idoutcome = "i", probability = "d", reward = "d")) 
     } else {
         test_raw <- tools::file_path_sans_ext(test_file)
-        if(!file.exists(test_raw)) {
+        if (!file.exists(test_raw)) {
             cat("            Large, decompressing using pixz ... \n")
             system2("pixz", paste("-d -k", test_file))
         }
@@ -293,7 +294,7 @@ load_domain <- function(dir_path){
 #' @param results_frame Algorithm domain results
 print_results <- function(results_frame) {
     tryCatch({
-        if(requireNamespace("huxtable", quietly = TRUE)){
+        if (requireNamespace("huxtable", quietly = TRUE)) {
             huxtable::print_screen(huxtable::hux(results_frame) %>% 
                                                          huxtable::set_all_borders() %>% 
                                                          huxtable::set_bold(row=1, col=huxtable::everywhere, value=TRUE),
@@ -325,7 +326,7 @@ main_eval <- function(domains_paths, algorithms_paths){
     results <- list()
     iteration <- 1
     
-    if(file.exists(output_file)){
+    if (file.exists(output_file)) {
         results_old <- read_csv(output_file, col_types = cols())
     }else{
         results_old <- NULL
@@ -333,7 +334,7 @@ main_eval <- function(domains_paths, algorithms_paths){
     
     # check if the result already is in the csv file
     has_result <- function(domain_n, algorithm_n, risk_w_n){
-        if (is.null(results_old)){
+        if (is.null(results_old)) {
             FALSE
         }else{
             nrow(results_old %>% 
@@ -351,7 +352,7 @@ main_eval <- function(domains_paths, algorithms_paths){
         domain_spec <- load_domain(domains_paths[[i_dom]])
         
         # iterate over all risk weights
-        for (i_risk in seq_along(risk_weights_optimize)){
+        for (i_risk in seq_along(risk_weights_optimize)) {
             
             # set the risk being used by the algorithm
             params$risk_weight <- risk_weights_optimize[[i_risk]]
@@ -360,7 +361,7 @@ main_eval <- function(domains_paths, algorithms_paths){
             for (i_alg in seq_along(algorithms_paths)) {
                 algorithm_name <- names(algorithms_paths[i_alg])
                 
-                if (has_result(domain_name, algorithm_name, params$risk_weight) ){
+                if (has_result(domain_name, algorithm_name, params$risk_weight) ) {
                     cat("    Skipping algorithm", algorithm_name, " ... \n")
                     next
                 }
@@ -384,7 +385,7 @@ main_eval <- function(domains_paths, algorithms_paths){
                 time_end <- Sys.time()
                 runtime <- as.numeric(time_end - time_start, units = "secs")
     
-                if(!is.null(solution) && !anyNA(solution, recursive = TRUE)){
+                if (!is.null(solution) && !anyNA(solution, recursive = TRUE)) {
                     stopifnot("policy" %in% names(solution))
                     stopifnot("estimate" %in% names(solution))
                     cat("    Evaluating ... \n")
@@ -422,21 +423,23 @@ main_eval <- function(domains_paths, algorithms_paths){
                         
                 } else {
                     cat("    No valid solution returned, skipping evaluation ...\n");
-                    if(anyNA(solution, recursive = TRUE)){
+                    if (anyNA(solution, recursive = TRUE)) {
                         cat("    Solution contains NA values.\n")
                     }
                     statistics <- empty_statistics()
                 }
     
-                
-    
-                # print and save partial results
-                results_table <- bind_rows(results) %>% relocate(domain, algorithm, risk_w)
-                if(print_partial){
-                    cat("Results so far (saving just in case): \n")
-                    print_results(results_table)
+                # report results if not empty
+                if (length(results) > 0) {
+                    # print and save partial results
+                    results_table <- bind_rows(results) %>% relocate(domain, algorithm, risk_w)
+                    if (print_partial) {
+                        cat("Results so far (saving just in case): \n")
+                        print_results(results_table)
+                    }
+                    write_csv(results_table, "/tmp/output_file")
+                    
                 }
-                write_csv(results_table, "/tmp/output_file")
             }
         }
     }
@@ -449,7 +452,7 @@ main_eval <- function(domains_paths, algorithms_paths){
     results_table <- relocate(results_table, domain, algorithm, risk_w) 
     
     cat("Done.\n")
-    return (results_table)
+    return(results_table)
 }
 
 results <- main_eval(domains_paths, algorithms_paths)

@@ -268,8 +268,8 @@ write_csv(mdpo_train %>% filter(idoutcome < postsamples_train / 10),
 		  file.path(folder_output_small, 'training.csv'))
 # compression using parallel xz
 cat("  compressing training ... \n")
-system2("pixz", file.path(folder_output_small, 'training.csv'))
+system2("xz", file.path(folder_output_small, 'training.csv'))
 write_csv(mdpo_test %>% filter(idoutcome < postsamples_test/10), file.path(folder_output_small, 'test.csv'))
 # compression using parallel xz
 cat("  compressing test ... \n")
-system2("pixz", file.path(folder_output_small, 'test.csv'))
+system2("xz", file.path(folder_output_small, 'test.csv'))

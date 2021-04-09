@@ -53,13 +53,13 @@ folder_output <- file.path('domains', 'inventory')
 inventory_params <- function(lambda){
     list(
         variable_cost = 2.49,
-        fixed_cost = 3.99,
-        holding_cost = 0.1,
+        fixed_cost = 0.49,
+        holding_cost = 0.05,
         backlog_cost = 0.15,
         sale_price = 4.99,
-        max_inventory = 50,      # number of states - 1
+        max_inventory = 40,      # number of states - 1
         max_backlog = 0,         # no backlogging allowed
-        max_order = 10,          # number of actions - 1
+        max_order = 30,          # number of actions - 1
         demands = normalize(dpois(0:30, lambda)),
         seed = sample.seed)
 }
@@ -95,8 +95,8 @@ samples <- 7                      # number of transition samples per episode
 episodes <- 1                     # number of episodes to sample from
 
 # posterior samples
-postsamples_train <- 100          # number of posterior training samples
-postsamples_test <- 100           # number of posterior test samples
+postsamples_train <- 200          # number of posterior training samples
+postsamples_test <- 200           # number of posterior test samples
 
 ## ------ Construct inventory MDP ------
 
@@ -169,18 +169,21 @@ make_mdp <-  function(l) {
     return (R)
 }
 
-cluster <- makeCluster(detectCores())
-clusterExport(cluster, varlist = c("lambdas_posterior", "inventory_mdp", "inventory_params",
-                                   "normalize", "sample.seed", "mdp_inventory", "make_mdp", "pb"
-                                   ))
+#cluster <- makeCluster(detectCores())
+#clusterExport(cluster, varlist = c("lambdas_posterior", "inventory_mdp", "inventory_params",
+#                                   "normalize", "sample.seed", "mdp_inventory", "make_mdp", "pb"
+#                                   ))
 
-bayes_MDPs <- parLapply(cluster, 1:length(lambdas_posterior), make_mdp)
+#bayes_MDPs <- parLapply(cluster, seq_along(lambdas_posterior), make_mdp)
 
-stopCluster(cluster)
+bayes_MDPs <- lapply(seq_along(lambdas_posterior), make_mdp)
+
+#stopCluster(cluster)
 pb$terminate()
 cat("Binding rows .... \n")
 mdpo <- bind_rows(bayes_MDPs)
 
+cat("Checking that probabilities sum to one .... \n")
 # make sure that all probabilities sum to 1 (select all s,a,o with that do not sum to 1)
 invalid <- 
   mdpo %>% group_by(idstatefrom, idaction, idstateto, idoutcome) %>% 
@@ -212,9 +215,11 @@ write_csv(mdp_true, file.path(folder_output, 'true.csv.xz'))
 # compression using parallel xz
 write_csv(mdpo_train, file.path(folder_output, 'training.csv'))
 cat("  compressing training ... \n")
-system2("pixz", file.path(folder_output, 'training.csv'))
+# pixz corrupts data!
+system2("xz", file.path(folder_output, 'training.csv'))
 
 # compression using parallel xz
 write_csv(mdpo_test, file.path(folder_output, 'test.csv'))
 cat("  compressing test ... \n")
-system2("pixz", file.path(folder_output, 'test.csv'))
+# pixz corrupts data!
+system2("xz", file.path(folder_output, 'test.csv'))
