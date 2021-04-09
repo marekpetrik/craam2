@@ -122,11 +122,11 @@ mdp_from_mdpo_dataframe(const craam::indvec& idstatefrom, const craam::indvec id
                         const craam::numvec probability, const craam::numvec reward,
                         long outcome_act, bool force) {
     // idstatefrom, idaction, idstateto, probability, reward
-    const auto start = std::ranges::lower_bound(idoutcome, outcome_act);
-    const auto end = std::ranges::upper_bound(idoutcome, outcome_act);
+    const auto start = std::lower_bound(idoutcome.begin(), idoutcome.end(), outcome_act);
+    const auto end = std::upper_bound(idoutcome.begin(), idoutcome.end(), outcome_act);
 
-    const auto istart = std::distance(std::ranges::begin(idoutcome), start);
-    const auto iend = std::distance(std::ranges::begin(idoutcome), end);
+    const auto istart = std::distance(idoutcome.begin(), start); // start - idoutcome.begin()
+    const auto iend = std::distance(idoutcome.begin(), end); // end - idoutcome.begin()
 
     craam::MDP m;
     for (size_t i = istart; i < iend; i++) {
