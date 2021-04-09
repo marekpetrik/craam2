@@ -204,7 +204,6 @@ make_mdp <- function(chain_iteration){
                          external.pop, external.pop/2, "exponential")
 }
 
-
 # generate all possible values for chains and iterations
 sample_parameters <- expand.grid(chain = 1:d[3], iteration = 1:d[2])
 
