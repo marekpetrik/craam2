@@ -12,22 +12,18 @@
 # are assumed to be known.
 #
 # The demand distribution is uncertain. The demand comes from a Poisson distribution
-# with rate lambda. The prior distribution is Gamma with parameters: k = shape, and theta = scale.
-# If the demand samples are x_1, \ldots, x_n then posterior distribution is: (https://en.wikipedia.org/wiki/Conjugate_prior)
+# with rate lambda. The prior distribution is Gamma with parameters: 
+# k = shape, and theta = scale.
+# 
+# If the demand samples are x_1, \ldots, x_n then posterior distribution is: 
+# (https://en.wikipedia.org/wiki/Conjugate_prior)
 # k' = k + sum_i x_i
 # theta' = theta / (n*theta + 1)
 #
 # The sampling policy is to just purchase the maximum available goods;
 # that way we sample uncensored demand and can compute the posterior
 # distribution analytically
-#
-#
-# The prior assumptions in this model are:
-#  - action a0 is known
-#  - action a1 transitions only to 3 possible states (left, middle, and right)
-#    and all transition probabilities are the same
-#  - attempting to go over each end of the chain keeps the state unchanged
-#  - rewards are assumed to be known
+#  
 # 
 # See the domains README.md file for details about the files that are created
 
@@ -57,13 +53,13 @@ folder_output <- file.path('domains', 'inventory')
 inventory_params <- function(lambda){
     list(
         variable_cost = 2.49,
-        fixed_cost = 3.99,
-        holding_cost = 0.1,
+        fixed_cost = 0.49,
+        holding_cost = 0.05,
         backlog_cost = 0.15,
         sale_price = 4.99,
-        max_inventory = 50,      # number of states - 1
+        max_inventory = 40,      # number of states - 1
         max_backlog = 0,         # no backlogging allowed
-        max_order = 40,          # number of actions - 1
+        max_order = 30,          # number of actions - 1
         demands = normalize(dpois(0:30, lambda)),
         seed = sample.seed)
 }
@@ -99,8 +95,8 @@ samples <- 7                      # number of transition samples per episode
 episodes <- 1                     # number of episodes to sample from
 
 # posterior samples
-postsamples_train <- 100          # number of posterior training samples
-postsamples_test <- 100           # number of posterior test samples
+postsamples_train <- 200          # number of posterior training samples
+postsamples_test <- 200           # number of posterior test samples
 
 ## ------ Construct inventory MDP ------
 
@@ -153,26 +149,41 @@ if(requireNamespace("ggplot2")){
             ggplot2::geom_density())
 }
 
-## ----- Generate MDPO from the posterior -----------
 
-#' Constructs the MDPO from posterior samples of lambda
-#' @param lambda Posterior lambda samples
-mdpo_inventory <- function(lambdas){
-    lapply(seq_along(lambdas), function(l) {
-               inventory_mdp(lambdas[l]) %>% mutate(idoutcome = l - 1) }) %>%
-    bind_rows()
-}
+## ----- Generate MDPO from the posterior -----------
 
 cat("Generating posterior samples (may take a minute) ... \n")
 lambdas_posterior <- rgamma(postsamples_train + postsamples_test, 
                             shape = posterior["shape"], scale = posterior["scale"])
-stop()
 
-cluster <- makeCluster(detectCores())
-# generate posterior
-mdpo <- mdpo_inventory(lambdas_posterior)
-stopCluster()
+cat("Cores: ", detectCores(), "\n")
 
+pb <- progress_bar$new(format = "(:spin) [:bar] :percent", 
+                       total = length(lambdas_posterior))
+
+# construct the inventory MDP
+make_mdp <-  function(l) {
+    pb$tick();
+    R <- inventory_mdp(lambdas_posterior[l]) 
+    R$idoutcome <- l - 1
+    return (R)
+}
+
+#cluster <- makeCluster(detectCores())
+#clusterExport(cluster, varlist = c("lambdas_posterior", "inventory_mdp", "inventory_params",
+#                                   "normalize", "sample.seed", "mdp_inventory", "make_mdp", "pb"
+#                                   ))
+
+#bayes_MDPs <- parLapply(cluster, seq_along(lambdas_posterior), make_mdp)
+
+bayes_MDPs <- lapply(seq_along(lambdas_posterior), make_mdp)
+
+#stopCluster(cluster)
+pb$terminate()
+cat("Binding rows .... \n")
+mdpo <- bind_rows(bayes_MDPs)
+
+cat("Checking that probabilities sum to one .... \n")
 # make sure that all probabilities sum to 1 (select all s,a,o with that do not sum to 1)
 invalid <- 
   mdpo %>% group_by(idstatefrom, idaction, idstateto, idoutcome) %>% 
@@ -191,13 +202,24 @@ mdpo_test <- mdpo %>% filter(idoutcome >= postsamples_train) %>%
 cat("Writing results to ", folder_output, " .... \n")
 if(!dir.exists(folder_output)) dir.create(folder_output, recursive = TRUE)
 
-initial_df <- data.frame(idstate = seq(0,state.count - 1), probability = init.dist)
+state.max <- max(max(mdpo$idstatefrom), max(mdpo$idstateto)) 
+
+initial_df <- data.frame(idstate = seq(0,state.max), probability = init_dist)
 parameters_df <- data.frame(parameter = c("discount"), 
                             value = c(0.9))
 
 write_csv(initial_df, file.path(folder_output, "initial.csv.xz"))
 write_csv(parameters_df, file.path(folder_output, "parameters.csv"))
-write_csv(mdp.true, file.path(folder_output, 'true.csv.xz'))
-write_csv(mdpo_train, file.path(folder_output, 'training.csv.xz'))
-write_csv(mdpo_test, file.path(folder_output, 'test.csv.xz'))
+write_csv(mdp_true, file.path(folder_output, 'true.csv.xz'))
 
+# compression using parallel xz
+write_csv(mdpo_train, file.path(folder_output, 'training.csv'))
+cat("  compressing training ... \n")
+# pixz corrupts data!
+system2("xz", file.path(folder_output, 'training.csv'))
+
+# compression using parallel xz
+write_csv(mdpo_test, file.path(folder_output, 'test.csv'))
+cat("  compressing test ... \n")
+# pixz corrupts data!
+system2("xz", file.path(folder_output, 'test.csv'))

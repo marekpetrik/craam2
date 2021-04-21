@@ -18,6 +18,9 @@ rmdp_bayesian_global <- function(mdpo, confidence){
   # this is needed to compute the mean transition probability
   n_outcomes <- mdpo %>% select(idoutcome) %>% unique() %>% nrow()
 
+  # budget scaling to add artificial soft-robustness
+  budget_scaling <- params$risk_weight
+  
   # construct the mean Bayesian model (nominal probabilities)
   mdp.mean.bayes <- mdpo %>% group_by(idstatefrom, idaction, idstateto) %>%
     summarize(probability = sum(probability) / n_outcomes, 
@@ -47,7 +50,7 @@ rmdp_bayesian_global <- function(mdpo, confidence){
   budgets <- inner_join(distances, data.frame(idoutcome = cover.set),
                         by = "idoutcome") %>% 
     group_by(idstatefrom, idaction) %>% 
-    summarize(budget = max(l1), .groups = "keep") %>%
+    summarize(budget = budget_scaling * max(l1), .groups = "keep") %>%
     rename(idstate = idstatefrom)
   
   return(list(mdp.mean = mdp.mean.bayes,

@@ -51,7 +51,7 @@ endif()
 
 if(GUROBI_USE)
     find_library(GUROBI_CXX_LIBRARY_1 NAMES libgurobi_g++5.2.a PATHS $ENV{GUROBI_PATH}/lib)
-    find_library(GUROBI_CXX_LIBRARY_2 NAMES libgurobi90.so PATHS $ENV{GUROBI_PATH}/lib)
+    find_library(GUROBI_CXX_LIBRARY_2 NAMES libgurobi91.so PATHS $ENV{GUROBI_PATH}/lib)
     find_path(GUROBI_INCLUDE_DIR_1 NAMES gurobi_c++.h PATHS $ENV{GUROBI_PATH}/include)
     find_path(GUROBI_INCLUDE_DIR_2 NAMES gurobi_c.h PATHS $ENV{GUROBI_PATH}/include)
 

@@ -24,5 +24,6 @@ algorithm_main <- function(mdpo, initial, discount){
 	# apply rectangularization and the union bound
 	confidence.rect <- (1 - confidence) / sa.count
 
-	return(norbu(mdpo, initial, discount, "evaru", 1 - confidence.rect, 1.0))
+	return(norbu(mdpo, initial, discount, "evaru", 
+	             1 - confidence.rect, params$risk_weight))
 }

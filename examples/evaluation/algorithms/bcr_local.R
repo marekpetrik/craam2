@@ -8,6 +8,9 @@ library(dplyr)
 #' 
 #' The lower bound guarantee is on the total return and the value function
 #' 
+#' The parameter risk_w is used to scale down the size of the ambiguity set
+#' (also known as the budget)
+#' 
 #' @param mdpo MDP with Bayesian outcomes, it is important 
 #' that for each outcome, idstatefrom, idaction, idstateto are unique
 rmdp_bayesian <- function(mdpo, confidence){
@@ -18,6 +21,9 @@ rmdp_bayesian <- function(mdpo, confidence){
   # maximum allowed probability of failure
   failure.rect <- (1 - confidence) / sa.count    
 
+  # budget scaling to add artificial soft-robustness
+  budget_scaling <- params$risk_weight
+  
   # compute the number of unique outcomes in the mdpo, 
   # this is needed to compute the mean transition probability
   n_outcomes <- mdpo %>% select(idoutcome) %>% unique() %>% nrow()
@@ -43,8 +49,8 @@ rmdp_bayesian <- function(mdpo, confidence){
       group_by(idstatefrom, idaction, idoutcome) %>%
       summarize(l1 = sum(diff), .groups = "keep") %>%
       group_by(idstatefrom, idaction) %>%
-      summarize(budget = quantile(l1, 1 - failure.rect), .groups = "keep") %>%
-      rename(idstate = idstatefrom)
+      summarize(budget = budget_scaling * quantile(l1, 1 - failure.rect), .groups = "keep") %>%
+      rename(idstate = idstatefrom) 
   
   return(list(mdp.mean = mdp.mean.bayes,
               budgets = budgets))

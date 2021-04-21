@@ -14,7 +14,7 @@ endif
 
 # libraries
 ifdef GUROBI_PATH
-    PKG_LIBS= ${SHLIB_OPENMP_CXXFLAGS} -L$(GUROBI_PATH)/lib -lgurobi_g++5.2 -lgurobi90
+    PKG_LIBS= ${SHLIB_OPENMP_CXXFLAGS} -L$(GUROBI_PATH)/lib -lgurobi_g++5.2 -lgurobi91
 else
     PKG_LIBS= ${SHLIB_OPENMP_CXXFLAGS} 
 endif
