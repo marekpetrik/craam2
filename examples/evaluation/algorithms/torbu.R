@@ -5,8 +5,7 @@ library(rcraam)
 library(dplyr)
 
 #' Computes policy and an estimated return using a MILP formulation
-#'
-#' Uses Bayesian credible regions with the size determined using the union bound 
+#' 
 #'
 #' @param mdpo MDP with outcomes (dataframe)
 #' @param initial initial distribution, dataframe with idstate, probability
