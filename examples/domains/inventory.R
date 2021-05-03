@@ -86,7 +86,7 @@ inventory_true <- inventory_params(lambda_true)
 
 # initial distribution p0
 init_dist <- c(1.0, rep(0, inventory_true$max_inventory))  
-discount <- 0.99                # discount rate
+discount <- 0.95                # discount rate
 
 stopifnot(abs(1.0 - sum(inventory_true$demands)) < 1e-6)
 
@@ -206,7 +206,7 @@ state.max <- max(max(mdpo$idstatefrom), max(mdpo$idstateto))
 
 initial_df <- data.frame(idstate = seq(0,state.max), probability = init_dist)
 parameters_df <- data.frame(parameter = c("discount"), 
-                            value = c(0.9))
+                            value = c(discount))
 
 write_csv(initial_df, file.path(folder_output, "initial.csv.xz"))
 write_csv(parameters_df, file.path(folder_output, "parameters.csv"))

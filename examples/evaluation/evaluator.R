@@ -35,7 +35,7 @@ risk_weight_eval <- 0.5
 params <- new.env()
 with(params, {
     confidence <- 0.7      # value at risk confidence (1.0 is the worst case)
-    time_limit <- 3600     # time limit on computing the solution
+    time_limit <- 10000    # time limit on computing the solution
     cat("Using confidence =", confidence, ", risk_weight =", risk_weight_eval, "\n") 
 })
 

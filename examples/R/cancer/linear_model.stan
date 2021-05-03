@@ -8,8 +8,8 @@ data {
 }
 
 parameters {
-  real alpha;           // intercept
-  vector[K] beta;       // coefficients
+  real alpha;             // intercept
+  vector[K] beta;         // coefficients
   real<lower=0> sigma;    // noise standard deviation
   vector[N] true_y;
   real<lower=0> sigma2;

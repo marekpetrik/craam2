@@ -6,14 +6,16 @@ library(tidyr)
 
 theme_set(theme_light())
 
-state_count <- 5000
-discount <- 0.8
+# --- Params ----
+state_count <- 500
+discount <- 0.9
+sim_runs <- 2000
 
 sourceCpp("cancer_sim.cpp")
 
 def_config <- default_config()
 
-def_config$transition_noise <- 0.0 #8
+def_config$transition_noise <- 0.01 #8
 
 state <- init_state()
 
@@ -59,14 +61,21 @@ cat("*******\n\n")
 state_policy <- inner_join(sol$policy, samples_rep_state, by = "idstate") %>%
     mutate(idaction = idaction) %>% filter(idaction >= 0)
 
-sim_runs <- 1000
 
+# simulates the policy
 simulated_policy <- simulate_proximity(def_config, select(state_policy, C, P, Q, Q_p), 
-                   as.integer(state_policy$idaction), sim_runs, 100)
+                   as.integer(state_policy$idaction), sim_runs, 200)
+
+simulated_random <- simulate_random(def_config, sim_runs, 200)
 
 cat("*******\n")
-cat("Simulated return: ", sum(simulated_policy$rewards * discount^simulated_policy$steps) / sim_runs, "\n")
+cat("Simulated:\n")
+cat("Optimized return: ", sum(simulated_policy$rewards * discount^simulated_policy$steps) / sim_runs, "\n")
+cat("random return: ", sum(simulated_random$rewards * discount^simulated_random$steps) / sim_runs, "\n")
 cat("*******\n\n")
+
+
+
 
 
 # print(sol$policy %>% filter(idaction == 0))
@@ -89,7 +98,6 @@ ff <- function(){
 #mdp %>% filter(idstatefrom == init_state_num)
 #unlist(cancer_transition(samples_rep[init_state_num,], T, def_config)$state)
 #unlist(cancer_transition(samples_rep[init_state_num,], F, def_config)$state)
-
 
 
 sim_data <- with(simulated_policy, {

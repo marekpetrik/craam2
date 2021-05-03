@@ -1,6 +1,6 @@
 # -*- mode: makefile; -*-
 
-CXX_STD = CXX20
+CXX_STD = CXX17
 
 ifdef GUROBI_PATH
     # release configuration
