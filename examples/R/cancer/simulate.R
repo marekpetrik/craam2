@@ -4,18 +4,27 @@ library(ggplot2)
 library(dplyr)
 library(tidyr)
 
+rm(list=ls())
+
 theme_set(theme_light())
 
 # --- Params ----
-state_count <- 500
+state_count <- 2000
 discount <- 0.9
-sim_runs <- 2000
+sim_runs <- 1000
 
 sourceCpp("cancer_sim.cpp")
 
 def_config <- default_config()
 
-def_config$transition_noise <- 0.01 #8
+#def_config$noise <- "gamma"
+#def_config$noise_std <- 0.01 #8
+
+
+def_config$noise <- "gamma"
+def_config$noise_std <- 0.3 
+def_config$dose_penalty <- 1.5
+
 
 state <- init_state()
 
@@ -25,7 +34,7 @@ state <- init_state()
 # *** generate a bunch of random states (to serve as centers of the aggregate states) ***
 
 cat("Gathering samples ... \n")
-samples_all <- simulate_random(def_config, state_count, 50)
+samples_all <- simulate_random(def_config, state_count, 200)
 
 #plot distributions from random policy
 
@@ -47,34 +56,53 @@ init_state_num <- as.integer(class::knn1(samples_rep, samples_all$states_from[1,
 cat("Building the MDP ... \n")
 mdp <- cancer_mdp(def_config, samples_rep, 1000, TRUE)
 cat("MDP building complete. \n")
-sol <- solve_mdp(mdp, discount, show_progress = 0)
+max_state <- max(max(mdp$idstateto), max(mdp$idstatefrom))
 
-ret_value <- sol$valuefunction %>% filter(idstate == init_state_num)
 
 cat("*******\n")
-cat("Computed return: ", ret_value$value, "\n")
+
+cat("\nPredicted return: \n")
+
+sol <- solve_mdp(mdp, discount, show_progress = 0)
+# sol <- rsolve_mdp_sa(mdp, discount, nature = "l1u", nature_par = 0.05)
+ret_value <- sol$valuefunction %>% filter(idstate == init_state_num)
+cat("Optimized: ", ret_value$value, "\n")
+
+policy_never <- data.frame(idstate = seq(0, max_state), idaction = 0)
+sol_never <- solve_mdp(mdp, discount, show_progress = FALSE, policy_fixed = policy_never)
+cat("Never: ", (sol_never$valuefunction %>% filter(idstate == init_state_num))$value, "\n" )
+
+policy_always <- data.frame(idstate = seq(0, max_state), idaction = 1)
+sol_always <- solve_mdp(mdp, discount, show_progress = FALSE, policy_fixed = policy_always)
+cat("Always: ", (sol_always$valuefunction %>% filter(idstate == init_state_num))$value, "\n" )
+
 cat("*******\n\n")
 
-# **** Simulate the return
+# **** Simulate the return *****
 
 # join state features and actions and strips the terminal state idstate = 0
 state_policy <- inner_join(sol$policy, samples_rep_state, by = "idstate") %>%
     mutate(idaction = idaction) %>% filter(idaction >= 0)
-
 
 # simulates the policy
 simulated_policy <- simulate_proximity(def_config, select(state_policy, C, P, Q, Q_p), 
                    as.integer(state_policy$idaction), sim_runs, 200)
 
 simulated_random <- simulate_random(def_config, sim_runs, 200)
+simulated_never <- simulate_trivial(def_config, 0, sim_runs, 200)
+simulated_always <- simulate_trivial(def_config, 1, sim_runs, 200)
+
+compute_return <- function(simulation){
+    sum(simulation$rewards * discount^simulation$steps) / simulation$runs
+}
 
 cat("*******\n")
-cat("Simulated:\n")
-cat("Optimized return: ", sum(simulated_policy$rewards * discount^simulated_policy$steps) / sim_runs, "\n")
-cat("random return: ", sum(simulated_random$rewards * discount^simulated_random$steps) / sim_runs, "\n")
+cat("Simulated returns:\n")
+cat("Optimized: ", compute_return(simulated_policy), "\n")
+cat("Random: ", compute_return(simulated_random), "\n")
+cat("Never: ", compute_return(simulated_never), "\n")
+cat("Always: ", compute_return(simulated_always), "\n")
 cat("*******\n\n")
-
-
 
 
 
@@ -114,7 +142,8 @@ lr <- lm(to_P ~ from_C + from_P + from_Q + from_Q_p,
 cat("P R2:", summary(lr)$r.squared, "\n")
 cat("Coefficients:", lr$coefficients, "\n\n")
 
-# Coefficients: 0.002791915 0.01800951 0.9654105 -0.01137875 0.0007189314
+# 
+# True coefficients: 0.002791915 0.01800951 0.9654105 -0.01137875 0.0007189314
 
 lr <- lm(to_Q ~ from_C + from_P + from_Q + from_Q_p, 
          data = sim_data %>% filter(idaction == 1))

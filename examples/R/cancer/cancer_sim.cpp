@@ -62,6 +62,9 @@ struct CancerState {
 
 // Default patient configuration to match Elita's code
 struct Config {
+    
+    enum class Noise {  normal, gamma, none  };
+    
     double kde = 0.24;
     double lambda_p = 0.121;
     double k_qpp = 0.0031;
@@ -70,7 +73,8 @@ struct Config {
     double delta_qp = 0.00867;
     double k = 100;
     double dose_penalty = 1.0;
-    double transition_noise = 2.0;
+    double noise_std = 2.0;
+    Noise noise = Noise::gamma;
 
     Config() = default;
 
@@ -82,10 +86,36 @@ struct Config {
         gamma = conf["gamma"];
         k = conf["k"];
         dose_penalty = conf["dose_penalty"];
-        transition_noise = conf["transition_noise"];
+        noise_std = conf["noise_std"];
+        
+        std::string noise_s = conf["noise"];
+        if(noise_s == "normal"){
+            noise = Noise::normal;
+        }else if(noise_s == "gamma"){
+            noise = Noise::gamma;
+        }else if(noise_s == "none"){
+            noise = Noise::none;
+        }else{
+            Rcpp::stop("unknown noise family");
+        }
     }
 
     operator Rcpp::List() const {
+        std::string noise_s; 
+        switch(noise){
+        case Noise::normal:
+            noise_s = "normal";
+            break;
+        case Noise::gamma:
+            noise_s = "gamma";
+            break;
+        case Noise::none:
+            noise_s = "none";
+            break;
+        default:
+            Rcpp::stop("unsupported noise family, internal error");
+        }
+        
         return Rcpp::List::create(
             Rcpp::_["kde"] = kde,
             Rcpp::_["lambda_p"] = lambda_p,
@@ -95,10 +125,21 @@ struct Config {
             Rcpp::_["delta_qp"] = delta_qp,
             Rcpp::_["k"] = k,
             Rcpp::_["dose_penalty"] = dose_penalty,
-            Rcpp::_["transition_noise"] = transition_noise
+            Rcpp::_["noise_std"] = noise_std,
+            Rcpp::_["noise"] = noise_s
         );
     }
 };
+
+// To test what kind of values the gamma distribution generates
+// [[Rcpp::export]]
+std::vector<double> rgamma_test(double sd){
+    std::vector<double> numbers(10000);
+    for(int i = 0; i < 10000; ++i){
+            numbers[i] = R::rgamma(1.0/std::pow(sd,2), std::pow(sd,2));
+    }
+    return numbers;
+}
 
 /// Computes the next transition and the reward
 /// the noise should be generated from a normal distribution
@@ -110,12 +151,26 @@ next_state(const CancerState& state, bool action, const Config& config) noexcept
     std::array<float, 4> noise;
     for(size_t i = 0; i < 4; ++i){
         
-        // a normal distribution
-        // this was used in Gottesmann, but makes the results non-sensical
-        //noise[i] = 1 + config.transition_noise * R::rnorm(0,1);
-
-        // a gamma distribution
-        noise[i] = R::rgamma(1 / config.transition_noise, config.transition_noise);
+        switch(config.noise){
+        case Config::Noise::normal:
+            // a normal distribution
+            // this was used in Gottesmann, but makes the results non-sensical
+            noise[i] = config.noise_std * R::rnorm(1,config.noise_std);    
+            break;
+        case Config::Noise::gamma:
+            // a gamma distribution
+            // the parameters are (hopefully): shape = k and scale = theta
+            // gamma mean = k * theta
+            //       std  = k * theta^2
+            noise[i] = R::rgamma(1.0 / std::pow(config.noise_std, 2), 
+                                 std::pow(config.noise_std,2)) ;
+            break;
+        case Config::Noise::none:
+            noise[i] = 1.0;
+            break;
+        default:
+            Rcpp::stop("unsupported noise family");
+        }
     }
 
     const double C = (1 - config.kde) * (state.C + action ? 1.0 : 0.0);
@@ -161,8 +216,8 @@ Rcpp::List cancer_transition(Rcpp::List state, bool action, Rcpp::List config){
 /// Used when constructing representative states for aggregation
 /// It is just euclidean distance for now.
 double state_distance(const CancerState& s1, const CancerState& s2) noexcept {
-    return sqrt(pow(s1.C - s2.C, 2) + pow(s1.P - s2.P, 2) + pow(s1.Q - s2.Q, 2) +
-                pow(s1.Q_p - s2.Q_p, 2));
+    return sqrt(pow(s1.C - s2.C, 2) + pow(s1.P - s2.P, 2.0) + pow(s1.Q - s2.Q, 2.0) +
+                pow(s1.Q_p - s2.Q_p, 2.0));
 }
 
 /// This is a dumb exhaustive search, replace by some KNN techniques for improved performance
@@ -256,11 +311,13 @@ std::vector<CancerState> parse_states(const Rcpp::DataFrame& rep_states){
 // [[Rcpp::export]]
 Rcpp::List cancer_mdp(Rcpp::List config, Rcpp::DataFrame rep_states, 
                       size_t state_samplecount, bool parallel = true) {
+    
     const CancerSimulatorDisc simulator(config, parse_states(rep_states));
     const craam::MDP mdp = parallel ? 
         craam::msen::build_mdp_par(simulator, state_samplecount) :
         craam::msen::build_mdp(simulator, state_samplecount);
     return mdp_to_dataframe(mdp);
+    
 }
 
 
@@ -353,15 +410,46 @@ Rcpp::List simulate_random(Rcpp::List config, uint_t episodes, uint_t horizon){
     craam::msen::Samples<CancerSimulator::State, CancerSimulator::Action> samples;
     
     // simulate
-    craam::msen::simulate(simulator, samples, craam::msen::RandomPolicy(simulator), horizon, episodes);
+    craam::msen::simulate(simulator, samples, 
+                          craam::msen::RandomPolicy(simulator), 
+                          horizon, episodes);
 
-        return Rcpp::List::create(
+    return Rcpp::List::create(
         Rcpp::_["states_from"] = states2df(samples.get_states_from()),
         Rcpp::_["states_to"] = states2df(samples.get_states_to()),
         Rcpp::_["actions"] = samples.get_actions(),
-        Rcpp::_["rewards"] = samples.get_rewards()
+        Rcpp::_["rewards"] = samples.get_rewards(),
+        Rcpp::_["steps"] = samples.get_steps(),
+        Rcpp::_["runs"] = episodes
     );
 }
+
+/// Simulates a policy that takes a single action no matter what
+// [[Rcpp::export]]
+Rcpp::List simulate_trivial(Rcpp::List config, uint_t action, uint_t episodes, uint_t horizon){
+    CancerSimulator simulator(config);
+    
+    // saves the samples in here
+    craam::msen::Samples<CancerSimulator::State, CancerSimulator::Action> samples;
+    
+    auto policy = [&action](CancerSimulator::State& state) -> CancerSimulator::Action{
+        return action;};
+    
+    // simulate
+    craam::msen::simulate(simulator, samples, 
+                          policy, horizon, episodes);
+    
+    return Rcpp::List::create(
+        Rcpp::_["states_from"] = states2df(samples.get_states_from()),
+        Rcpp::_["states_to"] = states2df(samples.get_states_to()),
+        Rcpp::_["actions"] = samples.get_actions(),
+        Rcpp::_["rewards"] = samples.get_rewards(),
+        Rcpp::_["steps"] = samples.get_steps(),
+        Rcpp::_["runs"] = episodes
+    );
+}
+
+
 
 
 /// Takes the action that corresponds to action provided for the closest state
@@ -408,7 +496,8 @@ Rcpp::List simulate_proximity(Rcpp::List config, Rcpp::DataFrame rep_states,
         Rcpp::_["states_to"] = states2df(samples.get_states_to()),
         Rcpp::_["actions"] = samples.get_actions(),
         Rcpp::_["rewards"] = samples.get_rewards(),
-        Rcpp::_["steps"] = samples.get_steps()
+        Rcpp::_["steps"] = samples.get_steps(),
+        Rcpp::_["runs"] = episodes
     );
 }
 
