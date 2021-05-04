@@ -16,8 +16,8 @@ parameters {
 }
 
 transformed parameters {
-    vector[N] noise;
-    vector<lower=0.1, upper=3.0>[N] z; // the lower 0.1 to prevent a division by 0
+    vector<lower=0>[N] noise;
+    vector<lower=0.005>[N] z; // the lower 0.1 is to prevent a division by 0
     
     z = X * w;
     for (i in 1:N){

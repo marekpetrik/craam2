@@ -53,11 +53,8 @@ mdp <- cancer_mdp(def_config, samples_rep, 1000, TRUE)
 cat("MDP building complete. \n")
 max_state <- max(max(mdp$idstateto), max(mdp$idstatefrom))
 
-
 cat("*******\n")
-
 cat("\nPredicted return: \n")
-
 sol <- solve_mdp(mdp, discount, show_progress = 0)
 # sol <- rsolve_mdp_sa(mdp, discount, nature = "l1u", nature_par = 0.05)
 ret_value <- sol$valuefunction %>% filter(idstate == init_state_num)
@@ -70,7 +67,6 @@ cat("Never: ", (sol_never$valuefunction %>% filter(idstate == init_state_num))$v
 policy_always <- data.frame(idstate = seq(0, max_state), idaction = 1)
 sol_always <- solve_mdp(mdp, discount, show_progress = FALSE, policy_fixed = policy_always)
 cat("Always: ", (sol_always$valuefunction %>% filter(idstate == init_state_num))$value, "\n" )
-
 cat("*******\n\n")
 
 # **** Simulate the return *****
@@ -99,29 +95,15 @@ cat("Never: ", compute_return(simulated_never), "\n")
 cat("Always: ", compute_return(simulated_always), "\n")
 cat("*******\n\n")
 
+library(C50)
+library(rpart)
+library(rpart.plot)
 
+rpart_c <- rpart(idaction ~ C + P + Q + Q_p, data = mutate(state_policy, idaction = as.factor(idaction)))
+#print(tidyrules::tidyRules(rpart_c))
+prp(rpart_c)
 
-# print(sol$policy %>% filter(idaction == 0))
-
-
-ff <- function(){
-    library(C50)
-    library(tidyrules)
-    library(rpart)
-    library(rpart.plot)
-    
-    c5_c <- C5.0(idaction ~ C + P + Q + Q_p, data = state_policy, rules = TRUE)
-    print(tidyRules(c5_c))
-
-    rpart_c <- rpart(idaction ~ C + P + Q + Q_p, data = state_policy)
-    prp(rpart_c)
-}
-
-
-#mdp %>% filter(idstatefrom == init_state_num)
-#unlist(cancer_transition(samples_rep[init_state_num,], T, def_config)$state)
-#unlist(cancer_transition(samples_rep[init_state_num,], F, def_config)$state)
-
+# ---- Generate simulated data -------
 
 sim_data <- with(simulated_policy, {
   cbind(
@@ -130,48 +112,51 @@ sim_data <- with(simulated_policy, {
       idaction = actions)
 })
 
+# ---- Fit linear regression --------
+
+cat("*******\n")
 cat("Linear model fitting statistics: \n")
+for(idaction_fit in c(0,1)){
+    sim_data2 <- filter(sim_data, idaction == idaction_fit)
+    lr <- lm(to_P ~ from_C + from_P + from_Q + from_Q_p, data = sim_data2)
+    cat("Action", idaction_fit, "P R2:", summary(lr)$r.squared, "\n")
+    lr <- lm(to_Q ~ from_C + from_P + from_Q + from_Q_p, data = sim_data2)
+    cat("Action", idaction_fit, "Q R2:", summary(lr)$r.squared, "\n")
+    lr <- lm(to_Q_p ~ from_C + from_P + from_Q + from_Q_p, data = sim_data2)
+    cat("Action", idaction_fit, "Q_p R2:", summary(lr)$r.squared, "\n")
+    # This gives a funny R2 just because TSS is so small
+    #lr <- lm(to_C ~ from_C + from_P + from_Q + from_Q_p, data = sim_data2)
+    #cat("Action", idaction_fit, "C R2:", summary(lr)$r.squared, "\n")
+}
+cat("*******\n\n")
 
-lr <- lm(to_P ~ from_C + from_P + from_Q + from_Q_p, 
-         data = sim_data %>% filter(idaction == 1))
-cat("P R2:", summary(lr)$r.squared, "\n")
-cat("Coefficients:", lr$coefficients, "\n\n")
+# ------ Fit a Stan model --------
 
-# 
-# True coefficients: 0.002791915 0.01800951 0.9654105 -0.01137875 0.0007189314
-
-lr <- lm(to_Q ~ from_C + from_P + from_Q + from_Q_p, 
-         data = sim_data %>% filter(idaction == 1))
-cat("Q R2:", summary(lr)$r.squared, "\n")
-cat("Coefficients:", lr$coefficients, "\n\n")
-
-lr <- lm(to_Q_p ~ from_C + from_P + from_Q + from_Q_p, 
-         data = sim_data %>% filter(idaction == 1))
-cat("Q_p R2:", summary(lr)$r.squared, "\n")
-cat("Coefficients:", lr$coefficients, "\n\n")
-
-
-stop("all done")
-
-# stan linear model
+cat("*******\n")
+cat("Stan results:\n")
 
 library(rstan)
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 
-X <- model.matrix(to_P ~ from_C + from_P + from_Q + from_Q_p - 1,
-             data = sim_data %>% filter(idaction == 1))
-X <- X[1:200,]
+X <- model.matrix(to_P ~ from_C + from_P + from_Q + from_Q_p,
+             data = sim_data %>% filter(idaction == 1, to_P > 0.1))
+y <- (sim_data %>% filter(idaction == 1, to_P > 0.1) )$to_P
 
-y <- (sim_data %>% filter(idaction == 1))$to_P
+X <- X[1:200,]
 y <- y[1:200]
 
-standata <- list( N = nrow(X), K = ncol(X), x = X, y = y)
+standata <- list( N = nrow(X), K = ncol(X), X = X, y = y)
 
-#inits <- lapply(1:1, function(i){list(true_y = y, sigma = 20, sigma2 = 20, alpha = mean(y),
-#      beta = rep(0, ncol(X)), noise = rep(1, nrow(X) )) } )
-#      init = inits, 
-fit <- stan(file = 'linear_model.stan', data = standata, chains = 4, iter = 10000)
-print(fit)
+fit <- stan(file = 'fit_gamma.stan', data = standata, chains = 1, iter = 2000)
+#print(fit)
+#plot(fit, pars = c('alpha'))
+#plot(fit, pars = c('w'))
 
+alpha_samples <- extract(fit, "alpha")
+w_samples <- extract(fit, "w")
 
+# the gamma standard deviation is sqrt(1/alpha)
+cat("True gamma sd:", def_config$noise_std, 
+    "predicted gamma sd:", mean(sqrt(1/alpha_samples$alpha)), "\n" )
+cat("*******\n")
