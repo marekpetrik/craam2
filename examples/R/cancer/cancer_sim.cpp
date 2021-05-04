@@ -134,8 +134,12 @@ struct Config {
 // To test what kind of values the gamma distribution generates
 // [[Rcpp::export]]
 std::vector<double> rgamma_test(double sd){
-    std::vector<double> numbers(10000);
-    for(int i = 0; i < 10000; ++i){
+    // the parameters are (hopefully): shape = k and scale = theta
+    // gamma mean = k * theta
+    //       std  = k * theta^2
+    const int length = 10000;
+    std::vector<double> numbers(length);
+    for(int i = 0; i < length; ++i){
             numbers[i] = R::rgamma(1.0/std::pow(sd,2), std::pow(sd,2));
     }
     return numbers;

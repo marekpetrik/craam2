@@ -11,14 +11,18 @@ parameters {
   real alpha;             // intercept
   vector[K] beta;         // coefficients
   real<lower=0> sigma;    // noise standard deviation
-  vector[N] true_y;
+  
   real<lower=0> sigma2;
 }
 
 
 transformed parameters {
   vector[N] noise;
-
+  vector[N] true_y;
+  
+  true_y = alpha + x * beta;
+  noise = y ./ true_y;
+  
   noise = y ./ true_y;
 }
 
@@ -27,10 +31,10 @@ model {
   //alpha ~ normal(0,1);
   //sigma ~ normal(0, 1);
   
-  true_y ~ normal(alpha + x * beta, sigma2);
-
-  noise ~ normal(1, sigma) ; 
+  noise ~ gamma(1, sigma); 
   
+  // this is necessary to handle the nonlinear pdf transformation that
+  // arises from multiplicative noise
   target += -2 * sum(log(true_y));
 } 
 

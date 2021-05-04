@@ -7,24 +7,19 @@ library(tidyr)
 rm(list=ls())
 
 theme_set(theme_light())
+sourceCpp("cancer_sim.cpp")
 
 # --- Params ----
 state_count <- 2000
 discount <- 0.9
 sim_runs <- 1000
 
-sourceCpp("cancer_sim.cpp")
-
 def_config <- default_config()
-
-#def_config$noise <- "gamma"
-#def_config$noise_std <- 0.01 #8
-
-
 def_config$noise <- "gamma"
-def_config$noise_std <- 0.3 
-def_config$dose_penalty <- 1.5
+def_config$noise_std <- 0.2
+def_config$dose_penalty <- 1.6
 
+# --- Initialize -----
 
 state <- init_state()
 
@@ -173,9 +168,10 @@ y <- y[1:200]
 
 standata <- list( N = nrow(X), K = ncol(X), x = X, y = y)
 
-inits <- lapply(1:1, function(i){list(true_y = y, sigma = 20, sigma2 = 20, alpha = mean(y),
-      beta = rep(0, ncol(X)), noise = rep(1, nrow(X) )) } )
-fit <- stan(file = 'linear_model.stan', data = standata, init = inits, chains = 1)
+#inits <- lapply(1:1, function(i){list(true_y = y, sigma = 20, sigma2 = 20, alpha = mean(y),
+#      beta = rep(0, ncol(X)), noise = rep(1, nrow(X) )) } )
+#      init = inits, 
+fit <- stan(file = 'linear_model.stan', data = standata, chains = 4, iter = 10000)
 print(fit)
 
 
