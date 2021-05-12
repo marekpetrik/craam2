@@ -10,9 +10,13 @@ theme_set(theme_light())
 sourceCpp("cancer_sim.cpp")
 
 # --- Params ----
-state_count <- 2000
+state_count <- 1000
 discount <- 0.9
 sim_runs <- 1000
+
+training_count <- 100
+test_count <- 200
+
 
 def_config <- default_config()
 def_config$noise <- "gamma"
@@ -40,10 +44,12 @@ plot_density <- function() {
 }
 
 samples_rep <- sample_n(samples_all$states_from, state_count)
+# NOTE!: the state indexes are 1-based because state 0 is assumed to be the terminal state
 samples_rep_state <- mutate(samples_rep, idstate = row_number())
 
+
 # assumption: the first sample is the initial state
-# # note: the state indexes are 1-based because state 0 is assumed to be the terminal state
+# note: the state indexes are 1-based because state 0 is assumed to be the terminal state
 init_state_num <- as.integer(class::knn1(samples_rep, samples_all$states_from[1,], 1:nrow(samples_rep)))
 
 # *** construct the MDP of the simulator
@@ -116,17 +122,15 @@ sim_data <- with(simulated_policy, {
 
 cat("*******\n")
 cat("Linear model fitting statistics: \n")
-for(idaction_fit in c(0,1)){
+
+targets <- select(sim_data, starts_with("to_")) %>% colnames()
+
+for (idaction_fit in c(0,1)) {
     sim_data2 <- filter(sim_data, idaction == idaction_fit)
-    lr <- lm(to_P ~ from_C + from_P + from_Q + from_Q_p, data = sim_data2)
-    cat("Action", idaction_fit, "P R2:", summary(lr)$r.squared, "\n")
-    lr <- lm(to_Q ~ from_C + from_P + from_Q + from_Q_p, data = sim_data2)
-    cat("Action", idaction_fit, "Q R2:", summary(lr)$r.squared, "\n")
-    lr <- lm(to_Q_p ~ from_C + from_P + from_Q + from_Q_p, data = sim_data2)
-    cat("Action", idaction_fit, "Q_p R2:", summary(lr)$r.squared, "\n")
-    # This gives a funny R2 just because TSS is so small
-    #lr <- lm(to_C ~ from_C + from_P + from_Q + from_Q_p, data = sim_data2)
-    #cat("Action", idaction_fit, "C R2:", summary(lr)$r.squared, "\n")
+    for (t in targets) {
+        lr <- lm(get(t) ~ from_C + from_P + from_Q + from_Q_p, data = sim_data2)
+        cat("Action", idaction_fit, "Target", t, "R2:", summary(lr)$r.squared, "\n")    
+    }
 }
 cat("*******\n\n")
 
@@ -139,24 +143,141 @@ library(rstan)
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 
-X <- model.matrix(to_P ~ from_C + from_P + from_Q + from_Q_p,
-             data = sim_data %>% filter(idaction == 1, to_P > 0.1))
-y <- (sim_data %>% filter(idaction == 1, to_P > 0.1) )$to_P
+data_limit <- 200 # the max number of datapoints to use from the simulation
 
-X <- X[1:200,]
-y <- y[1:200]
+# the model that we fit does not assume that the noise is the same for 
+# each dimension of the problem
 
-standata <- list( N = nrow(X), K = ncol(X), X = X, y = y)
+lin_params <- list()
+# lin_params contains the weights for the linear model for each 
+# target and action. 
+# The weights are fitted in the following order (see model.matrix below):
+# "(Intercept)" "from_C"      "from_P"      "from_Q"      "from_Q_p" 
+gamma_params <- list()
+for (t in targets) {
+    lin_params[[t]] <- list()
+    gamma_params[[t]] <- list()
+    
+    for (idaction_t in c(0,1)) {
+        # only select data for the appropriate action
+        # and where the target value is sufficiently far from 0
+        # and is non-negative
+        sim_subset <- sim_data %>% 
+            filter(idaction == idaction_t, get(t) > 0.1) %>%
+            head(data_limit)
+        
+        X <- model.matrix(get(t) ~ from_C + from_P + from_Q + from_Q_p,
+                          data = sim_subset)
+        y <- sim_subset[[t]]
+        
+        standata <- list( N = nrow(X), K = ncol(X), X = X, y = y)
+        
+        fit <- stan(file = 'fit_gamma.stan', data = standata, chains = 1, iter = 2000)
+        
+        # alpha is both shape and rate (they are assumed to be the same)
+        # of the gamma distribution
+        alpha_samples <- extract(fit, "alpha")
+        w_samples <- extract(fit, "w")
+        
+        # the gamma standard deviation is sqrt(1/alpha)
+        cat("Action", idaction_t, "Target", t, "\n")
+        cat("True gamma sd:", def_config$noise_std, 
+            "predicted gamma sd:", mean(sqrt(1/alpha_samples$alpha)), "\n" )
+        
+        
+        lin_params[[t]][[toString(idaction_t)]] <- w_samples
+        gamma_params[[t]][toString(idaction_t)] <- alpha_samples
+    }    
+}
 
-fit <- stan(file = 'fit_gamma.stan', data = standata, chains = 1, iter = 2000)
-#print(fit)
-#plot(fit, pars = c('alpha'))
-#plot(fit, pars = c('w'))
-
-alpha_samples <- extract(fit, "alpha")
-w_samples <- extract(fit, "w")
-
-# the gamma standard deviation is sqrt(1/alpha)
-cat("True gamma sd:", def_config$noise_std, 
-    "predicted gamma sd:", mean(sqrt(1/alpha_samples$alpha)), "\n" )
 cat("*******\n")
+
+# ------ Construct linear models ---------
+
+# states: samples_rep_state
+# initial states: index is in init_state_number
+
+
+count_next_state <- 20
+
+# constructs an MDP from a single sample
+# of the linear model definition
+# 
+# Depends on many global variables
+# 
+# @param index index of the sample that should be used for each model
+sample_to_mdp <- function(index){
+    
+    # expected next value for each state
+    # replicate for the two available actions
+    next_deterministic <- rbind(samples_rep_state %>% mutate(idaction = 0), 
+                        samples_rep_state %>% mutate(idaction = 1))
+    
+    # NOTE: assumes that the order of the actions is as constructed above
+    # this is a little bit dangerous, but convenient
+    # be careful when changing things
+    for (t in targets) {
+        next_deterministic[t] <- 
+            c(drop(model.matrix(~C + P + Q + Q_p, data = samples_rep_state) %*% 
+                       lin_params[[t]][["0"]]$w[index,]),
+              drop(model.matrix(~C + P + Q + Q_p, data = samples_rep_state) %*% 
+                       lin_params[[t]][["1"]]$w[index,]))
+    }
+    
+    # Generate the random distribution over next states
+    # do this just by sampling from the posterior instead of using the 
+    # gamma probabilities. Computing the density for 4 independent
+    # gamma distribution would be a bit too hairy
+    next_stoch_all <- list()
+    for (next_index in 1:count_next_state){
+        next_stochastic <- next_deterministic
+        for (t in targets) {
+            alpha0 <- gamma_params[[t]][["0"]][index]
+            alpha1 <- gamma_params[[t]][["1"]][index]
+            
+            # again an assumption on the same number of rows per action
+            next_stochastic[t] <- next_stochastic[t] * 
+                c(rgamma(nrow(next_deterministic)/2, shape = alpha0, rate = alpha0),
+                  rgamma(nrow(next_deterministic)/2, shape = alpha1, rate = alpha1))    
+            next_stoch_all[[next_index]] <- next_stochastic %>% mutate(next_index = next_index)
+        }
+    }
+    next_stoch_all <- bind_rows(next_stoch_all)
+    
+    # generate the next state distribution
+    # first find the next state indexes
+    next_stoch_all$idstateto <- 
+        class::knn1(select(samples_rep_state, -idstate), 
+                    next_stoch_all %>% 
+                        select(starts_with("to_")) %>% 
+                        rename_with(function(x){sub("to_", "", x)}), 
+                    samples_rep_state$idstate) %>%
+            as.integer()
+    
+    # IMPORTANT: This should match the definition in the simulator
+    next_stoch_all <- mutate(next_stoch_all, reward = 
+                             to_P + to_Q + to_Q_p - P - Q - Q_p - def_config$dose_penalty * C)
+        
+    
+    next_stoch_all <- rename(next_stoch_all, idstatefrom = idstate) %>%
+        select(idstatefrom, idaction, idstateto, reward, next_index)
+    
+    mdp <- next_stoch_all %>% group_by(idstatefrom, idaction, idstateto) %>%
+        summarize(probability = n() / count_next_state, 
+                  reward = sum(reward) / count_next_state, 
+                  .groups = "drop")
+    
+    return(mdp)
+}
+
+
+mdps <- list()
+for(k in 1:(training_count, test_count)){
+    mdps[[k]] <- sample_to_mdp(k) %>% mutate(idoutcome = k)
+}
+
+
+
+
+
+

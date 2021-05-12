@@ -54,9 +54,9 @@ domains_source <- "http://data.rmdp.xyz/domains"     # no trailing "/"
 #     - training.csv.xz    (posterior optimization samples)
 #     - test.csv.xz            (posterior evaluation samples)
 domains <- list(
-#    riverswim = "riverswim",
+     riverswim = "riverswim"
 #    pop_small = "population_small"
-    inventory = "inventory"
+#    inventory = "inventory"
 #    population = "population"
 )
 
@@ -80,20 +80,20 @@ domains_paths <- lapply(domains, function(d){file.path(domains_path, d)})
 algorithms_path <- "algorithms"
 
 algorithms <- list(
-    nominal = "nominal.R",
-    bcr_l = "bcr_local.R",
-    bcr_g = "bcr_global.R",
-    rsvf2 = "rsvf2.R",
-    norbu_r = "norbu_r.R",
-    norbu_sr = "norbu_sr.R",
-    norbuv_r = "norbuv_r.R",
-    torbu = "torbu.R"
+    nominal = "nominal.R"#,
+    #bcr_l = "bcr_local.R",
+    #bcr_g = "bcr_global.R",
+    #rsvf2 = "rsvf2.R",
+    #norbu_r = "norbu_r.R",
+    #norbu_sr = "norbu_sr.R",
+    #norbuv_r = "norbuv_r.R",
+    #torbu = "torbu.R"
 )
 
 # Determines which parameter are used to optimize the risk for all algorithms
 risk_weights_optimize <- 
-    c(0, 0.25, 0.5, 0.75, 1.0)
-    #c(0.5)
+    #c(0, 0.25, 0.5, 0.75, 1.0)
+    c(0.5)
 
 # construct paths to algorithms
 algorithms_paths <- lapply(algorithms, function(a){file.path(algorithms_path, a)} ) 
