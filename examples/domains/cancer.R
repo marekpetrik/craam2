@@ -229,6 +229,8 @@ count_next_state <- 20
 # constructs an MDP from a single sample
 # of the linear model definition
 # 
+# states come from the definition above
+# 
 # Depends on many global variables
 # 
 # @param index index of the sample that should be used for each model
@@ -319,7 +321,12 @@ mdpo_test <- bind_rows(mdps)
 cat("Writing results to ", folder_output, " .... \n")
 if(!dir.exists(folder_output)) dir.create(folder_output, recursive = TRUE)
 
-initial_df <- data.frame(idstate = seq(0,state.count - 1), probability = init.dist)
+init_dist <- select(samples_rep_state, idstate) %>% 
+    mutate(probability = if_else(idstate == init_state_num, 1.0, 0.0))
+# check that the probability sums to 1
+stopifnot(abs(sum(init_dist$probability) - 1.0 ) < 1e-6)
+
+initial_df <- data.frame(idstate = seq(0,state_count - 1), probability = init_dist)
 parameters_df <- data.frame(parameter = c("discount"), 
                             value = c(discount))
 

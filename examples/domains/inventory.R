@@ -57,9 +57,9 @@ inventory_params <- function(lambda){
         holding_cost = 0.05,
         backlog_cost = 0.15,
         sale_price = 4.99,
-        max_inventory = 40,      # number of states - 1
+        max_inventory = 20,      # number of states - 1
         max_backlog = 0,         # no backlogging allowed
-        max_order = 30,          # number of actions - 1
+        max_order = 10,          # number of actions - 1
         demands = normalize(dpois(0:30, lambda)),
         seed = sample.seed)
 }
@@ -91,11 +91,11 @@ discount <- 0.95                # discount rate
 stopifnot(abs(1.0 - sum(inventory_true$demands)) < 1e-6)
 
 # transition samples
-samples <- 7                      # number of transition samples per episode
+samples <- 4                      # number of transition samples per episode
 episodes <- 1                     # number of episodes to sample from
 
 # posterior samples
-postsamples_train <- 200          # number of posterior training samples
+postsamples_train <- 100          # number of posterior training samples
 postsamples_test <- 200           # number of posterior test samples
 
 ## ------ Construct inventory MDP ------

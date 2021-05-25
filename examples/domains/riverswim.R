@@ -219,7 +219,7 @@ if(!dir.exists(folder_output)) dir.create(folder_output, recursive = TRUE)
 
 initial_df <- data.frame(idstate = seq(0,state.count - 1), probability = init.dist)
 parameters_df <- data.frame(parameter = c("discount"), 
-                            value = c(0.9))
+                            value = c(discount))
 
 write_csv(initial_df, file.path(folder_output, "initial.csv.xz"))
 write_csv(parameters_df, file.path(folder_output, "parameters.csv"))
