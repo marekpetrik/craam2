@@ -54,10 +54,11 @@ domains_source <- "http://data.rmdp.xyz/domains"     # no trailing "/"
 #     - training.csv.xz    (posterior optimization samples)
 #     - test.csv.xz            (posterior evaluation samples)
 domains <- list(
-     riverswim = "riverswim"
-#    pop_small = "population_small"
-#    inventory = "inventory"
-#    population = "population"
+    #riverswim = "riverswim"
+    #pop_small = "population_small",
+    #inventory = "inventory",
+    #population = "population"
+    cancer = "cancer"
 )
 
 domains_paths <- lapply(domains, function(d){file.path(domains_path, d)})
@@ -80,14 +81,14 @@ domains_paths <- lapply(domains, function(d){file.path(domains_path, d)})
 algorithms_path <- "algorithms"
 
 algorithms <- list(
-    nominal = "nominal.R"#,
+    nominal = "nominal.R",
     #bcr_l = "bcr_local.R",
     #bcr_g = "bcr_global.R",
     #rsvf2 = "rsvf2.R",
     #norbu_r = "norbu_r.R",
-    #norbu_sr = "norbu_sr.R",
-    #norbuv_r = "norbuv_r.R",
-    #torbu = "torbu.R"
+    norbu_sr = "norbu_sr.R",
+    #norbuv_r = "norbuv_r.R"
+    torbu = "torbu.R"
 )
 
 # Determines which parameter are used to optimize the risk for all algorithms
@@ -159,6 +160,10 @@ compute_statistics <- function(mdpo, mdp_true, solution, initial, discount){
     if (!("probability" %in% names(policy)))
         policy$probability <- 1.0
     
+    # terminal states should have no actions, so remove any actions that are 
+    # negative
+    policy <- filter(policy, idaction >= 0)
+    
     # Check to make sure that no non-terminal states have a policy
     #       with a negative idaction. Such actions will be optimized, which is
     #       clearly undesirable.
@@ -211,18 +216,22 @@ empty_statistics <- function(){
 #' @param dir_path Path to the directory with the required files
 load_domain <- function(dir_path){
     cat("        Loading parameters ... \n")
-    parameters <- read_csv(file.path(dir_path, "parameters.csv"), col_types = cols())
+    parameters <- read_csv(file.path(dir_path, "parameters.csv"), col_types = cols()) %>%
+        na.fail()
+    
     
     cat("        Loading true MDP ... ")
     true_mdp <- read_csv(file.path(dir_path, "true.csv.xz"), col_types = 
-                                             cols(idstatefrom = "i", idaction = "i", idstateto = "i", 
-                                                        probability = "d", reward = "d"))
+                 cols(idstatefrom = "i", idaction = "i", idstateto = "i", 
+                 probability = "d", reward = "d")) %>% na.fail()
+    
     sa.count <- select(true_mdp, idstatefrom, idaction) %>% unique() %>% nrow()
     cat(sa.count, "state-actions \n")
         
     cat("        Loading initial distribution ... ")
     initial <- read_csv(file.path(dir_path, "initial.csv.xz"), col_types = 
-                                            cols(idstate = "i", probability = "d"))
+                            cols(idstate = "i", probability = "d")) %>%
+        na.fail()
     s.count <- select(initial, idstate) %>% unique() %>% nrow()
     cat(s.count, "states \n")
     
@@ -233,8 +242,9 @@ load_domain <- function(dir_path){
     stopifnot(file.exists(training_file))
     if (file.size(training_file) < 10e6) {
         training <- read_csv(training_file, col_types = 
-                                                 cols(idstatefrom = "i", idaction = "i", idstateto = "i", 
-                                                            idoutcome = "i", probability = "d", reward = "d"))
+                         cols(idstatefrom = "i", idaction = "i", idstateto = "i", 
+                        idoutcome = "i", probability = "d", reward = "d")) %>%
+            na.fail()
     } else {    
         training_raw <- tools::file_path_sans_ext(training_file)
         if (!file.exists(training_raw)) {
@@ -242,8 +252,9 @@ load_domain <- function(dir_path){
             system2("pixz", paste("-d -k", training_file))
         }
         training <- read_csv(training_raw, col_types = 
-                                                 cols(idstatefrom = "i", idaction = "i", idstateto = "i", 
-                                                            idoutcome = "i", probability = "d", reward = "d"))
+                         cols(idstatefrom = "i", idaction = "i", idstateto = "i", 
+                        idoutcome = "i", probability = "d", reward = "d")) %>%
+            na.fail()
     }
     # make sure that the training data is sorted with increasing idoutcome
     training <- arrange(training, idoutcome)
@@ -260,8 +271,9 @@ load_domain <- function(dir_path){
     stopifnot(file.exists(test_file))
     if (file.size(test_file) < 10e6) {
         test <- read_csv(test_file, col_types = 
-                                         cols(idstatefrom = "i", idaction = "i", idstateto = "i", 
-                                                    idoutcome = "i", probability = "d", reward = "d")) 
+                 cols(idstatefrom = "i", idaction = "i", idstateto = "i", 
+                idoutcome = "i", probability = "d", reward = "d")) %>%
+            na.fail()
     } else {
         test_raw <- tools::file_path_sans_ext(test_file)
         if (!file.exists(test_raw)) {
@@ -269,8 +281,9 @@ load_domain <- function(dir_path){
             system2("pixz", paste("-d -k", test_file))
         }
         test <- read_csv(test_raw, col_types = 
-                                         cols(idstatefrom = "i", idaction = "i", idstateto = "i", 
-                                                    idoutcome = "i", probability = "d", reward = "d"))
+                     cols(idstatefrom = "i", idaction = "i", idstateto = "i", 
+                    idoutcome = "i", probability = "d", reward = "d")) %>%
+            na.fail()
     }
     # make sure that the test data is sorted with increasing idoutcome
     test <- arrange(test, idoutcome)
@@ -369,7 +382,8 @@ main_eval <- function(domains_paths, algorithms_paths){
                 
                 # load the algorithm into its own separate environment
                 alg_env <- new.env() # make sure that algorithm runs are isolated as much as possible
-                sys.source(algorithms_paths[[i_alg]], alg_env, keep.source = TRUE, chdir = TRUE)        
+                sys.source(algorithms_paths[[i_alg]], alg_env, keep.source = TRUE, 
+                           chdir = TRUE)        
                 
                 # call algorithm
                 # TODO: It would be good to detach and better isolate the execution
@@ -461,4 +475,4 @@ cat("*** Results: \n")
 print_results(results %>% filter(test_eval) %>% select(-true, -runtime, -test_eval))
 write_csv(results, output_file)
 
-View(results)
+#View(results)

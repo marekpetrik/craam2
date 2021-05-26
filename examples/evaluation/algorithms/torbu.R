@@ -40,7 +40,6 @@ algorithm_main <- function(mdpo, initial, discount){
     cat("    This computation cannot be terminated without killing the R process!\n")
     gurobi_set_param("nonconvex", "TimeLimit", as.character(time_limit))
 
-
     # trim the number of outcomes used depending on the number of states and actions
     sa.count <- nrow(unique(mdpo %>% select(idstatefrom, idaction)))
     out.count <- nrow(unique(mdpo %>% select(idoutcome)))
@@ -52,6 +51,8 @@ algorithm_main <- function(mdpo, initial, discount){
 
     solution <- srsolve_mdpo(mdpo.trim, initial, discount, 
                         alpha = 1 - confidence, beta = risk_weight)
-
+    
+    browser()
+    
     list(policy = solution$policy, estimate = solution$objective)
 }

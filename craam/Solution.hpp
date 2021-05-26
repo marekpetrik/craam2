@@ -131,6 +131,8 @@ using SRobustOutcomeSolution = Solution<pair<numvec, numvec>>;
 template <class PolicyType> struct StaticSolution {
     /// Policy of the decision maker (and nature if applicable) for each state
     vector<PolicyType> policy{0};
+    /// Occupancy frequency for all states, actions, and outcomes
+    vector<vector<numvec>> occupancies{0};
     /// Objective: this is the objective computed and generally represents some kind of
     /// risk-averse metric
     prec_t objective{std::nan("")};

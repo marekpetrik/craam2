@@ -703,7 +703,9 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
         break;
     }
 
-    indvec policy(nstates);
+    // retrieve policy
+    // initialize to -1 so the policy is correct for terminal states
+    indvec policy(nstates, -1);
     for (size_t is = 0; is < nstates; ++is) {
         const StateO& s = mdpo[is];
         for (size_t ia = 0; ia < s.size(); ++ia)
@@ -712,10 +714,22 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
                 continue;
             }
     }
+    // retrieve the occupancy frequencies
+    std::vector<std::vector<numvec>> occupancies(nstates);
+    for (size_t is = 0; is < nstates; ++is) { // state
+        const StateO& s = mdpo[is];
+        occupancies[is].resize(s.size());
+        for (size_t ia = 0; ia < s.size(); ++ia) { // action
+            occupancies[is][ia].resize(noutcomes);
+            for (size_t iw = 0; iw < noutcomes; ++iw) // omega
+                occupancies[is][ia][iw] = u[index_saw(is, ia, iw)].get(GRB_DoubleAttr_X);
+        }
+    }
 
     auto finish = chrono::steady_clock::now();
     chrono::duration<double> duration = finish - start;
-    return {.policy = move(policy),
+    return {.policy = std::move(policy),
+            .occupancies = std::move(occupancies),
             .objective = objective.getValue(),
             .time = duration.count(),
             .status = 0,

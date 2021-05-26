@@ -17,15 +17,17 @@
 # See the domains README.md file for details about the files that are created
 
 
-library(Rcpp)
-library(rcraam)
-library(ggplot2)
-library(dplyr)
-library(tidyr)
+suppressPackageStartupMessages({
+    library(Rcpp)
+    library(rcraam)
+    library(ggplot2)
+    library(dplyr)
+    library(tidyr)
+    library(readr)    
+})
 
 rm(list=ls())
 
-theme_set(theme_light())
 sourceCpp("cancer_sim.cpp")
 
 ## --- Parameters ----
@@ -34,9 +36,9 @@ sourceCpp("cancer_sim.cpp")
 folder_output <- file.path('domains', 'cancer')  
 
  
-state_count <- 1000
+state_count <- 400
 discount <- 0.9
-sim_runs <- 1000
+sim_runs <- 100
 
 training_count <- 100
 test_count <- 200
@@ -303,14 +305,14 @@ sample_to_mdp <- function(index){
 # training set
 mdps <- list()
 for (k in 1:training_count) {
-    mdps[[k]] <- sample_to_mdp(k) %>% mutate(idoutcome = k)
+    mdps[[k]] <- sample_to_mdp(k) %>% mutate(idoutcome = k - 1)
 }
 mdpo_train <- bind_rows(mdps)
 
 # test set
 mdps <- list()
 for (k in 1:test_count) {
-    mdps[[k]] <- sample_to_mdp(k) %>% mutate(idoutcome = k)
+    mdps[[k]] <- sample_to_mdp(k) %>% mutate(idoutcome = k - 1)
 }
 mdpo_test <- bind_rows(mdps)
 
@@ -319,14 +321,13 @@ mdpo_test <- bind_rows(mdps)
 ## ------- Save results in the directory ------
 
 cat("Writing results to ", folder_output, " .... \n")
-if(!dir.exists(folder_output)) dir.create(folder_output, recursive = TRUE)
+if (!dir.exists(folder_output)) dir.create(folder_output, recursive = TRUE)
 
-init_dist <- select(samples_rep_state, idstate) %>% 
+initial_df <- select(samples_rep_state, idstate) %>% 
     mutate(probability = if_else(idstate == init_state_num, 1.0, 0.0))
 # check that the probability sums to 1
-stopifnot(abs(sum(init_dist$probability) - 1.0 ) < 1e-6)
+stopifnot(abs(sum(initial_df$probability) - 1.0 ) < 1e-6)
 
-initial_df <- data.frame(idstate = seq(0,state_count - 1), probability = init_dist)
 parameters_df <- data.frame(parameter = c("discount"), 
                             value = c(discount))
 

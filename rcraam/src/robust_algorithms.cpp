@@ -329,7 +329,7 @@ Rcpp::DataFrame output_policy(const indvec& policy) {
  * Turns a nested structure of state-action values to a dataframe with
  * state and action as the columns
  *
- * @param policy A state-action value
+ * @param value A state-action value
  * @param value_column Name of the value column
  * @return Dataframe with idstae, idaction, probability columns
  *          (idstate, idaction are the index)
@@ -347,6 +347,37 @@ Rcpp::DataFrame output_sa_values(const numvecvec& values, const string& value_co
     }
     auto result = Rcpp::DataFrame::create(Rcpp::Named("idstate") = as_intvec(states),
                                           Rcpp::Named("idaction") = as_intvec(actions),
+                                          Rcpp::Named(value_column) = values_c);
+    return result;
+}
+
+/**
+ * Turns a nested structure of state-action values to a dataframe with
+ * state and action as the columns
+ *
+ * @param values A state-action value
+ * @param value_column Name of the value column
+ * @return Dataframe with idstae, idaction, probability columns
+ *          (idstate, idaction are the index)
+ */
+Rcpp::DataFrame output_saw_values(const std::vector<std::vector<numvec>>& values,
+                                  const string& value_column) {
+    craam::indvec states, actions, omegas;
+    craam::numvec values_c;
+
+    for (size_t s = 0; s < values.size(); ++s) {
+        for (size_t a = 0; a < values[s].size(); ++a) {
+            for (size_t w = 0; w < values[s][a].size(); ++w) {
+                states.push_back(s);
+                actions.push_back(a);
+                omegas.push_back(w);
+                values_c.push_back(values[s][a][w]);
+            }
+        }
+    }
+    auto result = Rcpp::DataFrame::create(Rcpp::Named("idstate") = as_intvec(states),
+                                          Rcpp::Named("idaction") = as_intvec(actions),
+                                          Rcpp::Named("idoutcome") = as_intvec(omegas),
                                           Rcpp::Named(value_column) = values_c);
     return result;
 }
@@ -1108,6 +1139,7 @@ Rcpp::List srsolve_mdpo(Rcpp::DataFrame mdpo, Rcpp::DataFrame init_distribution,
             *grb, m, alpha, beta, discount, init_dst, model_dst, output_filename);
 
         result["policy"] = output_policy(sol.policy);
+        result["occupancies"] = output_saw_values(sol.occupancies, "occupancy");
         result["objective"] = sol.objective;
         result["time"] = sol.time;
         result["status"] = sol.status;
@@ -1502,7 +1534,8 @@ revaluate_mdpo_rnd(Rcpp::DataFrame mdpo, double discount,
 
     // parse the data for the first outcome
     if (!std::is_sorted(idoutcome.cbegin(), idoutcome.cend())) {
-        Rcpp::stop("The function requires that the outcomes are sorted increasingly.");
+        Rcpp::stop("The function requires that the outcomes are sorted in a "
+                   "non-descending order.");
     }
 
     // get the unique outcomes
@@ -1669,9 +1702,10 @@ Rcpp::DataFrame mdp_from_samples(Rcpp::DataFrame samples_frame) {
     craam::numvec reward = samples_frame["reward"];
 
     craam::numvec weight(0); // it is length 0 by default (not used)
-    if (samples_frame.containsElementNamed("weight")){
+    if (samples_frame.containsElementNamed("weight")) {
         craam::numvec temp = samples_frame["weight"];
-        weight = std::move(temp); // Directly assign Rcpp["weight"] variable will cause type issue.
+        weight = std::move(
+            temp); // Directly assign Rcpp["weight"] variable will cause type issue.
     }
 
     craam::msen::DiscreteSamples samples;

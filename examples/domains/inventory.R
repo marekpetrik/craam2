@@ -213,13 +213,13 @@ write_csv(parameters_df, file.path(folder_output, "parameters.csv"))
 write_csv(mdp_true, file.path(folder_output, 'true.csv.xz'))
 
 # compression using parallel xz
-write_csv(mdpo_train, file.path(folder_output, 'training.csv'))
-cat("  compressing training ... \n")
+write_csv(mdpo_train, file.path(folder_output, 'training.csv.xz'))
+#cat("  compressing training ... \n")
 # pixz corrupts data!
-system2("xz", file.path(folder_output, 'training.csv'))
+#system2("xz", file.path(folder_output, 'training.csv'))
 
 # compression using parallel xz
-write_csv(mdpo_test, file.path(folder_output, 'test.csv'))
-cat("  compressing test ... \n")
+write_csv(mdpo_test, file.path(folder_output, 'test.csv.xz'))
+#cat("  compressing test ... \n")
 # pixz corrupts data!
-system2("xz", file.path(folder_output, 'test.csv'))
+#system2("xz", file.path(folder_output, 'test.csv'))
