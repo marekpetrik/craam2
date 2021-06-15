@@ -630,8 +630,8 @@ inline DetStaticSolution srsolve_avar_milp(const GRBEnv& env, const MDPO& mdpo,
     for (size_t iw = 0; iw < noutcomes; ++iw)                 // omega
         for (size_t is = 0; is < nstates; ++is)               // state s
             for (size_t ia = 0; ia < mdpo[is].size(); ++ia) { // action a
-                const prec_t upper_bound = (1.0 / (1.0 - gamma));
-                //const prec_t upper_bound = model_dist_aug(iw) * (1.0 / (1.0 - gamma));
+                // 1.01 is to allow for a little fudge factor
+                const prec_t upper_bound = model_dist_aug(iw) * (1.01 / (1.0 - gamma));
                 model.addConstr(
                     pi[index_sa(is, ia)] * upper_bound - u[index_saw(is, ia, iw)] >= 0,
                     "c-y-pi[" + std::to_string(is) + "," + std::to_string(ia) + "," +
