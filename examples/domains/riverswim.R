@@ -161,7 +161,7 @@ mdpo_riverswim_bayes <- function(simulation, n_posterior){
                   function(s){list(.RNG.seed = s, 
                                    .RNG.name = "base::Super-Duper")})
   
-  # JAGS is an overkill reall here, but serves as a demonstration
+  # JAGS is an overkill really here, but serves as a demonstration
   # the Dirichlet posterior can be computed analytically
   model_spec <- textConnection("
       model { for (i in 1:N){ difference[i] ~ dcat(beta) }

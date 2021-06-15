@@ -81,14 +81,14 @@ domains_paths <- lapply(domains, function(d){file.path(domains_path, d)})
 algorithms_path <- "algorithms"
 
 algorithms <- list(
-    nominal = "nominal.R",
+    nominal = "nominal.R"
     #bcr_l = "bcr_local.R",
     #bcr_g = "bcr_global.R",
     #rsvf2 = "rsvf2.R",
     #norbu_r = "norbu_r.R",
-    norbu_sr = "norbu_sr.R",
+    #norbu_sr = "norbu_sr.R",
     #norbuv_r = "norbuv_r.R"
-    torbu = "torbu.R"
+    #torbu = "torbu.R"
 )
 
 # Determines which parameter are used to optimize the risk for all algorithms

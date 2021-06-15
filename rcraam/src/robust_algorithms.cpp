@@ -45,6 +45,7 @@
 #include <string>
 #include <tuple>
 #include <variant>
+#include <optional>
 
 // [[Rcpp::depends(RcppProgress)]]
 namespace RcppProg {
